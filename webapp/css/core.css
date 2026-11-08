@@ -1,0 +1,94 @@
+/* ============================================================
+   core.css · 两页共用（对应共享的 js/core.js）
+   跨页过渡遮罩（.pt）+ 按钮涟漪（[data-ripple]/.ripple）
+   仅放「两页完全一致、由 core.js 驱动」的样式；页面专属样式仍在各自 css 文件中。
+   ============================================================ */
+
+/* 涟漪容器：定位上下文 + 裁剪溢出 */
+[data-ripple] {
+  position: relative;
+  overflow: hidden;
+}
+
+/* 涟漪本体（由 core.js 动态注入 <i class="ripple">） */
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.28;
+  transform: scale(0);
+  animation: ripple 0.6s ease-out;
+  pointer-events: none;
+}
+
+@keyframes ripple {
+  to {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+/* 跨页过渡遮罩：默认收拢为 0 圆，不可点 */
+.pt {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  color: var(--ink);
+  clip-path: circle(0% at 50% 50%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* JS 触发的展开态 */
+.pt.show {
+  opacity: 1;
+  pointer-events: all;
+  clip-path: circle(150% at 50% 50%);
+  transition: clip-path 0.5s cubic-bezier(0.7, 0, 0.2, 1);
+}
+
+/* 首帧防闪烁：core.js 在 head 脚本里早于首帧加 .pt-cover，直接铺满 */
+html.pt-cover .pt {
+  opacity: 1;
+  pointer-events: all;
+  clip-path: circle(150% at 50% 50%);
+}
+html.pt-cover .pt__mark {
+  opacity: 1;
+  transform: none;
+}
+html.pt-cover .pt.leave {
+  clip-path: circle(0% at 50% 50%);
+  opacity: 1;
+  transition: clip-path 0.46s cubic-bezier(0.7, 0, 0.2, 1);
+}
+
+/* 过渡中的品牌标记 */
+.pt__mark {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font: 600 20px/1 var(--display);
+  letter-spacing: 0.18em;
+  opacity: 0;
+  transform: translateY(8px);
+}
+.pt.show .pt__mark {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.4s 0.12s,
+    transform 0.4s 0.12s;
+}
+
+/* 标记前的小方块指示灯 */
+.pt__dot {
+  width: 12px;
+  height: 12px;
+  background: var(--accent);
+  border-radius: 2px;
+  box-shadow: 0 0 20px var(--accent);
+}

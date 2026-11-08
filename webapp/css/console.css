@@ -320,15 +320,4 @@ footer{border-top:1px solid var(--line);margin-top:46px;padding:26px 0 40px;
   cursor:pointer;white-space:nowrap;transition:border-color var(--d-fast),color var(--d-fast),background var(--d-fast),transform var(--d-fast)}
 .btn-back:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);transform:translateY(-2px)}
 .btn-back:active{transform:translateY(0) scale(.98)}
-[data-ripple]{position:relative;overflow:hidden}
-.ripple{position:absolute;border-radius:50%;background:currentColor;opacity:.28;transform:scale(0);animation:ripple .6s ease-out;pointer-events:none}
-@keyframes ripple{to{transform:scale(2.2);opacity:0}}
-.pt{position:fixed;inset:0;z-index:300;display:grid;place-items:center;background:var(--bg);color:var(--ink);
-  clip-path:circle(0% at 50% 50%);opacity:0;pointer-events:none}
-.pt.show{opacity:1;pointer-events:all;clip-path:circle(150% at 50% 50%);transition:clip-path .5s cubic-bezier(.7,0,.2,1)}
-html.pt-cover .pt{opacity:1;pointer-events:all;clip-path:circle(150% at 50% 50%)}
-html.pt-cover .pt__mark{opacity:1;transform:none}
-html.pt-cover .pt.leave{clip-path:circle(0% at 50% 50%);opacity:1;transition:clip-path .46s cubic-bezier(.7,0,.2,1)}
-.pt__mark{display:flex;align-items:center;gap:14px;font:600 20px/1 var(--display);letter-spacing:.18em;opacity:0;transform:translateY(8px)}
-.pt.show .pt__mark{opacity:1;transform:none;transition:opacity .4s .12s,transform .4s .12s}
-.pt__dot{width:12px;height:12px;background:var(--accent);border-radius:2px;box-shadow:0 0 20px var(--accent)}
+/* 共享的 [data-ripple]/.ripple/.pt 过渡遮罩已抽到 css/core.css（与 index.html 共用，对应 js/core.js） */
