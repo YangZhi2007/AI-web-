@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!--
+参考来源：https://app.soul.io/（应用界面）
+本页采用的来源特征：深墨底 + 分层面板、1px rgba(255,255,255,.07) 细线、8/12px 圆角、单一酸柠主强调（关键动作色，与主页共用 token）、编号主导航、指标条空态数字美学、「Probe _」标题与 dashAnimation、ActionBtn 分段、Retrieving info 运行态、ScrambleText 字符解码、GradientButton 渐变描边、Edges 切角、dotFlash / ping / spin / pulse、enter-exit 面板切换、密集页脚与 Sound Off。
+注：本页与主页共用同一套设计 token（--accent 酸柠 / --accent-2 青），不再使用 soul.io 原紫；「紫色」仅作为参考站来源特征描述保留于此处。
+注：DASHBOARD 区块已不沿用参考站的「同款卡片阵列」，改为自研工业仪表台（主读数 + 逐轮刻度轨 + 发丝线计量矩阵），并把原「自适应开关」整卡删除——自适应是本系统的固有属性，不是可关闭的选项。
+刻意不采用的另一来源特征：www.soul.io 落地页的纯黑 #000 全屏超大 Hero、彩色导航 link-color、conic-gradient 旋转光环、圆形自定义光标、SoundBlock「按住改变外观」、BrandsBlock autoloop 品牌墙、TVL by chains 分链表、Early Access 邀请码。
+-->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Probe _ · 控制台 · AI自适应Web漏洞智能探测与绕过判定</title>
+<!-- 目标页首帧覆盖，避免跳转闪烁 -->
+<script>
+try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classList.add('pt-cover'); }catch(e){}
+</script>
+<style>
+/* 参考站原字体为 RobotoCondensed 与 Roboto Mono，此处为离线压缩字回退 */
+/* ---------- 本页最小 token（不跨页共享） ---------- */
+:root{
+  /* 与 index.html 共享的统一配色：深墨底 + 分层表面；酸柠 --accent 为主强调，青 --accent-2 为命中/正向；语义红/黄仅用于拦截/越界 */
+  --bg:#0a0c0f; --bg2:#0e1116; --panel:#141922; --panel2:#1b212c;
+  --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.13); --line3:#272727;
+  --ink:#eef2f6; --muted:#828d9a;                 /* 次要字提亮至 ≥4.5:1 */
+  --violet:#2bbfb0; --violet-ink:#4fe3d0;         /* 原紫 → 统一为青（次强调），仅颜色重映射，类名保留 */
+  --blue:#7ad0ff;
+  --lime:#c8f560; --green:#4fe3d0; --green2:#3bad76;
+  --red:#ff6b6b; --red-ink:#ff9b9b; --yellow:#f5c451;
+  --accent:#c8f560; --accent-ink:#0a0c0f; --accent-soft:rgba(200,245,96,.12);
+  --accent-2:#4fe3d0; --accent2-soft:rgba(79,227,208,.12); --accent2-ink:#0a0c0f;
+  --danger:#ff6b6b; --warn:#f5c451;
+  --r1:1px; --r6:8px; --r10:12px; --pill:9999px;
+  --display:"Roboto Condensed","RobotoCondensed","Bahnschrift SemiCondensed","DIN Condensed","Arial Narrow",sans-serif;
+  --mono:"Roboto Mono","Cascadia Mono","Consolas",monospace;
+  --ease:cubic-bezier(.16,1,.3,1); --slow:.7s; --micro:.16s; --d-fast:.16s;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+html,body{margin:0;padding:0}
+html{overflow-x:hidden;overflow-x:clip}
+body{background:var(--bg);color:var(--ink);min-height:100vh;min-height:100dvh;overflow-x:clip;
+  font:400 14px/1.55 var(--display),"PingFang SC","Microsoft YaHei",sans-serif;
+  font-stretch:condensed;letter-spacing:-.02em}
+button,input,select{font:inherit;color:inherit}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer;min-height:44px}
+input,select{min-height:44px}
+:focus-visible{outline:2px solid var(--lime);outline-offset:3px}
+.mono{font-family:var(--mono);letter-spacing:0}
+.lbl{font:11px/1.5 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.hidden{display:none !important}
+/* 流体容器：宽度跟随视口，仅用内边距做安全边距（与主页同策略） */
+.wrap{width:100%;max-width:2080px;margin-inline:auto;padding-inline:clamp(20px,2.8vw,64px)}
+/* ---------- ① 编号主导航 ---------- */
+.topbar{display:flex;align-items:center;gap:24px;min-height:64px;
+  position:relative;z-index:10}
+/* 顶栏底色改为 100vw 全幅伪元素：宽屏下不会在内容最大宽度处突然截断成「黑边」，
+   且只覆盖顶栏自身高度，不会像 box-shadow 大扩散那样把下方内容一起盖住 */
+.topbar::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:100vw;
+  transform:translateX(-50%);background:var(--bg2);z-index:-1;pointer-events:none}
+/* 全幅发丝线（border-bottom 会被内容最大宽度截断，改用伪元素铺满视口） */
+.topbar::after{content:"";position:absolute;left:50%;bottom:0;width:100vw;height:1px;
+  transform:translateX(-50%);background:var(--line);pointer-events:none}
+.brand{display:inline-flex;align-items:center;min-height:44px;font:600 14px/1 var(--display);letter-spacing:.16em;white-space:nowrap;flex:none}
+.brand i{display:inline-block;width:9px;height:9px;background:var(--violet-ink);margin-right:9px}
+.num-nav{display:flex;gap:2px;margin-left:18px;overflow-x:auto;flex:1}
+.num-nav a{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;
+  white-space:nowrap;color:var(--muted);font:11px var(--mono);letter-spacing:.1em;
+  border:1px solid transparent;transition:color var(--micro) ease,border-color var(--micro) ease}
+.num-nav a:hover,.num-nav a.is-current{color:var(--ink);border-color:var(--line2);background:var(--panel)}
+.num-nav a.is-current{color:var(--violet-ink)}
+.net{display:inline-flex;align-items:center;gap:9px;flex:none;color:var(--muted);
+  font:11px var(--mono);letter-spacing:.06em;white-space:nowrap}
+.net .dots{display:inline-flex;gap:4px}
+.net .dots i{width:4px;height:4px;border-radius:50%;background:var(--violet-ink);animation:dotFlash 3s infinite}
+.net .dots i:nth-child(2){animation-delay:.2s}.net .dots i:nth-child(3){animation-delay:.4s}
+.ping{position:relative;display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green)}
+.ping::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--green);animation:ping 1.5s ease-out infinite}
+/* ---------- ② 指标条（$0 式空态数字美学） ---------- */
+.metrics{display:flex;gap:0;border-bottom:1px solid var(--line);background:var(--panel)}
+.metrics div{flex:1;padding:14px 18px;border-right:1px solid var(--line);min-width:0}
+.metrics div:last-child{border-right:0}
+.metrics span{display:block}
+.metrics b{font:600 22px/1.2 var(--mono);letter-spacing:0;display:block;margin-top:4px}
+/* ---------- ③ 大标题 + dashAnimation ---------- */
+.page-head{padding:38px 0 26px;border-bottom:1px solid var(--line)}
+.page-title{margin:0;font:700 clamp(44px,6vw,84px)/.95 var(--display);letter-spacing:-.045em}
+.page-title .dash{display:inline-block;width:1.15em;height:.09em;vertical-align:.06em;background:repeating-linear-gradient(90deg,var(--lime) 0 10px,transparent 10px 18px);background-size:36px 100%;animation:dashAnimation 2s linear infinite alternate}
+.page-sub{color:var(--muted);margin:14px 0 0;font-size:13px;max-width:70ch}
+/* ---------- ④ ActionBtn 分段 ---------- */
+.segmented{display:flex;gap:6px;margin:26px 0 20px;flex-wrap:wrap}
+.action-btn{position:relative;min-height:44px;padding:0 22px;
+  border:1px solid var(--line2);border-radius:var(--r6);background:transparent;color:var(--muted);
+  font:12px var(--mono);letter-spacing:.08em;
+  transition:transform var(--slow) var(--ease),color var(--micro) ease,border-color var(--micro) ease}
+.action-btn.isHovered{border-color:var(--violet-ink);color:var(--ink)}
+.action-btn.isActive{border-color:var(--lime);color:var(--lime);background:rgba(225,255,105,.05)}
+.action-btn.isActive::before{content:"";position:absolute;left:8px;top:50%;width:4px;height:4px;
+  border-radius:50%;background:var(--lime);transform:translateY(-50%)}
+/* ---------- 面板容器与 enter/exit ---------- */
+.tab-panel{transition:opacity .18s ease,transform .18s ease}
+.tab-panel.exit{opacity:0;transform:translateY(10px)}
+.tab-panel.enter{animation:enterIn .32s var(--ease) both}
+@keyframes enterIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+/* ---------- 面板 / Edges 切角 / GradientButton ---------- */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r10);padding:18px 20px}
+.card.edges{border-radius:var(--r1);clip-path:polygon(0 10px,10px 0,calc(100% - 10px) 0,100% 10px,100% calc(100% - 10px),calc(100% - 10px) 100%,10px 100%,0 calc(100% - 10px))}
+.card.edges::before,.card.edges::after{content:"";position:absolute;width:15px;height:1px;background:var(--line2)}
+.card.edges::before{top:6px;left:-2px;transform:rotate(45deg)}
+.card.edges::after{bottom:6px;right:-2px;transform:rotate(45deg)}
+.card-title{margin:0 0 16px;padding-bottom:10px;border-bottom:1px solid var(--line);
+  font:11px var(--mono);letter-spacing:.12em;color:var(--muted)}
+.btn-grad{border:1px solid transparent;border-radius:var(--pill);background:linear-gradient(var(--panel),var(--panel)) padding-box,linear-gradient(100deg,var(--violet-ink),var(--lime),var(--blue)) border-box;color:var(--lime);font:600 14px var(--display);letter-spacing:.02em;padding:0 30px;min-height:48px;transition:transform var(--slow) var(--ease),filter var(--micro) ease}
+.btn-grad:hover:not(:disabled){transform:translateY(-2px);filter:brightness(1.15)}
+.btn-ghost{border:1px solid var(--line2);border-radius:var(--r6);background:transparent;
+  color:var(--muted);padding:0 18px;font:12px var(--mono);transition:color var(--micro) ease,border-color var(--micro) ease}
+.btn-ghost:hover{border-color:var(--red-ink);color:var(--red-ink)}
+button:disabled{opacity:.38;cursor:not-allowed}
+#msg{font-size:12px;line-height:1.6;max-width:60ch;min-height:18px;word-break:break-word}
+#msg.err{color:var(--red-ink)}#msg.warn{color:var(--yellow)}#msg.ok{color:var(--lime)}
+/* ---------- 表单 ---------- */
+.form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.f-url{grid-column:1/-1}
+label.field{display:block;margin-bottom:8px}
+input[type=text],select{width:100%;background:var(--bg2);border:1px solid var(--line2);
+  border-radius:var(--r6);padding:10px 12px;outline:none;font-size:14px;
+  transition:border-color var(--micro) ease}
+input[type=text]{font-family:var(--mono);font-size:14px}
+input[type=text]:focus,select:focus{border-color:var(--violet-ink)}
+.checks{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-top:20px;
+  padding-top:16px;border-top:1px solid var(--line);font-size:13px}
+.checks label{display:flex;align-items:center;gap:10px;cursor:pointer;min-height:44px}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--lime);cursor:pointer}
+.actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:18px}
+.hint{color:var(--muted);font-size:12px;margin:12px 0 0}
+/* ---------- ⑤ 仪表台 DASHBOARD（主读数 + 刻度轨 + 发丝线指标矩阵） ----------
+   设计意图：把"9 张同款卡片"改成一台仪器——左侧主读数占据两行高度（非对称），
+   用巨型等宽数字 + 逐轮刻度轨承载"轮次"这条证据链主轴；右侧用 1px 发丝线矩阵承载
+   其余计量。强调色只给"进行中"与"完成"，红/黄只给拦截与降级，不平均分配。 */
+.dash{position:relative;border:1px solid var(--line);border-radius:var(--r10);
+  background:var(--panel);overflow:hidden}
+.dash__head{display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:11px 18px 11px 20px;border-bottom:1px solid var(--line);background:var(--bg2)}
+.dash__state{display:inline-flex;align-items:center;gap:7px;font:10px var(--mono);
+  letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+.dash__state i{width:6px;height:6px;border-radius:50%;background:var(--muted);flex:none;
+  transition:background var(--d-fast) linear}
+.dash[data-state="run"] .dash__state{color:var(--accent)}
+.dash[data-state="run"] .dash__state i{background:var(--accent);animation:dotFlash 1.2s infinite}
+.dash[data-state="done"] .dash__state{color:var(--accent-2)}
+.dash[data-state="done"] .dash__state i{background:var(--accent-2)}
+.dash[data-state="oos"] .dash__state{color:var(--yellow)}
+.dash[data-state="oos"] .dash__state i{background:var(--yellow)}
+.dash[data-state="cancel"] .dash__state{color:var(--red-ink)}
+.dash[data-state="cancel"] .dash__state i{background:var(--red-ink)}
+.dash__body{display:grid;grid-template-columns:minmax(256px,1.02fr) 2fr;align-items:stretch}
+/* 主读数区：仅在顶部叠一层极淡的冷光，不用网格线——网格线会从数字的字孔里穿出来显脏 */
+.gauge{position:relative;padding:16px 18px 14px;border-right:1px solid var(--line);
+  background-image:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,0) 62%)}
+.gauge__num{display:flex;align-items:flex-end;gap:6px;margin:6px 0 0}
+.gauge__num b{font:600 clamp(48px,5.6vw,68px)/.86 var(--mono);letter-spacing:-.045em;
+  font-variant-numeric:tabular-nums;color:var(--ink);
+  transition:color var(--d-fast) linear,text-shadow var(--d-fast) linear}
+.gauge__num b.pulse{animation:pulse .45s var(--ease)}
+.gauge__num .cap{font:12px var(--mono);color:var(--muted);letter-spacing:.04em;
+  white-space:nowrap;padding-bottom:5px}
+.dash[data-state="run"] .gauge__num b{color:var(--accent);text-shadow:0 0 28px var(--accent-soft)}
+/* 逐轮刻度轨：一格一轮，已走完的格填满强调色，降级轮以黄标出，当前轮做扫描 */
+.rail{display:flex;gap:3px;margin:12px 0 0}
+.rail i{position:relative;flex:1;height:22px;min-width:0;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;font:9px var(--mono);font-style:normal;
+  border:1px solid var(--line2);background:rgba(255,255,255,.03);color:var(--muted);
+  transition:background var(--micro) linear,border-color var(--micro) linear,color var(--micro) linear}
+.rail i.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.rail i.on.deg{background:var(--yellow);border-color:var(--yellow);color:#1b1200}
+.rail i.cur::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(180deg,transparent,rgba(200,245,96,.45),transparent);
+  animation:railScan 1.4s linear infinite}
+/* 扫描只在"运行中"出现：空态/完成态留一格 cur 只是数据语义，不该有动效 */
+.dash:not([data-state="run"]) .rail i.cur::after{display:none}
+@keyframes railScan{from{transform:translateY(-100%)}to{transform:translateY(100%)}}
+.gauge__foot{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin-top:12px;padding-top:10px;border-top:1px solid var(--line);
+  font:10px var(--mono);letter-spacing:.06em;color:var(--muted)}
+.gauge__foot b{color:var(--ink);font-weight:400}
+/* 指标矩阵：1px 间隙即分隔线，格子无独立圆角，读起来是一整块仪表而非卡片堆 */
+.matrix{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line)}
+.cell{display:flex;flex-direction:column;gap:6px;min-width:0;padding:13px 15px;
+  background:var(--panel);transition:background var(--micro) linear}
+.cell:hover{background:var(--panel2)}
+.cell .lbl{font-size:10px;letter-spacing:.1em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cell__val{display:flex;align-items:baseline;gap:6px}
+.cell__val b{font:600 clamp(23px,2.3vw,31px)/1 var(--mono);letter-spacing:-.03em;
+  font-variant-numeric:tabular-nums;color:var(--ink)}
+.cell__val b.pulse{animation:pulse .45s var(--ease)}
+.cell__note{margin-top:auto;font:10px var(--mono);letter-spacing:.06em;color:var(--muted)}
+/* 分段比例条：6px 高的短刻线，与刻度轨同一套"格子"语言，空态也读得出是一条量表 */
+.meter{position:relative;display:block;height:6px;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.075) 0 4px,transparent 4px 8px)}
+.meter i{position:absolute;left:0;top:0;bottom:0;width:0;color:var(--muted);
+  background:repeating-linear-gradient(90deg,currentColor 0 4px,transparent 4px 8px);
+  transition:width .5s var(--ease),color var(--micro) linear}
+.cell[data-tone="sent"] .meter i{color:var(--blue)}
+.cell[data-tone="blocked"] .meter i{color:var(--red)}
+.cell[data-tone="hit"] .meter i{color:var(--accent-2)}
+.cell[data-tone="rate"] .meter i{color:var(--accent)}
+.cell[data-tone="deg"] .meter i{color:var(--yellow)}
+.cell.is-hot[data-tone="blocked"] b{color:var(--red-ink)}
+.cell.is-hot[data-tone="hit"] b{color:var(--accent-2)}
+.cell.is-hot[data-tone="deg"] b{color:var(--yellow)}
+/* ---------- ⑥ Retrieving info 运行态 ---------- */
+.run-panel{background:var(--panel2);border:1px solid var(--line);border-radius:var(--r6);
+  padding:16px 18px;margin-top:14px}
+.run-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.spin{width:16px;height:16px;border:2px solid var(--line2);border-top-color:var(--lime);
+  border-radius:50%;animation:spin 1s ease-in-out infinite;flex:none}
+.run-state{font:11px var(--mono);letter-spacing:.1em;color:var(--muted)}
+.run-state b{color:var(--lime);font-weight:400}
+.bar{height:2px;background:var(--line2);margin-top:14px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;
+  background:linear-gradient(90deg,var(--violet-ink),var(--lime));
+  transition:width .45s var(--ease)}
+.thinking{display:flex;align-items:center;gap:9px;margin-top:12px;font:11px var(--mono);color:var(--muted)}
+.thinking i{width:4px;height:4px;border-radius:50%;background:var(--lime);animation:dotFlash 2s infinite}
+.thinking i:nth-child(2){animation-delay:.2s}.thinking i:nth-child(3){animation-delay:.4s}
+.thinking em{font-style:normal}
+.terminal{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r6);padding:12px 14px;height:210px;overflow:auto;font:11px/1.85 var(--mono);color:var(--muted);margin-top:14px}
+.terminal .line{white-space:pre-wrap;word-break:break-word}
+.terminal .line.accent{color:var(--violet-ink)}.terminal .line.ok{color:var(--lime)}
+.terminal .line.warn{color:var(--yellow)}
+/* ---------- ⑦ 逐轮表 / 结论 / 报告 ---------- */
+.tbl-scroll{overflow-x:auto}
+.tbl{width:100%;min-width:620px;border-collapse:collapse;font:11px/1.6 var(--mono)}
+.tbl th,.tbl td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.tbl th{color:var(--muted);font-weight:400;letter-spacing:.08em;white-space:nowrap}
+.tbl tr:last-child td{border-bottom:0}
+.tag{display:inline-block;padding:1px 7px;border:1px solid var(--line2);border-radius:var(--r1);font:10px var(--mono);letter-spacing:.06em;text-transform:none}
+.tag.blocked{color:var(--red-ink);border-color:var(--red-ink)}
+.tag.anomaly{color:var(--lime);border-color:var(--lime)}
+.tag.normal{color:var(--muted)}
+.tag.deg{color:var(--yellow);border-color:var(--yellow)}
+.oos-notice{border:1px solid var(--yellow);border-radius:var(--r6);background:rgba(245,213,8,.06);color:var(--yellow);padding:12px 14px;margin:0 0 16px;font-size:13px;font-weight:600;line-height:1.65}
+.verdict{font:700 clamp(30px,4vw,54px)/1 var(--display);letter-spacing:-.04em;margin:0 0 18px}
+.verdict em{font-style:normal;color:var(--lime)}
+.result-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.kv{background:var(--panel2);border:1px solid var(--line);border-radius:var(--r6);padding:11px 13px;min-width:0}
+.kv span{display:block;margin-bottom:5px}
+.kv b{font-size:13px;word-break:break-word;font-weight:500}
+.evidence{border-left:2px solid var(--violet-ink);padding:11px 15px;background:var(--panel2);
+  font-size:13px;line-height:1.8;border-radius:var(--r1)}
+.report-sec{margin:18px 0}
+.report-sec h3{font:11px var(--mono);letter-spacing:.12em;color:var(--muted);margin:0 0 9px;
+  padding-bottom:8px;border-bottom:1px solid var(--line)}
+.cover{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 22px;font-size:13px}
+.cover div{border-bottom:1px dashed var(--line2);padding:6px 0;min-width:0;word-break:break-word}
+.cover span{color:var(--muted);display:inline-block;min-width:100px;font:11px var(--mono)}
+details.raw{border:1px solid var(--line);border-radius:var(--r6);background:var(--panel2);padding:10px 14px;margin-top:10px}
+details.raw summary{cursor:pointer;font:12px var(--mono);color:var(--muted)}
+details.raw pre{font:11px/1.7 var(--mono);white-space:pre-wrap;word-break:break-all;color:var(--ink);margin:10px 0 0;padding:10px;border-top:1px solid var(--line)}
+.watermark{font:10px var(--mono);color:var(--muted);text-align:right;margin-top:14px}
+.config-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 22px;font-size:13px}
+.config-grid div{border-bottom:1px dashed var(--line2);padding:7px 0}
+.config-grid span{color:var(--muted);display:inline-block;min-width:130px;font:11px var(--mono)}
+.empty{border:1px dashed var(--line2);border-radius:var(--r6);padding:32px 20px;
+  text-align:center;color:var(--muted);font-size:13px}
+/* ---------- ⑧ 页脚 ---------- */
+footer{border-top:1px solid var(--line);margin-top:46px;padding:26px 0 40px;
+  display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.foot-links{display:flex;gap:18px;flex-wrap:wrap;color:var(--muted);font:11px var(--mono);letter-spacing:.06em}
+.foot-links a{display:inline-flex;align-items:center;min-height:44px}.foot-links a:hover{color:var(--lime)}
+.foot-end{display:flex;flex-direction:column;gap:8px;align-items:flex-end;text-align:right}
+.boundary{color:var(--ink);margin:0;font-size:12px;line-height:1.7;max-width:64ch}
+.sound-off{border:1px solid var(--line2);border-radius:var(--pill);background:transparent;
+  color:var(--muted);padding:0 16px;font:11px var(--mono);letter-spacing:.08em}
+/* ---------- 动效 ---------- */
+@keyframes dotFlash{0%,60%,100%{opacity:.25}30%{opacity:1}}
+@keyframes ping{0%{transform:scale(1);opacity:.65}100%{transform:scale(2.6);opacity:0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes dashAnimation{from{background-position:0 0}to{background-position:36px 0}}
+@keyframes pulse{0%{opacity:.35;transform:translateY(6px)}100%{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation:none !important;transition:none !important}
+}
+/* ---------- 响应式 ---------- */
+@media(max-width:1100px){
+  .form-grid,.result-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .f-url{grid-column:1/-1}
+  /* 仪表台：主读数独占一行，矩阵仍在下方 */
+  .dash__body{grid-template-columns:1fr}
+  .gauge{border-right:0;border-bottom:1px solid var(--line)}
+}
+@media(max-width:700px){
+  .wrap{padding:0 16px}
+  .topbar{flex-wrap:wrap;gap:8px;padding:10px 0}
+  .num-nav{order:3;width:100%;margin-left:0}
+  .net{margin-left:auto}
+  .metrics{flex-direction:column}
+  .metrics div{border-right:0;border-bottom:1px solid var(--line)}
+  .form-grid,.result-grid,.cover,.config-grid{grid-template-columns:1fr}
+  .matrix{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .gauge{padding:16px 16px 14px}
+  .gauge__num b{font-size:60px}
+  .rail i{height:22px}
+  .f-url{grid-column:auto}
+  .page-head{padding:26px 0 20px}
+  .foot-end{align-items:flex-start;text-align:left}
+}
+/* ---------- 打印：仅报告 ---------- */
+@media print{
+  @page{margin:16mm}
+  :root{--bg:#fff;--bg2:#fff;--panel:#fff;--panel2:#f7f9fc;--line:#cbd5e1;--line2:#cbd5e1;
+    --ink:#111827;--muted:#475569;--lime:#3f6212;--accent:#3f6212;--accent-2:#0f766e;
+    --green:#0f766e;--violet:#0f766e;--violet-ink:#0f766e;--blue:#1e40af;
+    --yellow:#7c3d05;--red-ink:#b91c1c}
+  *{animation:none !important;transition:none !important}
+  body{background:#fff;color:#111827;font-size:11px}
+  .topbar,.metrics,.page-head,.segmented,.no-print,.run-panel,.terminal,.empty,
+  .dash,.form-grid,.actions,.checks,.hint,.spin,.ping,.dotFlash{display:none !important}
+  .wrap{max-width:none;padding:0}
+  .card{border:1px solid #cbd5e1;padding:10px;break-inside:avoid;background:#fff}
+  .card.edges{clip-path:none}
+  .tbl{font-size:9px;min-width:0}.tbl th,.tbl td{padding:4px 6px}
+  .tbl-scroll{overflow:visible}
+  .oos-notice{border-color:#92400e;color:#7c3d05;background:#fff}
+  details.raw{display:block;border-color:#cbd5e1}
+  details.raw>*{display:block !important;content-visibility:visible !important}
+  details.raw summary{display:none}
+  details.raw pre{font-size:8px;break-inside:avoid}
+  footer{border-top:1px solid #cbd5e1;font-size:9px}
+  .boundary{color:#111827}
+}
+/* ---------- 跨页过渡遮罩 + 按钮涟漪（与 index.html 共用同一套） ---------- */
+.btn-back{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 18px;border-radius:var(--pill);
+  border:1px solid var(--line2);background:transparent;color:var(--ink);font:12px var(--mono);letter-spacing:.08em;
+  cursor:pointer;white-space:nowrap;transition:border-color var(--d-fast),color var(--d-fast),background var(--d-fast),transform var(--d-fast)}
+.btn-back:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);transform:translateY(-2px)}
+.btn-back:active{transform:translateY(0) scale(.98)}
+[data-ripple]{position:relative;overflow:hidden}
+.ripple{position:absolute;border-radius:50%;background:currentColor;opacity:.28;transform:scale(0);animation:ripple .6s ease-out;pointer-events:none}
+@keyframes ripple{to{transform:scale(2.2);opacity:0}}
+.pt{position:fixed;inset:0;z-index:300;display:grid;place-items:center;background:var(--bg);color:var(--ink);
+  clip-path:circle(0% at 50% 50%);opacity:0;pointer-events:none}
+.pt.show{opacity:1;pointer-events:all;clip-path:circle(150% at 50% 50%);transition:clip-path .5s cubic-bezier(.7,0,.2,1)}
+html.pt-cover .pt{opacity:1;pointer-events:all;clip-path:circle(150% at 50% 50%)}
+html.pt-cover .pt__mark{opacity:1;transform:none}
+html.pt-cover .pt.leave{clip-path:circle(0% at 50% 50%);opacity:1;transition:clip-path .46s cubic-bezier(.7,0,.2,1)}
+.pt__mark{display:flex;align-items:center;gap:14px;font:600 20px/1 var(--display);letter-spacing:.18em;opacity:0;transform:translateY(8px)}
+.pt.show .pt__mark{opacity:1;transform:none;transition:opacity .4s .12s,transform .4s .12s}
+.pt__dot{width:12px;height:12px;background:var(--accent);border-radius:2px;box-shadow:0 0 20px var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="topbar">
+  <a class="brand" href="index.html" data-nav data-ripple><i></i>PROBE / LAB</a>
+  <nav class="num-nav" aria-label="主导航">
+    <a class="is-current" href="#probe">1.0 探测</a>
+    <a href="#tasks">2.0 任务</a>
+    <a href="#evidence">3.0 证据</a>
+    <a href="#report">4.0 报告</a>
+    <a href="#settings">5.0 设置</a>
+  </nav>
+  <a class="btn-back" href="index.html" data-nav data-ripple aria-label="返回主页"><span aria-hidden="true">←</span> 主页</a>
+  <span class="net"><span class="dots"><i></i><i></i><i></i></span>
+    <span class="ping" aria-hidden="true"></span>本地隔离靶场 · 离线运行</span>
+</header>
+<div class="metrics" aria-label="运行指标">
+  <div><span class="lbl">累计任务 / TASKS</span><b id="mTasks">0</b></div>
+  <div><span class="lbl">检出漏洞 / FINDINGS</span><b id="mFindings">0</b></div>
+  <div><span class="lbl">平均轮次 / AVG ROUNDS</span><b id="mRounds">0</b></div>
+</div>
+<main>
+  <div class="page-head" id="probe">
+    <h1 class="page-title">Probe <span class="dash" aria-hidden="true"></span></h1>
+    <p class="page-sub">在授权范围内提交目标，由本地契约桩驱动逐轮自适应探测。全过程为演示数据，不向目标地址发起任何真实请求。</p>
+  </div>
+  <!-- ④ 分段切换 -->
+  <div class="segmented" role="tablist" aria-label="任务面板">
+    <button id="tabBtnNew" class="action-btn isActive" type="button" data-tab="new" role="tab" aria-selected="true" aria-controls="tabNew" tabindex="0">新建探测</button>
+    <button id="tabBtnHistory" class="action-btn" type="button" data-tab="history" role="tab" aria-selected="false" aria-controls="tabHistory" tabindex="-1">历史任务</button>
+  </div>
+  <section class="tab-panel enter" id="tabNew" role="tabpanel" aria-labelledby="tabBtnNew" aria-label="新建探测">
+    <div class="card edges" style="position:relative">
+      <div class="card-title">TASK CONFIGURATION / 任务配置</div>
+      <div class="form-grid">
+        <div class="f-url">
+          <label class="field lbl" for="urlInput">Target URL / 目标地址（仅作展示字符串）</label>
+          <input id="urlInput" type="text" placeholder="http://127.0.0.1/lab/sqli_01.php" value="http://127.0.0.1/lab/sqli_01.php">
+        </div>
+        <div>
+          <label class="field lbl" for="typeSel">Vuln type / 漏洞类型</label>
+          <select id="typeSel"><option value="sqli">SQL 注入</option><option value="xss">XSS</option><option value="upload">文件上传</option></select>
+        </div>
+        <div>
+          <label class="field lbl" for="scriptSel">Scenario / 演示剧本</label>
+          <select id="scriptSel">
+            <option value="CONVERGE_3">三轮收敛命中</option>
+            <option value="NO_CONVERGE">八轮未收敛</option>
+            <option value="DEGRADED">模型降级</option>
+          </select>
+        </div>
+        <div>
+          <label class="field lbl">Engine / 引擎</label>
+          <div class="lbl" style="padding:12px 0;color:var(--violet-ink)">MOCKENGINE · CONTRACT STUB</div>
+        </div>
+      </div>
+      <div class="checks">
+        <label for="authChk"><input id="authChk" type="checkbox">我已获得该目标的书面授权</label>
+        <span class="lbl">授权范围仅限 localhost / 127.0.0.1 / lab 靶场别名；越界仅作纯模拟演示</span>
+      </div>
+      <div class="actions">
+        <button id="startBtn" class="btn-grad" type="button" disabled data-ripple>开始分析</button>
+        <button id="cancelBtn" class="btn-ghost hidden" type="button" data-ripple>取消</button>
+        <span id="msg" role="status"></span>
+      </div>
+      <p class="hint" id="authHint">请先勾选授权确认，否则无法开始分析。</p>
+    </div>
+  </section>
+  <section class="tab-panel hidden" id="tabHistory" role="tabpanel" aria-labelledby="tabBtnHistory" aria-label="历史任务">
+    <div class="card">
+      <div class="card-title">TASK LOG / 会话内任务</div>
+      <div class="empty" id="historyEmpty">暂无历史任务 · 完成一次分析后会在此登记</div>
+      <div class="tbl-scroll hidden" id="historyFrame"><table class="tbl"><thead><tr>
+        <th>任务 ID</th><th>时间</th><th>目标别名</th><th>剧本</th><th>轮次</th><th>终止原因</th><th>数据来源</th>
+      </tr></thead><tbody id="historyBody"></tbody></table></div>
+    </div>
+  </section>
+  <!-- ②⑤⑥ 任务区 -->
+  <section id="tasks" style="margin-top:34px">
+    <div class="dash" id="dash" data-state="idle">
+      <div class="dash__head">
+        <span class="lbl">DASHBOARD / 运行指标</span>
+        <span class="dash__state" id="dashStateWrap"><i aria-hidden="true"></i><span id="dashState">IDLE</span></span>
+      </div>
+      <div class="dash__body">
+        <!-- 主读数：当前轮次 + 逐轮刻度轨（一格一轮，降级轮以黄标出） -->
+        <div class="gauge">
+          <span class="lbl">当前轮次 / ROUND</span>
+          <div class="gauge__num"><b id="dRound">0</b><span class="cap">/ <span id="dMax">8</span></span></div>
+          <div class="rail" id="rail" aria-hidden="true"></div>
+          <div class="gauge__foot">
+            <span id="railText">轮次进度 0%</span>
+            <span>上限 <b id="dMaxNum">8</b> · 配置常量</span>
+          </div>
+        </div>
+        <!-- 计量矩阵：行一=本次任务的过程量，行二=结论量与会话累计；1px 间隙即分隔线 -->
+        <div class="matrix" role="group" aria-label="运行指标">
+          <div class="cell" data-tone="sent">
+            <span class="lbl">已投递 / SENT</span>
+            <div class="cell__val"><b id="dSent">0</b></div>
+            <span class="meter" aria-hidden="true"><i id="barSent"></i></span>
+            <span class="cell__note">本地靶场模拟</span>
+          </div>
+          <div class="cell" data-tone="blocked">
+            <span class="lbl">已拦截 / BLOCKED</span>
+            <div class="cell__val"><b id="dBlocked">0</b></div>
+            <span class="meter" aria-hidden="true"><i id="barBlocked"></i></span>
+            <span class="cell__note">WAF 响应分类</span>
+          </div>
+          <div class="cell" data-tone="hit">
+            <span class="lbl">已命中 / HIT</span>
+            <div class="cell__val"><b id="dHit">0</b></div>
+            <span class="meter" aria-hidden="true"><i id="barHit"></i></span>
+            <span class="cell__note">特征命中</span>
+          </div>
+          <div class="cell" data-tone="rate">
+            <span class="lbl">完成率 / COMPLETION</span>
+            <div class="cell__val"><b id="dRate">0%</b></div>
+            <span class="meter" aria-hidden="true"><i id="barRate"></i></span>
+            <span class="cell__note">最近一次任务</span>
+          </div>
+          <div class="cell" data-tone="deg">
+            <span class="lbl">降级率 / DEGRADED</span>
+            <div class="cell__val"><b id="dDeg">0%</b></div>
+            <span class="meter" aria-hidden="true"><i id="barDeg"></i></span>
+            <span class="cell__note">降级轮单列统计</span>
+          </div>
+          <div class="cell" data-tone="tasks">
+            <span class="lbl">累计任务 / TASKS</span>
+            <div class="cell__val"><b id="dTasks">0</b></div>
+            <span class="cell__note">会话内累计</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="run-panel">
+      <div class="run-head">
+        <span class="spin" aria-hidden="true"></span>
+        <span class="run-state" id="runState">DASHBOARD RETRIEVING INFO... <b>IDLE</b></span>
+      </div>
+      <div class="bar" id="gradientBar" role="progressbar" aria-label="分析进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="progressBar"></i></div>
+      <div class="thinking" id="thinking"><i></i><i></i><i></i><span>模型思考中…</span><em id="waitText">已等待 0s · 系统运行中</em></div>
+      <div class="terminal mono" id="terminal"></div>
+    </div>
+  </section>
+  <!-- ③ 证据区 -->
+  <section id="evidence" style="margin-top:40px">
+    <div class="lbl" style="margin-bottom:12px">EVIDENCE / 逐轮证据链</div>
+    <div class="card">
+      <div class="card-title">PAYLOAD ROUNDS / 逐轮记录</div>
+      <div class="tbl-scroll"><table class="tbl"><thead><tr>
+        <th>轮次</th><th>round_id</th><th>变形策略</th><th>响应分类</th><th>判定</th><th>耗时</th><th>降级</th>
+      </tr></thead><tbody id="roundBody"></tbody></table></div>
+      <p class="hint" id="roundEmpty">暂无轮次记录 · 完成一次分析后可逐轮查验。</p>
+    </div>
+    <div class="card hidden" id="resultCard" style="margin-top:14px">
+      <div class="verdict">探测结论 <em id="verdictWord">—</em></div>
+      <div class="oos-notice hidden" id="oosResult"></div>
+      <div class="result-grid">
+        <div class="kv"><span class="lbl">漏洞类型</span><b id="rType"></b></div>
+        <div class="kv"><span class="lbl">参数位</span><b id="rParam" class="mono" style="font-size:11px"></b></div>
+        <div class="kv"><span class="lbl">风险等级</span><b id="rRisk"></b></div>
+        <div class="kv"><span class="lbl">置信度</span><b id="rConf" class="mono"></b></div>
+        <div class="kv"><span class="lbl">判定来源</span><b id="rSource"></b></div>
+      </div>
+      <div class="evidence" id="evidenceText"></div>
+    </div>
+  </section>
+  <!-- ④ 报告区 -->
+  <section id="report" style="margin-top:40px">
+    <div class="lbl" style="margin-bottom:12px">REPORT / 结构化报告</div>
+    <div class="card" id="reportCard"><div class="empty" id="reportEmpty">暂无报告 · 完成一次分析后生成可打印报告</div></div>
+  </section>
+  <!-- ⑤ 设置区 -->
+  <section id="settings" style="margin-top:40px">
+    <div class="lbl" style="margin-bottom:12px">SETTINGS / 配置快照</div>
+    <div class="card">
+      <div class="config-grid">
+        <div><span>契约版本</span>1.0</div><div><span>引擎模式</span>mock（契约桩）</div>
+        <div><span>轮次上限</span><span id="cfgMax">8</span></div><div><span>节奏</span>demo</div>
+        <div><span>适配器</span>MOCK</div><div><span>规则集版本</span>LAB-RULESET-01</div>
+      </div>
+      <p class="hint">切换真引擎只需修改脚本顶部 <span class="mono">CONFIG.ENGINE_MODE</span> 与 <span class="mono">HttpEngine.analyze()</span>；本演示不发起任何外部请求。</p>
+    </div>
+  </section>
+</main>
+<footer>
+  <div>
+    <div class="foot-links">
+      <a href="#probe">概览</a><a href="#tasks">任务</a><a href="#evidence">证据</a>
+      <a href="#report">报告</a><a href="#settings">安全</a><a href="#settings">隐私政策</a>
+      <a href="#settings">条款</a><a href="#settings">联系我们</a>
+    </div>
+    <p class="boundary" style="margin-top:14px">授权自测工具，仅用于本地隔离靶场，不用于未授权目标，不涉及未知漏洞挖掘</p>
+  </div>
+  <div class="foot-end">
+    <button id="soundOffBtn" class="sound-off" type="button" role="switch" aria-checked="false" title="仅视觉状态，无音频输出">SOUND OFF</button>
+    <span class="lbl">界面参照 app.soul.io 应用</span>
+    <span class="lbl" style="letter-spacing:.06em">设计参考 / DESIGN REFERENCE</span>
+    <span class="lbl" style="letter-spacing:.06em">演示数据 · MockEngine 契约桩 · 非实时推理 · 零外部请求</span>
+  </div>
+</footer>
+<!-- 跨页过渡遮罩（首帧由 head 脚本置 .cover） -->
+<div class="pt" id="pt" aria-hidden="true">
+  <div class="pt__mark"><span class="pt__dot"></span>PROBE / LAB</div>
+</div>
+</div>
+<script>
+/* ================= 配置区：切换真引擎只需改这里 ================= */
+const CONFIG = {
+  ENGINE_MODE : 'mock',                  // 'mock' | 'http'
+  API_BASE_URL: 'http://127.0.0.1:8000/api/v1', // 占位常量 · 本演示不发起任何请求，仅切 http 模式时由 HttpEngine 使用
+  TICK_SPEED  : 'demo',                  // 'fast' | 'demo' | 'slow'
+  MOCK_SCRIPT : 'CONVERGE_3',            // 'CONVERGE_3' | 'NO_CONVERGE' | 'DEGRADED'
+  MAX_ROUNDS  : 8
+};
+/* 字段契约（切 http 时按此对接 1 号真后端 / 本地 Ollama，仅本机地址）：
+   POST /engine/rounds:execute  入参 task_id / round_no / feedback_state / budget_remaining / group_tag
+   GET  /rounds?task_id=        出参为逐轮记录数组，详情一律从这里取，不塞进事件流
+   SSE  /tasks/{id}/events     事件 round.started|payload.generated|request.sent|waf.blocked|verdict.ready|degraded|task.terminated
+   单轮记录字段：round_no / prev_round_id / strategy_tag / operator_chain / response_class /
+                 waf_signal / verdict / confidence / evidence_round_ids / degraded_flag /
+                 cost_ms / terminate_reason / model_decision_raw / adapter_name / mock_flag
+   枚举：response_class=BLOCKED|ANOMALY|NORMAL|TIMEOUT；verdict=VULNERABLE|NOT_FOUND|NEEDS_REVIEW
+   事件公共字段：task_id / round_no / event / timestamp / mock_flag / degraded_flag
+   事件附加轻字段：strategy_tag / response_class / terminate_reason；断线用 Last-Event-ID 续传
+   详情（model_decision_raw / operator_chain 等）一律走 GET /rounds，不进事件流
+   诚信约束：降级必须落库 + 推事件 + 界面角标三处同步；契约桩数据必须打 mock_flag=true 并显式标注非实时
+   本演示不实现真实发包、不 fetch 任何外部地址；HttpEngine 仅保留接口与错误提示                        */
+const RM = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const TICKS = {fast:160, demo:820, slow:2400};
+const SCOPE = ['localhost','127.0.0.1','::1','[::1]','lab','lab.local','lab-target-01'];
+const OOS_NOTICE = '目标超出授权范围 · 本次为纯模拟演示 · 未向该地址发起任何请求 · 不对应任何真实站点';
+const sleep = (ms,cancel) => new Promise((resolve,reject)=>{
+  let left=ms;
+  const step=()=>{
+    if(cancel&&cancel()){reject(new Error('用户取消'));return;}
+    if(left<=0){resolve();return;}
+    const d=Math.min(120,left);left-=d;setTimeout(step,d);
+  };
+  step();
+});
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2,'0');
+const nowISO = () => new Date().toISOString();
+const fmt = iso => String(iso).replace('T',' ').slice(0,19);
+const genId = () => 'DEMO-' + Math.random().toString(36).slice(2,8).toUpperCase();
+const scopeOK = url => { try{const u=new URL(url),h=u.hostname.toLowerCase().replace(/^\[|\]$/g,'');
+  return (u.protocol==='http:'||u.protocol==='https:') &&
+    (SCOPE.includes(h)||h.endsWith('.lab')||/^lab-[a-z0-9-]+$/.test(h));}catch{return false;} };
+const aliasOf = url => scopeOK(url) ? 'lab-target-01' : 'lab-target-demo（纯模拟，不对应任何真实目标）';
+const displayUrl = url => { try{const u=new URL(url);u.username='';u.password='';
+  return u.toString();}catch{return String(url);} };
+const paramRefOf = (url,type) => {
+  const inScope=scopeOK(url);let p='/lab/target.php';
+  if(inScope){try{p=new URL(url).pathname||p;}catch{}}
+  const key=({sqli:'id',xss:'q',upload:'file'})[type]||'id';
+  return `POST ${p}#${key}（${inScope?'靶场抽象点位':'纯模拟抽象点位'}）`;
+};
+/* ---------- 三套剧本：只含算子编号，不含任何载荷文本 ---------- */
+const SCRIPTS = {
+  CONVERGE_3:{terminate_reason:'HIT', rounds:[
+    {cls:'BLOCKED',sig:'RULE_KEYWORD_A',tag:'OP_BASE',      op:['OP_BASE'],                 cost:1180},
+    {cls:'BLOCKED',sig:'RULE_KEYWORD_B',tag:'OP_ENC_SEQ_1', op:['OP_ENC_SEQ_1'],           cost:1420},
+    {cls:'ANOMALY',sig:'',             tag:'OP_ENC_SEQ_2', op:['OP_ENC_SEQ_2','OP_SPLIT'],cost:1650,hit:true}
+  ]},
+  NO_CONVERGE:{terminate_reason:'MAX_ROUNDS', rounds:Array.from({length:CONFIG.MAX_ROUNDS},(_,i)=>({
+    cls:'BLOCKED',sig:'RULE_KEYWORD_'+String.fromCharCode(65+i%4),
+    tag:'OP_SEQ_'+pad(i+1),op:['OP_SEQ_'+pad(i+1)],cost:900+i*110
+  }))},
+  DEGRADED:{terminate_reason:'HIT',degradeFrom:2, rounds:[
+    {cls:'BLOCKED',sig:'RULE_KEYWORD_A',tag:'OP_BASE',       op:['OP_BASE'],       cost:1100},
+    {cls:'BLOCKED',sig:'RULE_KEYWORD_B',tag:'OP_FALLBACK_1', op:['OP_FALLBACK_1'], cost:980},
+    {cls:'BLOCKED',sig:'RULE_KEYWORD_C',tag:'OP_FALLBACK_2', op:['OP_FALLBACK_2'], cost:1020},
+    {cls:'ANOMALY',sig:'',             tag:'OP_FALLBACK_3', op:['OP_FALLBACK_3'], cost:1240,hit:true}
+  ]}
+};
+const ReportStore = {draft:null};
+const takeDetail = no => ReportStore.draft
+  ? ReportStore.draft.rounds.find(r => r.round_no === no) || null : null;
+const maxRounds = () => ReportStore.draft?.task.max_rounds || CONFIG.MAX_ROUNDS;
+function modelRaw(no,prevId,prevSig,s,degraded){
+  return JSON.stringify({adapter:'MOCK',round_no:no,prev_round_id:prevId,
+    observed:no===1?'无上轮响应（首轮）':`上轮响应分类 BLOCKED，拦截特征 ${prevSig}`,
+    decision:`在算子白名单内选择 ${s.tag}`,
+    reason:no===1?'建立响应基线':'依据本轮反馈调整算子序列，避开已失败策略',
+    validation:'PASSED',degraded_flag:degraded,mock_flag:true},null,2);
+}
+function aiSummary(no,prevSig,s){
+  return no===1 ? `首轮建立响应基线，采用 ${s.tag}`
+                : `依据第 ${no-1} 轮：拦截特征 ${prevSig||'无'}，调整策略为 ${s.tag}`;
+}
+/* ---------- 引擎实现（语义与统一版一致） ---------- */
+const MockEngine = {
+  async analyze(url,options,onEvent){
+    const scriptName = SCRIPTS[CONFIG.MOCK_SCRIPT] ? CONFIG.MOCK_SCRIPT : 'CONVERGE_3';
+    const sc = SCRIPTS[scriptName];
+    const scriptRounds = sc.rounds.slice(0,CONFIG.MAX_ROUNDS);
+    const tick = TICKS[CONFIG.TICK_SPEED] || TICKS.demo;
+    const taskId = genId();
+    const outOfScope = !scopeOK(url);
+    const report = {
+      contract_version:'1.0',mock_flag:true,demo:true,
+      task:{task_id:taskId,target_url:displayUrl(url),
+        target_alias:outOfScope?'lab-target-demo（纯模拟，不对应任何真实目标）':aliasOf(url),
+        authorization_id:outOfScope?'—（越界演示，无授权）':options.authorizationId,
+        out_of_scope:outOfScope,script_tag:scriptName,vuln_type:options.vulnType,
+        group_tag:'A',adapter_name:'MOCK',max_rounds:CONFIG.MAX_ROUNDS,
+        ruleset_version:'LAB-RULESET-01',
+        ai_mode:'ADAPTIVE',started_at:nowISO()},
+      rounds:[],findings:[],degraded_rounds:[],terminate_reason:null,elapsed_ms:0
+    };
+    ReportStore.draft = report;
+    const emit = (event,no,extra={}) => onEvent({
+      task_id:taskId,round_no:no,event,timestamp:nowISO(),mock_flag:true,...extra});
+    emit('task.started',0);
+    let prevSig = '';
+    for(const [i,s] of scriptRounds.entries()){
+      if(options.isCancelled?.()) throw new Error('用户取消');
+      const no=i+1, prev=i===0?null:report.rounds[i-1].round_id;
+      const degraded=!!(sc.degradeFrom && no>=sc.degradeFrom);
+      const rec={
+        round_id:`${taskId}-R${pad(no)}`,round_no:no,prev_round_id:prev,
+        param_ref:paramRefOf(url,options.vulnType),strategy_tag:s.tag,operator_chain:s.op,
+        response_class:s.cls,http_status:s.cls==='BLOCKED'?403:200,
+        waf_signal:s.sig||'无',hit_signal:!!s.hit,
+        verdict:s.hit?'VULNERABLE':(s.cls==='BLOCKED'?'NOT_FOUND':'NEEDS_REVIEW'),
+        confidence:s.hit?0.91:0.12,verdict_source:s.hit?'FUSION':'RULE',
+        degraded_flag:degraded,fallback_used:degraded,adapter_name:'MOCK',
+        validation_result:'PASSED',cost_ms:s.cost,mock_flag:true,
+        ai_summary:aiSummary(no,prevSig,s),
+        model_decision_raw:modelRaw(no,prev,prevSig,s,degraded)
+      };
+      report.rounds.push(rec);
+      if(degraded) report.degraded_rounds.push(no);
+      emit('round.started',no);
+      await sleep(tick*0.55,options.isCancelled);
+      emit('payload.generated',no,{strategy_tag:s.tag});
+      await sleep(tick*0.30,options.isCancelled);
+      emit('request.sent',no);
+      await sleep(tick*0.70,options.isCancelled);
+      if(degraded) emit('degraded',no,{degraded_flag:true});
+      emit(s.cls==='BLOCKED'?'waf.blocked':'verdict.ready',no,
+           {response_class:s.cls,degraded_flag:degraded});
+      await sleep(tick*0.30,options.isCancelled);
+      prevSig=s.sig||'无';
+    }
+    const hasHit=report.rounds.some(r=>r.hit_signal);
+    report.terminate_reason=hasHit?'HIT':(scriptRounds.length>=CONFIG.MAX_ROUNDS?'MAX_ROUNDS':sc.terminate_reason);
+    report.elapsed_ms=report.rounds.reduce((a,r)=>a+r.cost_ms,0);
+    const hit=report.rounds.find(r=>r.hit_signal);
+    if(hit) report.findings.push({finding_id:taskId+'-F01',vuln_type:options.vulnType,
+      param_ref:hit.param_ref,risk_level:'HIGH',verdict:'VULNERABLE',
+      verdict_source:hit.verdict_source,confidence:hit.confidence,
+      evidence_round_ids:report.rounds.map(r=>r.round_id),mock_flag:true});
+    emit('task.terminated',report.rounds.length,{terminate_reason:report.terminate_reason});
+    return report;
+  }
+};
+const HttpEngine = {
+  analyze(){return Promise.reject(new Error(
+    '真引擎未接入：请在 HttpEngine.analyze 中按顶部字段契约对接本地后端；本演示不发起任何外部请求。'));}
+};
+const AnalysisEngine = {
+  analyze:(url,options,onEvent) => CONFIG.ENGINE_MODE==='http'
+    ? HttpEngine.analyze(url,options,onEvent) : MockEngine.analyze(url,options,onEvent)
+};
+/* ---------- app 界面层：ScrambleText / pulse / ActionBtn / enter-exit ---------- */
+const CHARS='ABCDEFGHJKLMNPQRSTUVWXYZ0123456789-_/=+*#';
+function scramble(el,text,ms=420){
+  if(!el)return;
+  const token=(el._scrambleToken||0)+1;el._scrambleToken=token;  // 新调用接管，旧循环退出
+  if(RM||CONFIG.TICK_SPEED==='fast'){el.textContent=text;return;}  // 关闭动效或 fast 档直接定稿，避免逐帧抖动
+  const start=Date.now(), len=String(text).length, target=String(text);
+  const frame=()=>{
+    if(el._scrambleToken!==token)return;
+    const p=Math.min(1,(Date.now()-start)/ms), locked=Math.floor(p*len);
+    let out='';
+    for(let i=0;i<len;i++){
+      out += (i<locked || target[i]===' ' || target[i]==='_')
+        ? target[i] : CHARS[Math.floor(Math.random()*CHARS.length)];
+    }
+    el.textContent=out;
+    if(p<1)requestAnimationFrame(frame);else el.textContent=target;
+  };
+  requestAnimationFrame(frame);
+}
+function pulse(el,text){
+  if(!el)return;
+  if(text!==undefined)scramble(el,text);
+  if(RM)return;
+  el.classList.remove('pulse');void el.offsetWidth;el.classList.add('pulse');
+}
+function switchTab(name){
+  const target=$(name==='history'?'#tabHistory':'#tabNew');
+  const other=$(name==='history'?'#tabNew':'#tabHistory');
+  $$('.action-btn').forEach(b=>{
+    const on=b.dataset.tab===name;
+    b.classList.toggle('isActive',on);b.setAttribute('aria-selected',String(on));
+    b.setAttribute('tabindex',on?'0':'-1');
+  });
+  if(RM){other.classList.add('hidden');target.classList.remove('hidden');return;}
+  other.classList.remove('enter');other.classList.add('exit');
+  setTimeout(()=>{
+    other.classList.add('hidden');
+    target.classList.remove('hidden','exit');target.classList.add('enter');
+  },180);
+}
+/* ---------- 界面状态 ---------- */
+let running=false, waitTimer=null, waitSec=0, runToken=0, taskCount=0, statBlocked=0;
+const taskHistory=[];
+const TYPE_NAME={sqli:'SQL 注入',xss:'XSS',upload:'文件上传'};
+function setMsg(text,kind=''){const m=$('#msg');m.textContent=text;m.className=kind;}
+function setThinking(on){
+  $('#thinking').classList.toggle('hidden',!on);
+  clearInterval(waitTimer);waitTimer=null;
+  if(on){waitSec=0;$('#waitText').textContent='已等待 0s · 系统运行中';
+    waitTimer=setInterval(()=>{waitSec++;$('#waitText').textContent=`已等待 ${waitSec}s · 系统运行中`;},1000);}
+}
+function setProgress(p){
+  const v=Math.min(100,Math.max(0,p));
+  $('#progressBar').style.width=v+'%';
+  $('#gradientBar').setAttribute('aria-valuenow',String(Math.round(v)));
+}
+function log(text,kind=''){
+  const d=document.createElement('div');
+  d.className='line '+kind;
+  d.textContent=`[${new Date().toLocaleTimeString('zh-CN',{hour12:false})}] ${text}`;
+  $('#terminal').appendChild(d);$('#terminal').scrollTop=$('#terminal').scrollHeight;
+}
+function syncStart(){
+  $('#startBtn').disabled=running||!$('#authChk').checked;
+  $('#authHint').textContent=$('#authChk').checked
+    ? '授权已确认 · 本页不会向该地址发起任何真实请求。'
+    : '请先勾选授权确认，否则无法开始分析。';
+}
+function setStat(id,text){pulse($(id),String(text));}
+/* ---------- 仪表台：状态灯 / 刻度轨 / 比例条 ----------
+   刻度轨是"轮次=证据链主轴"的可视化：一格一轮，降级轮以黄标出，当前轮做扫描高亮。
+   比例条给的是相对量（已拦截/已投递 等），避免一排裸数字看不出严重程度。 */
+const dashDeg=new Set();
+function setDashState(state,label){
+  const d=$('#dash');if(!d)return;
+  d.dataset.state=state;
+  const t=$('#dashState');if(t)t.textContent=label;
+}
+function buildRail(n){
+  const rail=$('#rail');if(!rail)return;
+  rail.innerHTML=Array.from({length:n},(_,i)=>
+    `<i data-r="${i+1}">${String(i+1).padStart(2,'0')}</i>`).join('');
+}
+function paintRail(done,degraded=[]){
+  const max=CONFIG.MAX_ROUNDS;
+  $$('#rail i').forEach(el=>{
+    const r=Number(el.dataset.r);
+    el.classList.toggle('on',r<=done);
+    el.classList.toggle('deg',r<=done&&degraded.indexOf(r)>-1);
+    el.classList.toggle('cur',r===done+1&&done<max);
+  });
+  const txt=$('#railText');
+  if(txt)txt.textContent=`轮次进度 ${Math.round(done/max*100)}%`;
+}
+function setMeter(sel,pct){
+  const el=$(sel);if(el)el.style.width=Math.min(100,Math.max(0,pct))+'%';
+}
+function markHot(sel,on){
+  const el=$(sel);if(!el)return;
+  const cell=el.closest('.cell');if(cell)cell.classList.toggle('is-hot',!!on);
+}
+function paintBars(v={}){
+  const sent=v.sent||0, max=CONFIG.MAX_ROUNDS||1;
+  const blocked=v.blocked||0, hit=v.hit||0, rate=v.rate||0, deg=v.deg||0;
+  setMeter('#barSent',sent/max*100);
+  setMeter('#barBlocked',sent?blocked/sent*100:0);
+  setMeter('#barHit',sent?hit/sent*100:0);
+  setMeter('#barRate',rate);
+  setMeter('#barDeg',deg);
+  markHot('#dBlocked',blocked>0);
+  markHot('#dHit',hit>0);
+  markHot('#dDeg',deg>0);
+}
+function setRunState(label){
+  $('#runState').innerHTML=`DASHBOARD RETRIEVING INFO... <b>${esc(label)}</b>`;
+}
+function addRoundRow(no){
+  const d=takeDetail(no)||{};
+  const tr=document.createElement('tr');
+  tr.dataset.round=String(no);
+  tr.innerHTML=`<td>${no}</td><td class="mono">${esc(d.round_id||'')}</td>
+    <td><span class="tag normal" data-f="strategy">生成中…</span></td>
+    <td><span class="tag normal" data-f="cls">分析中</span></td>
+    <td data-f="verdict">—</td><td data-f="cost">—</td>
+    <td data-f="deg">—</td>`;
+  $('#roundBody').appendChild(tr);
+  $('#roundEmpty').classList.add('hidden');
+  return tr;
+}
+function setRowField(no,name,value,cls){
+  const tr=$(`#roundBody tr[data-round="${no}"]`);
+  if(!tr)return;
+  const el=tr.querySelector(`[data-f="${name}"]`);
+  if(!el)return;
+  if(value!==undefined)el.textContent=value;
+  if(cls!==undefined)el.className=el.classList.contains('tag')?'tag '+cls:'';
+}
+function finishRoundRow(no,evt){
+  const d=takeDetail(no);if(!d)return;
+  const map={BLOCKED:['blocked','BLOCKED'],ANOMALY:['anomaly','ANOMALY'],
+             NORMAL:['normal','NORMAL'],TIMEOUT:['deg','TIMEOUT']};
+  const [cls,label]=map[d.response_class]||['normal','UNKNOWN'];
+  setRowField(no,'cls',label,cls);
+  setRowField(no,'verdict',`${d.verdict} · ${d.validation_result}`);
+  setRowField(no,'cost',d.cost_ms+' ms');
+  setRowField(no,'deg',d.degraded_flag?'DEGRADED':'—');
+  if(evt.degraded_flag) setMsg('本轮模型降级，已使用兜底策略集（DEGRADED）','warn');
+}
+/* ---------- 事件驱动：轻事件 → 详情从报告对象取 ---------- */
+function onEvent(e){
+  const no=e.round_no, maxR=maxRounds();
+  switch(e.event){
+    case 'task.started':
+      log('任务已创建 · 引擎 MockEngine（演示数据，非实时推理）','accent');
+      setRunState('RUNNING');setDashState('run','RUNNING');break;
+    case 'round.started':
+      addRoundRow(no);setProgress(no/maxR*100);
+      setStat('#dRound',no);setStat('#dSent',no);
+      paintRail(no,[...dashDeg]);
+      paintBars({sent:no,blocked:statBlocked});
+      log(`第 ${no} 轮开始 · 轮次上限 ${maxR}`);break;
+    case 'payload.generated':
+      setRowField(no,'strategy',e.strategy_tag,'normal');
+      log(`第 ${no} 轮 策略生成 ${e.strategy_tag}（仅算子编号，不展示载荷文本）`);break;
+    case 'request.sent': log(`第 ${no} 轮 已投递探测请求（本地靶场模拟）`);break;
+    case 'degraded':
+      dashDeg.add(no);paintRail(no,[...dashDeg]);   // 降级轮在刻度轨上以黄标出
+      log(`第 ${no} 轮 模型降级 · degraded_flag=true`,'warn');break;
+    case 'waf.blocked': case 'verdict.ready':
+      finishRoundRow(no,e);
+      if(e.response_class==='BLOCKED'){statBlocked++;setStat('#dBlocked',statBlocked);}
+      if(e.degraded_flag){dashDeg.add(no);paintRail(no,[...dashDeg]);}
+      paintBars({sent:no,blocked:statBlocked});
+      log(`第 ${no} 轮 响应分类 ${e.response_class}${e.degraded_flag?' · DEGRADED':''}`,
+          e.response_class==='BLOCKED'?'warn':'ok');break;
+    case 'task.terminated':
+      setProgress(100);setThinking(false);setRunState('DONE');
+      setDashState('done','DONE');
+      paintRail(Math.min(no||maxR,maxR),[...dashDeg]);
+      log(`任务终止 · 原因 ${e.terminate_reason}`);break;
+  }
+}
+/* ---------- 结果与报告（保留越界诚信标注与空轮次守卫） ---------- */
+function renderResult(r){
+  const f=r.findings[0], hit=r.rounds.find(x=>x.hit_signal), oos=r.task.out_of_scope;
+  $('#rType').textContent=TYPE_NAME[r.task.vuln_type]||r.task.vuln_type;
+  $('#rParam').textContent=f?f.param_ref:(r.rounds[0]?r.rounds[0].param_ref:'—');
+  $('#rRisk').textContent=oos?'—（纯模拟）':(f?f.risk_level:'—');
+  $('#rConf').textContent=oos?'—（纯模拟）':(f?f.confidence.toFixed(2):'—');
+  $('#rSource').textContent=oos?'—（纯模拟）':(f?f.verdict_source:'规则基线（未命中）');
+  $('#verdictWord').textContent=oos?'模拟命中':(r.terminate_reason==='HIT'?'已检出':'未检出');
+  const notice=$('#oosResult');
+  notice.textContent=oos?OOS_NOTICE:'';notice.classList.toggle('hidden',!oos);
+  const blocked=r.rounds.filter(x=>x.response_class==='BLOCKED').map(x=>x.round_no);
+  const ev=hit
+    ? `关键证据摘要：第 ${blocked.join('、')} 轮被 WAF 拦截，第 ${hit.round_no} 轮变形后${oos?'在模拟序列中命中特征':'成功检出'}；每条结论可回溯到 round_id。`
+    : `关键证据摘要：全部 ${r.rounds.length} 轮均被 WAF 拦截，达到轮次上限仍未收敛，未检出漏洞（如实记录，不计为成功）。`;
+  const deg=r.degraded_rounds.length
+    ? ` 其中第 ${r.degraded_rounds.join('、')} 轮为降级轮次，已单列，不计入主指标统计。`
+    : ' 本次无降级轮次。';
+  $('#evidenceText').textContent=(oos?'【纯模拟演示，不对应任何真实目标】':'')+ev+deg;
+}
+function renderReport(r){
+  const oos=r.task.out_of_scope, degN=r.degraded_rounds.length;
+  const termText={
+    HIT:degN?`命中目标特征（含 ${degN} 轮降级，降级轮次不计入主指标）`:'命中目标特征，正常终止（HIT）',
+    MAX_ROUNDS:'达到轮次上限，未收敛（MAX_ROUNDS）；结论如实记为未检出，不计为成功'
+  }[r.terminate_reason]||r.terminate_reason;
+  const rows=r.rounds.map(x=>`<tr>
+    <td>${x.round_no}</td><td class="mono">${esc(x.round_id)}</td>
+    <td>${x.prev_round_id?esc(x.prev_round_id.split('-').pop()):'—'}</td>
+    <td>${esc(x.strategy_tag)}</td><td>${esc(x.response_class)}</td>
+    <td>${esc(x.verdict)}</td><td>${x.cost_ms} ms</td>
+    <td>${x.degraded_flag?'DEGRADED':'—'}</td></tr>`).join('');
+  const raw=r.rounds.map(x=>`<b class="mono" style="font-size:11px">第 ${x.round_no} 轮 · ${esc(x.round_id)}</b>
+    <pre>${esc(x.model_decision_raw)}</pre>`).join('');
+  $('#reportCard').innerHTML=`
+    <div class="card-title">SECURITY ASSESSMENT REPORT / 探测报告</div>
+    <div class="report-sec"><h3>01 封面信息</h3>
+      ${oos?`<div class="oos-notice">${esc(OOS_NOTICE)}</div>`:''}
+      <div class="cover">
+        <div><span>任务 ID</span><b class="mono" style="font-size:11px">${esc(r.task.task_id)}</b></div>
+        <div><span>目标别名</span>${esc(r.task.target_alias)}</div>
+        <div><span>目标 URL</span><span class="mono" style="font-size:10px">${esc(r.task.target_url)}${oos?'（纯模拟输入 · 仅展示 · 已剥离凭据）':'（仅展示，已剥离凭据）'}</span></div>
+        <div><span>生成时间</span><span class="mono" style="font-size:11px">${fmt(r.task.started_at)}</span></div>
+        <div><span>授权 ID</span>${esc(r.task.authorization_id)}</div>
+        <div><span>数据来源</span>MockEngine 契约桩（演示数据，非实时推理）</div>
+      </div>
+      <p class="hint">${oos?'纯模拟演示 · 未对应任何真实站点 · 未发起任何请求 · 未使用任何授权凭据':'仅限授权范围内使用 · 演示环境为本地隔离靶场 · 不含任何真实请求与原始凭据'}</p>
+    </div>
+    <div class="report-sec"><h3>02 执行摘要</h3>
+      <p style="margin:0;line-height:1.8">共执行 <b>${r.rounds.length}</b> 轮，累计耗时 <b class="mono">${r.elapsed_ms} ms</b>；终止原因：<b>${termText}</b>。
+      ${degN?`降级轮次：第 ${r.degraded_rounds.join('、')} 轮（degraded_flag=true，已单列，不计入主指标统计）。`:'本次无降级轮次。'}
+      ${oos?'本报告为纯模拟演示，不构成对任何真实目标的安全结论。':`本报告结论仅适用于授权范围内的 ${esc(r.task.target_alias)}。`}</p>
+    </div>
+    <div class="report-sec"><h3>03 附录 A · 逐轮执行记录</h3>
+      <div class="tbl-scroll"><table class="tbl"><thead><tr><th>轮次</th><th>round_id</th><th>依据上轮</th>
+      <th>变形策略</th><th>响应分类</th><th>判定</th><th>耗时</th><th>降级</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>
+    </div>
+    <div class="report-sec"><h3>04 附录 B · 模型决策原文</h3>
+      <details class="raw"><summary>展开查看逐轮模型决策原文（JSON，演示数据）</summary>${raw}</details></div>
+    <div class="report-sec"><h3>05 附录 C · 配置快照</h3>
+      <div class="tbl-scroll"><table class="tbl"><tbody>
+        <tr><th>实验分组</th><td>${esc(r.task.group_tag)}</td><th>适配器</th><td>${esc(r.task.adapter_name)}</td></tr>
+        <tr><th>轮次上限</th><td>${r.task.max_rounds}</td><th>规则集版本</th><td>${esc(r.task.ruleset_version)}</td></tr>
+        <tr><th>运行模式</th><td>${esc(r.task.ai_mode)}</td><th>契约版本</th><td>${esc(r.contract_version)}</td></tr>
+        <tr><th>剧本</th><td>${esc(r.task.script_tag)}</td><th>数据标记</th><td>mock_flag=true</td></tr>
+      </tbody></table></div></div>
+    <div class="watermark">${esc(r.task.task_id)} · ${oos?'纯模拟演示 · 不对应真实目标':'仅限授权范围内使用'} · 第 1 / 1 页</div>
+    <button id="exportBtn" class="btn-grad no-print" type="button" style="margin-top:14px" data-ripple>导出 PDF（打印）</button>`;
+  $('#exportBtn').onclick=()=>{
+    $$('details.raw').forEach(d=>{d.open=true;});   // 打印前展开，避免 Chromium 折叠内容丢失
+    window.print();
+  };
+}
+function renderHistory(){
+  $('#historyBody').innerHTML=taskHistory.map(h=>`<tr>
+    <td class="mono">${esc(h.id)}</td><td class="mono">${esc(h.time)}</td><td>${esc(h.alias)}</td>
+    <td class="mono">${esc(h.script)}</td><td>${h.rounds}</td><td class="mono">${esc(h.reason)}</td>
+    <td>mock_flag=true</td></tr>`).join('');
+  $('#historyEmpty').classList.add('hidden');$('#historyFrame').classList.remove('hidden');
+}
+/* ---------- 主流程 ---------- */
+function resetUI(){
+  $('#roundBody').innerHTML='';$('#terminal').innerHTML='';
+  $('#roundEmpty').classList.remove('hidden');
+  $('#resultCard').classList.add('hidden');
+  $('#cancelBtn').classList.remove('hidden');
+  setProgress(0);setThinking(true);setRunState('RUNNING');
+  $('#dRound').textContent='0';$('#dSent').textContent='0';
+  $('#dBlocked').textContent='0';$('#dHit').textContent='0';statBlocked=0;
+  /* 仪表台复位：刻度轨清空、比例条归零、降级轮集合清空 */
+  dashDeg.clear();
+  paintRail(0);paintBars({});
+  setDashState('run','RUNNING');
+}
+async function start(){
+  if(running)return;
+  if(!$('#authChk').checked){setMsg('请先勾选授权确认','err');return;}
+  const url=$('#urlInput').value.trim();
+  if(!/^https?:\/\/[^\s]+$/i.test(url)){setMsg('请输入以 http:// 或 https:// 开头的合法地址','err');return;}
+  if(!scopeOK(url))setMsg(OOS_NOTICE,'warn');
+  CONFIG.MOCK_SCRIPT=SCRIPTS[$('#scriptSel').value]?$('#scriptSel').value:'CONVERGE_3';
+  const token=++runToken, isCancelled=()=>token!==runToken;
+  running=true;syncStart();resetUI();
+  const options={vulnType:$('#typeSel').value,
+    authorizationId:'AUTH-LAB-DEMO-001',isCancelled};
+  try{
+    const report=await AnalysisEngine.analyze(url,options,onEvent);
+    renderResult(report);renderReport(report);
+    $('#resultCard').classList.remove('hidden');
+    if(report.task.out_of_scope)setMsg('演示完成 · 目标超出授权范围，纯模拟数据，未发起任何请求','warn');
+    else setMsg('分析完成 · 报告已生成（演示数据，非实时推理）','ok');
+    taskCount++;
+    taskHistory.unshift({id:report.task.task_id,time:fmt(report.task.started_at),alias:report.task.target_alias,
+      script:report.task.script_tag,rounds:report.rounds.length,reason:report.terminate_reason});
+    renderHistory();
+    pulse($('#mTasks'),String(taskCount));
+    pulse($('#dTasks'),String(taskCount));
+    pulse($('#mFindings'),String(report.findings.length));
+    pulse($('#mRounds'),String(report.rounds.length));
+    /* 仪表台收尾：刻度轨铺满、比例条按最终报告一次性对齐 */
+    const hitN=report.rounds.filter(x=>x.hit_signal).length;
+    const blockedN=report.rounds.filter(x=>x.response_class==='BLOCKED').length;
+    const degPct=Math.round(report.degraded_rounds.length/Math.max(1,report.rounds.length)*100);
+    pulse($('#dHit'),String(hitN));
+    pulse($('#dDeg'),degPct+'%');
+    pulse($('#dRate'),'100%');
+    paintRail(report.rounds.length,report.degraded_rounds);
+    paintBars({sent:report.rounds.length,blocked:blockedN,hit:hitN,rate:100,deg:degPct});
+    setDashState(report.task.out_of_scope?'oos':'done',report.task.out_of_scope?'SIMULATED':'DONE');
+  }catch(err){
+    /* 取消提示与日志由 cancelRun() 统一输出；旧 token 不再写日志，避免污染新流程终端 */
+    if(!isCancelled()){setMsg('分析未完成：'+err.message,'err');log(err.message,'warn');}
+  }finally{
+    if(token===runToken){running=false;syncStart();setThinking(false);$('#cancelBtn').classList.add('hidden');}
+  }
+}
+function cancelRun(){
+  if(!running)return;
+  runToken++;
+  $('#cancelBtn').classList.add('hidden');
+  setThinking(false);
+  running=false;syncStart();setRunState('CANCELLED');
+  setDashState('cancel','CANCELLED');   /* 刻度轨停在中断处，如实反映未跑完 */
+  setMsg('已取消 · 任务已中断（演示数据）','warn');
+  log('用户取消任务，已停止后续轮次','warn');
+}
+/* ---------- 绑定 ---------- */
+$('#authChk').addEventListener('change',syncStart);
+$('#startBtn').addEventListener('click',start);
+$('#cancelBtn').addEventListener('click',cancelRun);
+$('#urlInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!$('#startBtn').disabled)start();});
+$$('.action-btn').forEach(b=>{
+  b.addEventListener('click',()=>switchTab(b.dataset.tab));
+  b.addEventListener('mouseenter',()=>b.classList.add('isHovered'));
+  b.addEventListener('mouseleave',()=>b.classList.remove('isHovered'));
+});
+$('#soundOffBtn').addEventListener('click',()=>{
+  const on=$('#soundOffBtn').getAttribute('aria-checked')!=='true';
+  $('#soundOffBtn').setAttribute('aria-checked',String(on));
+  $('#soundOffBtn').textContent=on?'SOUND ON':'SOUND OFF';
+});
+/* 导航当前项 */
+if('IntersectionObserver' in window){
+  const io=new IntersectionObserver(es=>es.forEach(e=>{
+    if(!e.isIntersecting)return;
+    $$('.num-nav a').forEach(a=>a.classList.toggle('is-current',a.getAttribute('href')==='#'+e.target.id));
+  }),{rootMargin:'-25% 0px -65% 0px'});
+  ['probe','tasks','evidence','report','settings'].forEach(id=>{const el=$('#'+id);if(el)io.observe(el);});
+}
+/* 答辩现场可用 ?script=NO_CONVERGE|DEGRADED|CONVERGE_3 直接切剧本 */
+const qs=new URLSearchParams(location.search).get('script');
+if(qs&&SCRIPTS[qs])CONFIG.MOCK_SCRIPT=qs;
+$('#scriptSel').value=CONFIG.MOCK_SCRIPT;
+$('#dMax').textContent=String(CONFIG.MAX_ROUNDS);
+$('#dMaxNum').textContent=String(CONFIG.MAX_ROUNDS);
+$('#cfgMax').textContent=String(CONFIG.MAX_ROUNDS);
+/* 仪表台初始化：刻度轨按配置常量生成，初始为空态 */
+buildRail(CONFIG.MAX_ROUNDS);
+paintRail(0);paintBars({});
+setDashState('idle','IDLE');
+/* 关键数字 ScrambleText 入场 */
+['#mTasks','#mFindings','#mRounds'].forEach(s=>scramble($(s),'0',360));
+syncStart();
+</script>
+
+<!-- 跨页过渡 + 按钮涟漪（两页共用同一套逻辑，与 index.html 一致） -->
+<script>
+(function(){
+  const RM=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const html=document.documentElement;
+  const overlay=document.getElementById('pt');
+  const cover=html.classList.contains('pt-cover');
+  /* 目标页：已在覆盖态 → 反向揭开 */
+  if(cover&&overlay){
+    requestAnimationFrame(()=>{
+      overlay.classList.add('leave');
+      setTimeout(()=>{html.classList.remove('pt-cover');overlay.classList.remove('leave');
+        try{sessionStorage.removeItem('pt-nav');}catch(e){}},520);
+    });
+  }
+  if(RM)return; /* 降级：原生跳转，不做覆盖动画 */
+  function go(href){
+    if(!overlay){location.href=href;return;}
+    overlay.classList.add('show');
+    setTimeout(()=>{try{sessionStorage.setItem('pt-nav','1');}catch(e){}location.href=href;},480);
+  }
+  document.querySelectorAll('a[data-nav]').forEach(a=>{
+    a.addEventListener('click',e=>{
+      const href=a.getAttribute('href');
+      if(!href||href.charAt(0)==='#')return;
+      e.preventDefault();go(href);
+    });
+  });
+  document.querySelectorAll('[data-ripple]').forEach(btn=>{
+    btn.addEventListener('pointerdown',e=>{
+      const r=btn.getBoundingClientRect(),size=Math.max(r.width,r.height);
+      const s=document.createElement('span');s.className='ripple';
+      s.style.width=s.style.height=size+'px';
+      s.style.left=(e.clientX-r.left-size/2)+'px';
+      s.style.top=(e.clientY-r.top-size/2)+'px';
+      btn.appendChild(s);setTimeout(()=>s.remove(),620);
+    });
+  });
+})();
+</script>
+</body>
+</html>
