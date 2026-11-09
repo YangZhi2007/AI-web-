@@ -2,15 +2,23 @@
 <html lang="zh-CN">
 <head>
 <!--
-参考来源：https://app.soul.io/（应用界面）
-本页采用的来源特征：深墨底 + 分层面板、1px rgba(255,255,255,.07) 细线、8/12px 圆角、单一酸柠主强调（关键动作色，与主页共用 token）、编号主导航、指标条空态数字美学、「Probe _」标题与 dashAnimation、ActionBtn 分段、Retrieving info 运行态、ScrambleText 字符解码、GradientButton 渐变描边、Edges 切角、dotFlash / ping / spin / pulse、enter-exit 面板切换、密集页脚与 Sound Off。
-注：本页与主页共用同一套设计 token（--accent 酸柠 / --accent-2 青），不再使用 soul.io 原紫；「紫色」仅作为参考站来源特征描述保留于此处。
-注：DASHBOARD 区块已不沿用参考站的「同款卡片阵列」，改为自研工业仪表台（主读数 + 逐轮刻度轨 + 发丝线计量矩阵），并把原「自适应开关」整卡删除——自适应是本系统的固有属性，不是可关闭的选项。
-刻意不采用的另一来源特征：www.soul.io 落地页的纯黑 #000 全屏超大 Hero、彩色导航 link-color、conic-gradient 旋转光环、圆形自定义光标、SoundBlock「按住改变外观」、BrandsBlock autoloop 品牌墙、TVL by chains 分链表、Early Access 邀请码。
+改版依据（2026-11-09）：docs/00-项目分析总报告（整合版）.md §5.1 P0 需求池 / §6.5 缺口 / §9.1 风险优先级、
+docs/03-演示交付说明.md §3 控制台演示动线 / §5 S-5 死链、docs/04-代码审查与测试报告.md §6 改进建议。
+docs/05-app.soul.io-前端表现观察报告.md 为第三方站点观察，仅借用其「空/错/运行/完成/降级/越界/取消」状态维度，
+其结论明确「与本项目实现无关」，不作为本页改版依据。
+
+本次改版只调整信息结构 / 模块优先级 / 布局层级 / 交互状态 / 明度，
+保留全部业务目标与数据逻辑：console.js 依赖的 60 个 DOM id、MockEngine 三剧本、越界诚信标注、
+mock_flag 全链路、ApiClient 6 接口桩、PDF 导出、授权闸门、打印样式均未改动。
+
+参考来源保留说明（设计借鉴，非业务口径）：分层面板、1px 发丝线、编号主导航、指标条空态数字美学、
+ActionBtn 分段、Retrieving info 运行态、Edges 切角、dotFlash / ping / spin / pulse、enter-exit 面板切换。
+刻意不采用：纯黑全屏超大 Hero、彩色导航、conic 光环、圆形自定义光标、品牌墙、邀请码。
+注：DASHBOARD 为自研工业仪表台（主读数 + 逐轮刻度轨 + 发丝线计量矩阵），自适应开关整卡早前已删除。
 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Probe _ · 控制台 · AI自适应Web漏洞智能探测与绕过判定</title>
+<title>Probe _ · 探测任务台 · AI自适应Web漏洞智能探测与绕过判定</title>
 <!-- 目标页首帧覆盖，避免跳转闪烁 -->
 <script>
 try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classList.add('pt-cover'); }catch(e){}
@@ -23,11 +31,11 @@ try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classLi
 <header class="topbar">
   <a class="brand" href="index.html" data-nav data-ripple><i></i>PROBE / LAB</a>
   <nav class="num-nav" aria-label="主导航">
-    <a class="is-current" href="#probe">1.0 探测</a>
-    <a href="#tasks">2.0 任务</a>
-    <a href="#evidence">3.0 证据</a>
-    <a href="#report">4.0 报告</a>
-    <a href="#settings">5.0 设置</a>
+    <a class="is-current" href="#probe">01 概览</a>
+    <a href="#tasks">02 运行监控</a>
+    <a href="#evidence">03 证据链</a>
+    <a href="#report">04 报告</a>
+    <a href="#settings">05 配置</a>
   </nav>
   <a class="btn-back" href="index.html" data-nav data-ripple aria-label="返回主页"><span aria-hidden="true">←</span> 主页</a>
   <span class="net"><span class="dots"><i></i><i></i><i></i></span>
@@ -39,11 +47,25 @@ try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classLi
   <div><span class="lbl">平均轮次 / AVG ROUNDS</span><b id="mRounds">0</b></div>
 </div>
 <main>
+  <!-- ① 概览：紧凑页头 + 合规口径前置（00 §9.1「口径错」为最高风险；§5.1 P0 授权与边界统一） -->
   <div class="page-head" id="probe">
-    <h1 class="page-title">Probe <span class="dash" aria-hidden="true"></span></h1>
-    <p class="page-sub">在授权范围内提交目标，由本地契约桩驱动逐轮自适应探测。全过程为演示数据，不向目标地址发起任何真实请求。</p>
+    <div class="page-head__main">
+      <p class="eyebrow">STEP 01 / TASK CONSOLE</p>
+      <h1 class="page-title">探测任务台<span class="dash" aria-hidden="true"></span></h1>
+      <p class="page-sub">在授权范围内提交目标，由本地契约桩驱动逐轮自适应探测。全过程为演示数据，不向目标地址发起任何真实请求。</p>
+    </div>
+    <aside class="boundary-card" aria-label="合规与边界声明">
+      <div class="boundary-card__title"><i aria-hidden="true"></i>合规与边界 / BOUNDARY</div>
+      <ul>
+        <li>仅限 <span class="mono">localhost / 127.0.0.1 / lab</span> 靶场别名</li>
+        <li>提交前须勾选书面授权确认</li>
+        <li>演示数据 · 非实时推理 · <b>零外部请求</b></li>
+      </ul>
+      <p class="boundary-card__foot">不涉及未知漏洞挖掘，不用于未授权目标</p>
+    </aside>
   </div>
-  <!-- ④ 分段切换 -->
+
+  <!-- ② 任务配置 / 历史：保留分段与全部表单契约 -->
   <div class="segmented" role="tablist" aria-label="任务面板">
     <button id="tabBtnNew" class="action-btn isActive" type="button" data-tab="new" role="tab" aria-selected="true" aria-controls="tabNew" tabindex="0">新建探测</button>
     <button id="tabBtnHistory" class="action-btn" type="button" data-tab="history" role="tab" aria-selected="false" aria-controls="tabHistory" tabindex="-1">历史任务</button>
@@ -80,29 +102,37 @@ try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classLi
       <div class="actions">
         <button id="startBtn" class="btn-grad" type="button" disabled data-ripple>开始分析</button>
         <button id="cancelBtn" class="btn-ghost hidden" type="button" data-ripple>取消</button>
-        <span id="msg" role="status"></span>
+        <span class="msg-box"><span id="msg" role="status"></span></span>
       </div>
-      <p class="hint" id="authHint">请先勾选授权确认，否则无法开始分析。</p>
+      <p class="hint auth-hint" id="authHint">请先勾选授权确认，否则无法开始分析。</p>
     </div>
   </section>
   <section class="tab-panel hidden" id="tabHistory" role="tabpanel" aria-labelledby="tabBtnHistory" aria-label="历史任务">
     <div class="card">
       <div class="card-title">TASK LOG / 会话内任务</div>
-      <div class="empty" id="historyEmpty">暂无历史任务 · 完成一次分析后会在此登记</div>
+      <div class="empty" id="historyEmpty"><b>暂无历史任务</b><span>完成一次分析后会在此登记，可回看轮次、终止原因与数据来源。</span></div>
       <div class="tbl-scroll hidden" id="historyFrame"><table class="tbl"><thead><tr>
         <th>任务 ID</th><th>时间</th><th>目标别名</th><th>剧本</th><th>轮次</th><th>终止原因</th><th>数据来源</th>
       </tr></thead><tbody id="historyBody"></tbody></table></div>
     </div>
   </section>
-  <!-- ②⑤⑥ 任务区 -->
-  <section id="tasks" style="margin-top:34px">
+
+  <!-- ③ 运行监控：P0「大屏实时展示当前 payload + WAF 拦截标记」（00 §5.1） -->
+  <section class="stage" id="tasks">
+    <div class="stage-head">
+      <span class="stage-no">02</span>
+      <div class="stage-meta">
+        <h2 class="stage-title">运行监控 <span class="stage-kicker">LIVE PROGRESS</span></h2>
+        <p class="stage-desc">逐轮投递、WAF 拦截分类与模型决策实时可见；主读数与刻度轨以「轮次」为证据链主轴。</p>
+      </div>
+      <span class="stage-tag stage-tag--p0">P0 · 实时过程</span>
+    </div>
     <div class="dash" id="dash" data-state="idle">
       <div class="dash__head">
         <span class="lbl">DASHBOARD / 运行指标</span>
         <span class="dash__state" id="dashStateWrap"><i aria-hidden="true"></i><span id="dashState">IDLE</span></span>
       </div>
       <div class="dash__body">
-        <!-- 主读数：当前轮次 + 逐轮刻度轨（一格一轮，降级轮以黄标出） -->
         <div class="gauge">
           <span class="lbl">当前轮次 / ROUND</span>
           <div class="gauge__num"><b id="dRound">0</b><span class="cap">/ <span id="dMax">8</span></span></div>
@@ -112,7 +142,6 @@ try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classLi
             <span>上限 <b id="dMaxNum">8</b> · 配置常量</span>
           </div>
         </div>
-        <!-- 计量矩阵：行一=本次任务的过程量，行二=结论量与会话累计；1px 间隙即分隔线 -->
         <div class="matrix" role="group" aria-label="运行指标">
           <div class="cell" data-tone="sent">
             <span class="lbl">已投递 / SENT</span>
@@ -162,15 +191,23 @@ try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classLi
       <div class="terminal mono" id="terminal"></div>
     </div>
   </section>
-  <!-- ③ 证据区 -->
-  <section id="evidence" style="margin-top:40px">
-    <div class="lbl" style="margin-bottom:12px">EVIDENCE / 逐轮证据链</div>
+
+  <!-- ④ 逐轮证据链：00 §9.1 列为「最高」风险、§5.1 称「答辩命门」，提升为第一优先级模块 -->
+  <section class="stage stage--key" id="evidence">
+    <div class="stage-head">
+      <span class="stage-no">03</span>
+      <div class="stage-meta">
+        <h2 class="stage-title">逐轮证据链 <span class="stage-kicker">ROUND EVIDENCE</span></h2>
+        <p class="stage-desc">每轮记录响应分类、变形策略、模型决策与降级标记；下一轮策略依据上一轮响应改写，这是「以响应为反馈」而非预定义变换列表。</p>
+      </div>
+      <span class="stage-tag stage-tag--key">P0 · 答辩命门</span>
+    </div>
     <div class="card">
       <div class="card-title">PAYLOAD ROUNDS / 逐轮记录</div>
       <div class="tbl-scroll"><table class="tbl"><thead><tr>
         <th>轮次</th><th>round_id</th><th>变形策略</th><th>响应分类</th><th>判定</th><th>耗时</th><th>降级</th>
       </tr></thead><tbody id="roundBody"></tbody></table></div>
-      <p class="hint" id="roundEmpty">暂无轮次记录 · 完成一次分析后可逐轮查验。</p>
+      <p class="hint empty empty--inline" id="roundEmpty"><b>暂无轮次记录</b><span>完成一次分析后可逐轮查验；建议先用「三轮收敛命中」，再切「八轮未收敛」「模型降级」做反向演示。</span></p>
     </div>
     <div class="card hidden" id="resultCard" style="margin-top:14px">
       <div class="verdict">探测结论 <em id="verdictWord">—</em></div>
@@ -185,14 +222,30 @@ try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classLi
       <div class="evidence" id="evidenceText"></div>
     </div>
   </section>
-  <!-- ④ 报告区 -->
-  <section id="report" style="margin-top:40px">
-    <div class="lbl" style="margin-bottom:12px">REPORT / 结构化报告</div>
-    <div class="card" id="reportCard"><div class="empty" id="reportEmpty">暂无报告 · 完成一次分析后生成可打印报告</div></div>
+
+  <!-- ⑤ 结构化报告：P0 成果闭环与 PDF 导出 -->
+  <section class="stage" id="report">
+    <div class="stage-head">
+      <span class="stage-no">04</span>
+      <div class="stage-meta">
+        <h2 class="stage-title">结构化报告 <span class="stage-kicker">REPORT</span></h2>
+        <p class="stage-desc">结论 + 证据链表 + <span class="mono">mock_flag</span> 诚信标注，可导出 PDF（打印）。</p>
+      </div>
+      <span class="stage-tag">P0 · 成果闭环</span>
+    </div>
+    <div class="card" id="reportCard"><div class="empty" id="reportEmpty"><b>暂无报告</b><span>完成一次分析后生成可打印报告，内含脱敏留痕与演示数据水印。</span></div></div>
   </section>
-  <!-- ⑤ 设置区 -->
-  <section id="settings" style="margin-top:40px">
-    <div class="lbl" style="margin-bottom:12px">SETTINGS / 配置快照</div>
+
+  <!-- ⑥ 配置快照：调试信息，降为最低优先级但不删除（#cfgMax 由 JS 写入） -->
+  <section class="stage stage--minor" id="settings">
+    <div class="stage-head">
+      <span class="stage-no">05</span>
+      <div class="stage-meta">
+        <h2 class="stage-title">配置快照 <span class="stage-kicker">CONFIG SNAPSHOT</span></h2>
+        <p class="stage-desc">只读的演示参数，用于核对契约版本与轮次上限。</p>
+      </div>
+      <span class="stage-tag stage-tag--minor">辅助信息</span>
+    </div>
     <div class="card">
       <div class="config-grid">
         <div><span>契约版本</span>1.0</div><div><span>引擎模式</span>mock（契约桩）</div>
@@ -206,17 +259,14 @@ try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classLi
 <footer>
   <div>
     <div class="foot-links">
-      <a href="#probe">概览</a><a href="#tasks">任务</a><a href="#evidence">证据</a>
-      <a href="#report">报告</a><a href="#settings">安全</a><a href="#settings">隐私政策</a>
-      <a href="#settings">条款</a><a href="#settings">联系我们</a>
+      <a href="#probe">概览</a><a href="#tasks">运行监控</a><a href="#evidence">证据链</a>
+      <a href="#report">报告</a><a href="#settings">配置</a>
     </div>
-    <p class="boundary" style="margin-top:14px">授权自测工具，仅用于本地隔离靶场，不用于未授权目标，不涉及未知漏洞挖掘</p>
+    <p class="boundary" style="margin-top:14px">授权自测工具，仅用于本地隔离靶场，不用于未授权目标，不涉及未知漏洞挖掘；演示数据 · MockEngine 契约桩 · 非实时推理 · 零外部请求。</p>
   </div>
   <div class="foot-end">
     <button id="soundOffBtn" class="sound-off" type="button" role="switch" aria-checked="false" title="仅视觉状态，无音频输出">SOUND OFF</button>
-    <span class="lbl">界面参照 app.soul.io 应用</span>
-    <span class="lbl" style="letter-spacing:.06em">设计参考 / DESIGN REFERENCE</span>
-    <span class="lbl" style="letter-spacing:.06em">演示数据 · MockEngine 契约桩 · 非实时推理 · 零外部请求</span>
+    <span class="lbl">演示数据 · 非实时推理 · 零外部请求</span>
   </div>
 </footer>
 <!-- 跨页过渡遮罩（首帧由 head 脚本置 .cover） -->
