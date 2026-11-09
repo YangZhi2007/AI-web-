@@ -45,7 +45,7 @@
           <a class="nav-item" href="#chains">CHAINS</a>
           <a class="nav-item" href="#brands">STACK</a>
           <a class="nav-item" href="#access">ACCESS</a>
-          <a class="nav-item" href="#motion">动效 / MOTION</a>
+          <a class="nav-item" href="#loop">闭环 / LOOP</a>
         </nav>
         <a
           class="btn btn--primary btn--sm"
@@ -91,28 +91,40 @@
               <span>不涉及未知漏洞挖掘</span>
             </div>
           </div>
-          <div class="hero-right" id="heroRight">
-            <div class="halo" id="halo" aria-hidden="true"></div>
-            <div class="halo-core" aria-hidden="true">
-              <b>03</b><span>SCENARIOS / 演示剧本</span>
-            </div>
-            <div class="stages" id="motion" aria-hidden="true">
-              <span class="stage" style="--i: 0"
-                ><i></i><b>采集</b><em>ROUND</em></span
-              >
-              <span class="stage" style="--i: 1"
-                ><i></i><b>推理</b><em>SIGNAL</em></span
-              >
-              <span class="stage" style="--i: 2"
-                ><i></i><b>发包</b><em>DECISION</em></span
-              >
-              <span class="stage" style="--i: 3"
-                ><i></i><b>判定</b><em>VERDICT</em></span
-              >
-              <span class="stage" style="--i: 4"
-                ><i></i><b>反馈</b><em>FEEDBACK</em></span
-              >
-              <span class="stage-dots"><i></i><i></i><i></i></span>
+          <div class="hero-right" id="loop">
+            <div class="loop-card">
+              <div class="loop-card__bar">
+                <span class="loop-card__tag">ADAPTIVE BYPASS LOOP</span>
+                <span class="loop-card__live"><i></i>LIVE · 演示</span>
+              </div>
+              <h3 class="loop-card__title">自适应绕过闭环</h3>
+              <p class="loop-card__desc">以响应为反馈，逐轮收敛，过程可解释</p>
+
+              <div class="loop">
+                <div class="loop__track" id="loopTrack">
+                  <span class="loop__node" data-step="0"><b>采集</b><em>SENSE</em></span>
+                  <span class="loop__node" data-step="1"><b>推理</b><em>INFER</em></span>
+                  <span class="loop__node" data-step="2"><b>发包</b><em>SEND</em></span>
+                  <span class="loop__node" data-step="3"><b>判定</b><em>DECIDE</em></span>
+                  <span class="loop__node loop__node--end" data-step="4"><b>反馈</b><em>FEEDBACK</em></span>
+                  <span class="loop__pulse" id="loopPulse" aria-hidden="true"></span>
+                </div>
+                <svg class="loop__arc" viewBox="0 0 300 32" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M288,3 C288,29 12,29 12,3" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2 4" opacity="0.55"/>
+                  <text x="150" y="27" text-anchor="middle" class="loop__arc-label">闭环反馈 CLOSED-LOOP</text>
+                </svg>
+              </div>
+
+              <div class="loop-meta">
+                <div class="loop-meta__round"><span class="lbl">当前轮次 / ROUND</span><b id="loopRound">0</b></div>
+                <div class="loop-meta__bar" aria-hidden="true"><i id="loopBar"></i></div>
+              </div>
+
+              <ul class="caps">
+                <li><i></i>闭环反馈</li>
+                <li><i></i>逐轮自适应</li>
+                <li><i></i>过程可解释</li>
+              </ul>
             </div>
           </div>
         </section>
