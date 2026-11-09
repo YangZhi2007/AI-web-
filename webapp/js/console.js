@@ -6,21 +6,11 @@ const CONFIG = Object.freeze({
   TICK_SPEED  : 'demo',                  // 'fast' | 'demo' | 'slow'
   MAX_ROUNDS  : 8
 });
+/* 暴露只读引用，供 webapp/js/api.js 通过 window.CONFIG.API_BASE_URL 复用同一基准地址（Object.freeze 不影响外部读取） */
+window.CONFIG = CONFIG;
 /* 运行期剧本选择：由 UI 下拉与 ?script= 参数写入，不纳入冻结常量 */
-const RUNTIME = { script: 'CONVERGE_3' }; /* 运行期剧本选择：由 UI 下拉与 ?script= 参数写入，不纳入冻结常量 */
-/* 字段契约（切 http 时按此对接 1 号真后端 / 本地 Ollama，仅本机地址）：
-   POST /engine/rounds:execute  入参 task_id / round_no / feedback_state / budget_remaining / group_tag
-   GET  /rounds?task_id=        出参为逐轮记录数组，详情一律从这里取，不塞进事件流
-   SSE  /tasks/{id}/events     事件 round.started|payload.generated|request.sent|waf.blocked|verdict.ready|degraded|task.terminated
-   单轮记录字段：round_no / prev_round_id / strategy_tag / operator_chain / response_class /
-                 waf_signal / verdict / confidence / evidence_round_ids / degraded_flag /
-                 cost_ms / terminate_reason / model_decision_raw / adapter_name / mock_flag
-   枚举：response_class=BLOCKED|ANOMALY|NORMAL|TIMEOUT；verdict=VULNERABLE|NOT_FOUND|NEEDS_REVIEW
-   事件公共字段：task_id / round_no / event / timestamp / mock_flag / degraded_flag
-   事件附加轻字段：strategy_tag / response_class / terminate_reason；断线用 Last-Event-ID 续传
-   详情（model_decision_raw / operator_chain 等）一律走 GET /rounds，不进事件流
-   诚信约束：降级必须落库 + 推事件 + 界面角标三处同步；契约桩数据必须打 mock_flag=true 并显式标注非实时
-   本演示不实现真实发包、不 fetch 任何外部地址；HttpEngine 仅保留接口与错误提示                        */
+const RUNTIME = { script: 'CONVERGE_3' };
+/* 接口契约（端点 / 逐轮字段 / SSE 事件类型 / 诚信约束）见 webapp/js/api.js —— 前端交互层 → 业务调度&存储层 */
 const RM = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
@@ -155,8 +145,10 @@ const MockEngine = {
   }
 };
 const HttpEngine = {
-  analyze(){return Promise.reject(new Error(
-    '真引擎未接入：请在 HttpEngine.analyze 中按顶部字段契约对接本地后端；本演示不发起任何外部请求。'));}
+  analyze(){
+    // 接真实后端时改为：const report = await ApiClient.submitTask(url, options); 并改用 ApiClient.subscribeTaskEvents 推进 onEvent
+    return Promise.reject(new Error(
+      '真引擎未接入：请在 HttpEngine.analyze 中按 webapp/js/api.js 的接口契约对接本地后端；本演示不发起任何外部请求。'));}
 };
 const AnalysisEngine = {
   analyze:(url,options,onEvent) => CONFIG.ENGINE_MODE==='http'
