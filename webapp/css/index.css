@@ -311,9 +311,19 @@
         z-index: 2;
         min-width: 0;
       }
+      /* 标题为「拉丁字标 + 中文副题」双层锁合：两行字宽差异极大
+         （16 个拉丁字符 / 9 个汉字），不能共用一个字号，
+         故按各行字符数独立定阶，媒体查询里只覆写这两个变量。
+         取值上限按最宽字形的保守字宽（拉丁 0.58em / 汉字 1em）反推，
+         保证 320px 到 2560px 全程不断行、不溢出。 */
       .hero h1 {
+        --fs-brand: clamp(28px, 6.4vw, 100px);
+        --fs-cn: clamp(25px, 5.2vw, 96px);
         margin: 22px 0 0;
-        font: 700 clamp(54px, 8.6vw, 128px)/0.94 var(--display);
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: var(--fs-brand);
+        line-height: 0.94;
         letter-spacing: -0.04em;
         word-break: break-word;
       }
@@ -322,13 +332,27 @@
         opacity: 0;
         transform: translateY(30px);
       }
+      /* 字标：压缩拉丁字 + 负字距，承担主视觉重量 */
+      .hero h1 .line--brand {
+        font-size: var(--fs-brand);
+        letter-spacing: -0.035em;
+      }
+      /* 中文副题：降一级字号 + 微正字距，让位给字标又不至于读不清 */
+      .hero h1 .line--cn {
+        margin-top: 0.04em;
+        font-size: var(--fs-cn);
+        font-weight: 600;
+        letter-spacing: 0.01em;
+      }
       .hero.in h1 .line {
         animation: rise var(--d) var(--ease) both;
         animation-delay: calc(var(--i) * 90ms);
       }
       .hero .sub {
         margin: 30px 0 0;
-        max-width: 32ch;
+        /* 用 em 而非 ch：副标题是固定文案（首句约 19em 宽），
+           用 ch 会随字号一起缩，在 1440 一带把「验证。」挤成单字换行 */
+        max-width: 22em;
         color: var(--muted);
         font-size: clamp(16px, 1.5vw, 21px);
         line-height: 1.55;
@@ -1027,7 +1051,8 @@
           padding: 44px 0 56px;
         }
         .hero h1 {
-          font-size: clamp(44px, 13vw, 72px);
+          --fs-brand: clamp(26px, 8.6vw, 44px);
+          --fs-cn: clamp(20px, 6.4vw, 34px);
         }
         .hero-right {
           min-height: 220px;
@@ -1068,11 +1093,11 @@
           gap: clamp(40px, 3.4vw, 80px);
         }
         .hero h1 {
-          font-size: clamp(128px, 7.4vw, 168px);
+          --fs-brand: clamp(100px, 6.4vw, 132px);
+          --fs-cn: clamp(96px, 5.4vw, 128px);
         }
         .hero .sub {
           font-size: clamp(21px, 1.2vw, 24px);
-          max-width: 34ch;
         }
         .hero-right {
           min-height: 520px;
@@ -1091,12 +1116,10 @@
         }
       }
       @media (min-width: 2200px) {
-        .hero h1 {
-          font-size: clamp(168px, 7.2vw, 212px);
-        }
+        /* 标题不再放大：内容区已在 2080 封顶，左栏可用宽度不再增长，
+           继续抬字号只会溢出（132/128 上限即为左栏满宽） */
         .hero .sub {
           font-size: 24px;
-          max-width: 36ch;
         }
         .hero-right {
           min-height: 620px;
