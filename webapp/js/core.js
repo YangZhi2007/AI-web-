@@ -5,20 +5,36 @@
         ).matches;
         const html = document.documentElement;
         const overlay = document.getElementById("pt");
-        const cover = html.classList.contains("pt-cover");
-        /* 目标页：已在覆盖态 → 反向揭开 */
-        if (cover && overlay) {
+
+        /* 复位遮罩：清掉展开/收拢类与首帧覆盖态，并抹掉跨页导航标记 */
+        function resetOverlay() {
+          if (!overlay) return;
+          overlay.classList.remove("show", "leave");
+          html.classList.remove("pt-cover");
+          try {
+            sessionStorage.removeItem("pt-nav");
+          } catch (e) {}
+        }
+
+        /* 目标页：首帧处于覆盖态 → 圆形收拢揭开 */
+        if (overlay && html.classList.contains("pt-cover")) {
           requestAnimationFrame(() => {
             overlay.classList.add("leave");
-            setTimeout(() => {
-              html.classList.remove("pt-cover");
-              overlay.classList.remove("leave");
-              try {
-                sessionStorage.removeItem("pt-nav");
-              } catch (e) {}
-            }, 520);
+            setTimeout(resetOverlay, 520);
           });
+          /* 兜底：若上述链条没走完（rAF 被挂起 / 计时器被节流），1.6s 后强制揭开 */
+          setTimeout(() => {
+            if (html.classList.contains("pt-cover")) resetOverlay();
+          }, 1600);
         }
+
+        /* bfcache 兜底：浏览器「后退」回本页时脚本不会重跑，
+           离开前加上的 .show（整屏不透明 + pointer-events:all）会被原样还原，
+           页面就会永远卡在遮罩下 —— 缓存恢复时强制复位 */
+        addEventListener("pageshow", (e) => {
+          if (e.persisted) resetOverlay();
+        });
+
         if (RM) return; /* 降级：原生跳转，不做覆盖动画 */
         function go(href) {
           if (!overlay) {

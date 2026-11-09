@@ -186,6 +186,98 @@ const OUT_SCOPE = 'https://example.com';
   catch (e) { threw = true; caught = e.message; }
   ok('取消时抛 用户取消', threw && caught === '用户取消', 'caught=' + caught);
 
+  /* ---------- core.js：跨页过渡遮罩（.pt）与 bfcache 复位 ----------
+     回归用例：从功能页「后退」回主页时，浏览器会从 bfcache 原样还原离开前的
+     .pt.show（整屏不透明 + pointer-events:all），而脚本不会重跑 —— 页面会永久卡住。
+     core.js 必须在 pageshow(persisted) 时强制复位。 */
+  const CORE = fs.readFileSync('D:/AIBBBG/Version1/webapp/js/core.js', 'utf8');
+
+  function mkList(init) {
+    const s = new Set(init || []);
+    return {
+      _set: s,
+      add: (...cs) => cs.forEach((c) => s.add(c)),
+      remove: (...cs) => cs.forEach((c) => s.delete(c)),
+      contains: (c) => s.has(c),
+      has: (c) => s.has(c),
+      toggle: (c, f) => { if (f === undefined) { s.has(c) ? s.delete(c) : s.add(c); } else { f ? s.add(c) : s.delete(c); } }
+    };
+  }
+
+  function loadCore(opts) {
+    const o = opts || {};
+    const store = Object.assign({}, o.store || {});
+    const html = { classList: mkList(o.htmlClasses) };
+    const pt = { classList: mkList(o.ptClasses) };
+    const navLinks = o.anchors || [];
+    const handlers = {};
+    const loc = { href: 'index.html' };
+    const sandboxCore = {
+      console,
+      document: {
+        documentElement: html,
+        getElementById: (id) => (id === 'pt' ? pt : null),
+        querySelectorAll: (sel) => (sel === 'a[data-nav]' ? navLinks : [])
+      },
+      window: { matchMedia: () => ({ matches: !!o.reduced }) },
+      matchMedia: () => ({ matches: !!o.reduced }),
+      addEventListener: (t, fn) => { (handlers[t] = handlers[t] || []).push(fn); },
+      sessionStorage: {
+        getItem: (k) => (k in store ? store[k] : null),
+        setItem: (k, v) => { store[k] = String(v); },
+        removeItem: (k) => { delete store[k]; }
+      },
+      location: loc,
+      setTimeout: (fn) => { try { fn(); } catch (e) {} return 0; },
+      requestAnimationFrame: (fn) => { try { fn(); } catch (e) {} return 0; },
+      Math, JSON, Object, Array, String, Number, Boolean, Error, Set
+    };
+    vm.createContext(sandboxCore);
+    vm.runInContext(CORE, sandboxCore);
+    return { html, pt, store, navLinks, handlers, location: loc };
+  }
+
+  /* 1) 目标页首帧覆盖态 → 应完成揭开并清掉导航标记 */
+  {
+    const c = loadCore({ htmlClasses: ['pt-cover'], store: { 'pt-nav': '1' } });
+    ok('core 首帧覆盖态已揭开(html.pt-cover 移除)', c.html.classList.contains('pt-cover') === false);
+    ok('core 揭开后遮罩不留 leave 类', c.pt.classList.contains('leave') === false);
+    ok('core 揭开后清空 pt-nav 标记', c.store['pt-nav'] === undefined);
+  }
+
+  /* 2) bfcache 恢复（本次修复核心）：残留 .show 必须被清掉 */
+  {
+    const c = loadCore({ ptClasses: ['pt', 'show'] });
+    ok('core bfcache 恢复前仍带 .show（复现前提）', c.pt.classList.contains('show') === true);
+    (c.handlers['pageshow'] || []).forEach((fn) => fn({ persisted: true }));
+    ok('core bfcache 恢复后清除 .show（修复后不再卡遮罩）', c.pt.classList.contains('show') === false);
+    ok('core bfcache 恢复后 html 无 pt-cover', c.html.classList.contains('pt-cover') === false);
+  }
+
+  /* 3) 普通加载的 pageshow(persisted=false) 不得误清遮罩 */
+  {
+    const c = loadCore({ htmlClasses: ['pt-cover'] });
+    c.html.classList.add('pt-cover');
+    (c.handlers['pageshow'] || []).forEach((fn) => fn({ persisted: false }));
+    ok('core 普通 pageshow 不误触发复位', c.html.classList.contains('pt-cover') === true);
+  }
+
+  /* 4) 点击 data-nav 链接 → 阻止默认跳转、加 .show、写入 pt-nav */
+  {
+    let click = null, prevented = false;
+    const anchor = {
+      getAttribute: () => 'console.html',
+      addEventListener: (t, fn) => { if (t === 'click') click = fn; }
+    };
+    const c = loadCore({ anchors: [anchor] });
+    ok('core 已绑定 data-nav 点击拦截', typeof click === 'function');
+    if (typeof click === 'function') click({ preventDefault: () => { prevented = true; } });
+    ok('core data-nav 点击阻止默认跳转', prevented === true);
+    ok('core 跳转前遮罩进入展开态', c.pt.classList.contains('show') === true);
+    ok('core 跳转前写入 pt-nav 标记', c.store['pt-nav'] === '1');
+    ok('core 跳转目标写入 location', c.location.href === 'console.html');
+  }
+
   /* ---------- 打印结构报告 ---------- */
   console.log('\n================ 结构化测试报告 ================');
   console.log('项目: AIBBBG Version1 · webapp/js/console.js 核心逻辑（外部化后）');
