@@ -184,7 +184,9 @@
       }
       /* 涟漪/过渡样式已抽到 css/core.css（两页共用，对应 js/core.js） */
 
-      /* ---------- ① 顶部导航 ---------- */
+      /* ---------- ① 顶部状态母线（替代原编号导航） ----------
+         设计定调：工业仪表台的上沿状态带。原 5 项导航中 3 项指向已废弃 section，
+         属无效功能；现改为只读遥测「展示」，把授权 / 离线 / 零外联口径前置到首屏。 */
       .site-head {
         position: relative;
         z-index: 20;
@@ -205,6 +207,28 @@
         background: var(--line);
         pointer-events: none;
       }
+      /* 顶部扫描母线：一条酸柠光带横扫全幅，是这条状态带的记忆点（只动 transform） */
+      .site-head::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 50%;
+        width: 36vw;
+        height: 1px;
+        margin-left: -18vw;
+        background: linear-gradient(90deg, transparent, var(--accent), transparent);
+        opacity: 0.55;
+        animation: headSweep 9s linear infinite;
+        pointer-events: none;
+      }
+      @keyframes headSweep {
+        from {
+          transform: translateX(-100vw);
+        }
+        to {
+          transform: translateX(100vw);
+        }
+      }
       .brand {
         display: inline-flex;
         align-items: center;
@@ -220,67 +244,65 @@
         background: var(--accent);
         margin-right: 10px;
         box-shadow: 0 0 14px var(--accent);
+        /* 切角：读作仪器上的校准块，而非普通圆点/方块 */
+        clip-path: polygon(0 0, 100% 0, 100% 68%, 68% 100%, 0 100%);
         transition:
           background var(--d) var(--ease),
           box-shadow var(--d) var(--ease);
       }
-      .nav {
+      /* 三段遥测：靠 1px 发丝线分栏，不用卡片与阴影，保持仪表台密度 */
+      .telemetry {
         display: flex;
-        gap: 4px;
-        margin-left: auto;
-        flex-wrap: wrap;
+        align-items: stretch;
+        margin: 0 0 0 auto;
+        min-width: 0;
+        border-left: 1px solid var(--line);
       }
-      .nav-item {
-        --link-color: var(--muted);
-        display: inline-flex;
-        align-items: center;
-        min-height: 44px;
-        padding: 0 16px;
-        color: var(--muted);
-        border: 1px solid transparent;
-        border-radius: var(--r-pill);
-        font: 11px var(--mono);
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        transition:
-          color var(--d-fast),
-          border-color var(--d-fast),
-          background var(--d-fast);
-      }
-      .nav-item:hover,
-      .nav-item:focus-visible,
-      .nav-item.is-current {
-        color: var(--accent);
-        border-color: var(--accent-soft);
-        background: var(--accent-soft);
-      }
-      .nav-item.is-current::before {
-        content: "";
-        width: 5px;
-        height: 5px;
-        border-radius: 50%;
-        background: var(--accent);
-        margin-right: 9px;
-      }
-      .head-cta {
-        display: inline-flex;
-        align-items: center;
-        min-height: 44px;
+      .telemetry__cell {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 5px;
+        min-width: 0;
         padding: 0 18px;
-        border-radius: var(--r-pill);
-        border: 1px solid var(--line-2);
-        font-size: 13px;
-        color: var(--ink);
-        white-space: nowrap;
-        transition:
-          border-color var(--d-fast),
-          color var(--d-fast),
-          background var(--d-fast);
+        border-right: 1px solid var(--line);
       }
-      .head-cta:hover {
-        border-color: var(--accent);
-        color: var(--accent);
-        background: var(--accent-soft);
+      .telemetry dt {
+        margin: 0;
+        color: var(--muted);
+        font: 9px/1 var(--mono);
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      .telemetry dd {
+        margin: 0;
+        color: var(--ink);
+        font: 500 12px/1.2 var(--mono);
+        letter-spacing: 0.01em;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+      .telemetry__dim {
+        color: var(--muted);
+        font-weight: 400;
+      }
+      .telemetry__cell--ok dd {
+        color: var(--accent-2);
+      }
+      .telemetry__dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        margin-right: 5px;
+        border-radius: 50%;
+        background: var(--accent-2);
+        box-shadow: 0 0 8px var(--accent-2);
+        animation: dotFlash 2s var(--ease) infinite;
+        vertical-align: 1px;
+      }
+      .site-head > .btn {
+        flex: none;
       }
 
       /* ---------- ② 全屏非对称 Hero ---------- */
@@ -988,6 +1010,10 @@
         .cursor {
           display: none !important;
         }
+        /* 扫描母线是纯装饰，动效关闭时不留一条静止的亮线 */
+        .site-head::before {
+          display: none !important;
+        }
         .stage,
         .stage-dots i {
           opacity: 1 !important;
@@ -1002,6 +1028,15 @@
       }
 
       /* ---------- 响应式 ---------- */
+      /* 中等视口：隐藏次要后缀，三段保留主读数，形成 1600+ 完整 / 1600- 精简的密度梯度 */
+      @media (max-width: 1599px) {
+        .telemetry__dim {
+          display: none;
+        }
+        .telemetry__cell {
+          padding: 0 14px;
+        }
+      }
       @media (max-width: 1100px) {
         .hero {
           grid-template-columns: 1fr;
@@ -1011,6 +1046,13 @@
         .hero-right {
           min-height: 300px;
           order: -1;
+        }
+        /* 中等视口：状态母线收紧分栏、隐藏次要后缀，避免挤压品牌与主按钮 */
+        .telemetry__cell {
+          padding: 0 12px;
+        }
+        .telemetry__dim {
+          display: none;
         }
         .halo {
           width: min(52vw, 300px);
@@ -1027,23 +1069,40 @@
         }
         .site-head {
           flex-wrap: wrap;
-          gap: 8px;
+          gap: 10px 12px;
           padding: 12px 0;
           min-height: 0;
         }
-        .nav {
+        /* 状态母线在窄屏沉为第二行，三段等分；隐藏次要后缀避免挤压 */
+        .telemetry {
           order: 3;
           width: 100%;
           margin-left: 0;
-          overflow-x: auto;
-          flex-wrap: nowrap;
+          padding-top: 10px;
+          border-left: 0;
+          border-top: 1px solid var(--line);
         }
-        .nav-item {
-          padding: 0 12px;
-          white-space: nowrap;
+        .telemetry__cell {
+          flex: 1 1 0;
+          padding: 0 10px;
+        }
+        .telemetry__cell:first-child {
+          padding-left: 0;
+        }
+        .telemetry__cell:last-child {
+          padding-right: 0;
+          border-right: 0;
+        }
+        .telemetry__dim {
+          display: none;
+        }
+        .telemetry dt {
+          font-size: 8px;
+        }
+        .telemetry dd {
           font-size: 10px;
         }
-        .head-cta {
+        .site-head > .btn {
           margin-left: auto;
         }
         .hero {
@@ -1111,8 +1170,11 @@
         .brand {
           font-size: 16px;
         }
-        .nav-item {
-          font-size: 12px;
+        .telemetry dt {
+          font-size: 10px;
+        }
+        .telemetry dd {
+          font-size: 13px;
         }
       }
       @media (min-width: 2200px) {

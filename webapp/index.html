@@ -40,13 +40,24 @@
     <div class="wrap">
       <header class="site-head">
         <a class="brand" href="index.html"><i></i>PROBE / LAB</a>
-        <nav class="nav" aria-label="主导航">
-          <a class="nav-item is-current" href="#hero">INDEX</a>
-          <a class="nav-item" href="#chains">CHAINS</a>
-          <a class="nav-item" href="#brands">STACK</a>
-          <a class="nav-item" href="#access">ACCESS</a>
-          <a class="nav-item" href="#motion">动效 / MOTION</a>
-        </nav>
+
+        <!-- 系统状态母线：替代原 5 项编号导航（其中 3 项目标区块已废弃、点击无效）。
+             这是只读遥测「展示」而非导航，把授权靶场 / 契约桩 / 零外联的合规口径前置到首屏。 -->
+        <dl class="telemetry" aria-label="系统运行状态 · 演示数据">
+          <div class="telemetry__cell">
+            <dt>ENGINE</dt>
+            <dd>MOCK<span class="telemetry__dim"> / CONTRACT STUB</span></dd>
+          </div>
+          <div class="telemetry__cell">
+            <dt>SCOPE</dt>
+            <dd>LOCAL LAB<span class="telemetry__dim"> / 隔离靶场</span></dd>
+          </div>
+          <div class="telemetry__cell telemetry__cell--ok">
+            <dt>EGRESS</dt>
+            <dd><i class="telemetry__dot" aria-hidden="true"></i>0 EXTERNAL<span class="telemetry__dim"> REQ</span></dd>
+          </div>
+        </dl>
+
         <a
           class="btn btn--primary btn--sm"
           href="console.html"

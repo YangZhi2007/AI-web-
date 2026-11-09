@@ -38,24 +38,7 @@
           { threshold: 0.14 },
         );
         $$("[data-reveal]").forEach((el) => revealObserver.observe(el));
-        const navObserver = new IntersectionObserver(
-          (entries) => {
-            entries.forEach((e) => {
-              if (!e.isIntersecting) return;
-              $$(".nav-item").forEach((a) =>
-                a.classList.toggle(
-                  "is-current",
-                  a.getAttribute("href") === "#" + e.target.id,
-                ),
-              );
-            });
-          },
-          { rootMargin: "-40% 0px -55% 0px" },
-        );
-        ["hero", "chains", "brands", "access"].forEach((id) => {
-          const el = $("#" + id);
-          if (el) navObserver.observe(el);
-        });
+        /* 顶栏已由「编号导航」改为只读状态母线，不再需要滚动高亮 navObserver */
       } else {
         $$("[data-reveal],.stages").forEach((el) => el.classList.add("in"));
       }
@@ -104,7 +87,7 @@
 
       /* 声音开关 */
       const soundBtn = $("#soundBtn");
-      soundBtn.addEventListener("click", () => {
+      soundBtn?.addEventListener("click", () => {
         const on = soundBtn.getAttribute("aria-checked") !== "true";
         soundBtn.setAttribute("aria-checked", String(on));
         soundBtn.textContent = on ? "ON" : "OFF";
@@ -142,22 +125,22 @@
         holdBtn.classList.remove("is-holding");
         setHoldText("RELEASE");
       }
-      holdBtn.addEventListener("pointerdown", startHold);
+      holdBtn?.addEventListener("pointerdown", startHold);
       ["pointerup", "pointercancel", "pointerleave"].forEach((ev) =>
-        holdBtn.addEventListener(ev, stopHold),
+        holdBtn?.addEventListener(ev, stopHold),
       );
-      holdBtn.addEventListener("keydown", (e) => {
+      holdBtn?.addEventListener("keydown", (e) => {
         if (e.key === " " || e.key === "Enter") {
           e.preventDefault();
           startHold();
         }
       });
-      holdBtn.addEventListener("keyup", (e) => {
+      holdBtn?.addEventListener("keyup", (e) => {
         if (e.key === " " || e.key === "Enter") stopHold();
       });
 
       /* Early Access */
-      $("#codeBtn").addEventListener("click", () => {
+      $("#codeBtn")?.addEventListener("click", () => {
         const v = $("#codeInput").value.trim();
         $("#codeFeedback").textContent = v
           ? "已记录「" +
@@ -165,7 +148,7 @@
             "」· 本地演示，未提交、未联网、未存储。"
           : "请输入邀请码后再确认（本地演示）。";
       });
-      $("#codeInput").addEventListener("keydown", (e) => {
+      $("#codeInput")?.addEventListener("keydown", (e) => {
         if (e.key === "Enter") $("#codeBtn").click();
       });
     
