@@ -174,11 +174,6 @@
         transform: none;
         box-shadow: none;
       }
-      .btn--sm {
-        min-height: 44px;
-        padding: 0 22px;
-        font-size: 14px;
-      }
       [aria-busy="true"] {
         pointer-events: none;
       }
@@ -300,9 +295,6 @@
         box-shadow: 0 0 8px var(--accent-2);
         animation: dotFlash 2s var(--ease) infinite;
         vertical-align: 1px;
-      }
-      .site-head > .btn {
-        flex: none;
       }
 
       /* ---------- ② 全屏非对称 Hero ---------- */
@@ -1101,9 +1093,6 @@
         }
         .telemetry dd {
           font-size: 10px;
-        }
-        .site-head > .btn {
-          margin-left: auto;
         }
         .hero {
           min-height: auto;
