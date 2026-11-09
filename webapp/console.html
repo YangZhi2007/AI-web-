@@ -2,19 +2,22 @@
 <html lang="zh-CN">
 <head>
 <!--
-改版依据（2026-11-09）：docs/00-项目分析总报告（整合版）.md §5.1 P0 需求池 / §6.5 缺口 / §9.1 风险优先级、
-docs/03-演示交付说明.md §3 控制台演示动线 / §5 S-5 死链、docs/04-代码审查与测试报告.md §6 改进建议。
-docs/05-app.soul.io-前端表现观察报告.md 为第三方站点观察，仅借用其「空/错/运行/完成/降级/越界/取消」状态维度，
-其结论明确「与本项目实现无关」，不作为本页改版依据。
+  PROBE / LAB · 功能页视觉重构（2026-11-10）
+  ---------------------------------------------------------------------------
+  Design Direction：面向「本地隔离靶场 / WAF 攻防判定」的演示受众，整体锁定
+  「电光深空 · 全息攻防态势台」：深靛蓝太空底（非纯黑）+ 电光青蓝主色 +
+  屏障绿辅助 + 品红/朱红入侵告警；靠大面积极光光带、细密等距数据网格、
+  锐利切角、发光描边与六边护盾纹理制造高对比光感，彻底替换原先
+  「板岩蓝灰 + 酸柠 + 圆角胶囊 + 哑光发丝线」的工业监测台语言。
 
-本次改版只调整信息结构 / 模块优先级 / 布局层级 / 交互状态 / 明度，
-保留全部业务目标与数据逻辑：console.js 依赖的 60 个 DOM id、MockEngine 三剧本、越界诚信标注、
-mock_flag 全链路、ApiClient 6 接口桩、PDF 导出、授权闸门、打印样式均未改动。
-
-参考来源保留说明（设计借鉴，非业务口径）：分层面板、1px 发丝线、编号主导航、指标条空态数字美学、
-ActionBtn 分段、Retrieving info 运行态、Edges 切角、dotFlash / ping / spin / pulse、enter-exit 面板切换。
-刻意不采用：纯黑全屏超大 Hero、彩色导航、conic 光环、圆形自定义光标、品牌墙、邀请码。
-注：DASHBOARD 为自研工业仪表台（主读数 + 逐轮刻度轨 + 发丝线计量矩阵），自适应开关整卡早前已删除。
+  本页仅改视觉层（console.html / console.css），console.js 零改动：
+  原版 64 个静态 DOM id 全部保留（新版共 66 个 = 64 + 2 个装饰 SVG marker
+  fxArrowAtk/fxArrowDef；exportBtn 仍只由 renderReport() 动态注入），
+  全部 class / data-* / aria-* / role / tabindex、
+  #pt 跨页遮罩结构、head 首帧覆盖脚本、css 与 js 引用顺序一律保留。
+  业务与数据逻辑（MockEngine 三剧本、越界诚信标注、授权闸门、mock_flag、
+  PDF 导出打印、prefers-reduced-motion 降级）不变；零外部请求，file:// 可运行。
+  所有纹理与主题表现均为 CSS 渐变 / 内联 SVG / 伪元素，装饰层统一 aria-hidden。
 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -27,6 +30,16 @@ try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classLi
 <link rel="stylesheet" href="css/console.css" />
 </head>
 <body>
+<!-- 纯装饰氛围层：极光 / 网格地板 / 数据流轨 / 扫描带 / 屏障角标。全部 aria-hidden，不承载业务信息 -->
+<div class="fx-atmos" aria-hidden="true">
+  <div class="fx-aurora"></div>
+  <div class="fx-grid-floor"></div>
+  <div class="fx-stream fx-stream--top"><div class="fx-stream__seq">▰▱▰▱▱▰·▰▰▱▰·▱▰▱▱▰▰·▰▱▱▰▱·▰▰▰▱▱·▱▰▰▱▰·▰▱▰▰▱▱·▱▱▰▰▱▰·▰▰▱▰▱▱·▱▰▰▱▰▰·▰▱▱▰▰▱·▰▱▰▱▱▰·▰▰▱▰·▱▰▱▱▰▰·▰▱▱▰▱·▰▰▰▱▱·▱▰▰▱▰·▰▱▰▰▱▱·▱▱▰▰▱▰·▰▰▱▰▱▱·▱▰▰▱▰▰·▰▱▱▰▰▱·</div></div>
+  <div class="fx-stream fx-stream--bottom"><div class="fx-stream__seq">▱▰▰▱▰▱·▰▱▰▰▱▱·▱▰▰▱▰▰·▰▱▱▰▰▱·▰▰▱▰▱▱·▰▱▰▱▰▱·▱▰▰▱▱▰·▰▰▱▱▰▰·▰▱▱▰▱▰·▰▰▱▰▱▱·▱▰▰▱▰▱·▰▱▰▰▱▱·▱▰▰▱▰▰·▰▱▱▰▰▱·▰▰▱▰▱▱·▰▱▰▱▰▱·▱▰▰▱▱▰·▰▰▱▱▰▰·▰▱▱▰▱▰·▰▰▱▰▱▱·</div></div>
+  <div class="fx-columns"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="fx-scan"></div>
+  <div class="fx-frame"></div>
+</div>
 <div class="wrap">
 <header class="topbar">
   <a class="brand" href="index.html" data-nav data-ripple><i></i>PROBE / LAB</a>
@@ -41,13 +54,19 @@ try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classLi
   <span class="net"><span class="dots"><i></i><i></i><i></i></span>
     <span class="ping" aria-hidden="true"></span>本地隔离靶场 · 离线运行</span>
 </header>
+<!-- 顶栏下方的实时数据轨：纯装饰包序列，横向流动 -->
+<div class="telemetry" aria-hidden="true">
+  <span class="telemetry__label">LIVE TELEMETRY / 攻防数据流</span>
+  <div class="telemetry__track"><div class="telemetry__seq">▰▰▱▰·▱▰▱▱▰▰·▰▱▱▰▱·▰▰▰▱▱·▱▰▰▱▰·▰▱▰▰▱▱·▱▱▰▰▱▰·▰▰▱▰▱▱·▱▰▰▱▰▰·▰▱▱▰▰▱·▰▰▱▰·▱▰▱▱▰▰·▰▱▱▰▱·▰▰▰▱▱·▱▰▰▱▰·▰▱▰▰▱▱·▱▱▰▰▱▰·▰▰▱▰▱▱·▱▰▰▱▰▰·▰▱▱▰▰▱·</div></div>
+  <span class="telemetry__status">LINK · SECURE</span>
+</div>
 <div class="metrics" aria-label="运行指标">
   <div><span class="lbl">累计任务 / TASKS</span><b id="mTasks">0</b></div>
   <div><span class="lbl">检出漏洞 / FINDINGS</span><b id="mFindings">0</b></div>
   <div><span class="lbl">平均轮次 / AVG ROUNDS</span><b id="mRounds">0</b></div>
 </div>
 <main>
-  <!-- ① 概览：紧凑页头 + 合规口径前置（00 §9.1「口径错」为最高风险；§5.1 P0 授权与边界统一） -->
+  <!-- ① 概览：紧凑页头 + 合规口径前置 -->
   <div class="page-head" id="probe">
     <div class="page-head__main">
       <p class="eyebrow">STEP 01 / TASK CONSOLE</p>
@@ -117,7 +136,7 @@ try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classLi
     </div>
   </section>
 
-  <!-- ③ 运行监控：P0「大屏实时展示当前 payload + WAF 拦截标记」（00 §5.1） -->
+  <!-- ③ 运行监控 -->
   <section class="stage" id="tasks">
     <div class="stage-head">
       <span class="stage-no">02</span>
@@ -128,6 +147,31 @@ try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classLi
       <span class="stage-tag stage-tag--p0">P0 · 实时过程</span>
     </div>
     <div class="dash" id="dash" data-state="idle">
+      <!-- 攻防态势装饰层：对向数据流 / 扫描带 / 护盾网格 / 前后线节点 / 首屏扫描占位 -->
+      <div class="fx-dash" aria-hidden="true">
+        <div class="fx-dash__atmos"></div>
+        <div class="fx-dash__hex"></div>
+        <svg class="fx-situation" viewBox="0 0 1200 240" preserveAspectRatio="none">
+          <defs>
+            <marker id="fxArrowAtk" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#ff63a8"/></marker>
+            <marker id="fxArrowDef" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#3bf5b0"/></marker>
+          </defs>
+          <path class="fx-atk" d="M-20 74 C 260 74, 420 126, 600 126 S 940 74, 1220 74" marker-end="url(#fxArrowAtk)"/>
+          <path class="fx-def" d="M1220 178 C 940 178, 780 116, 600 116 S 260 178, -20 178" marker-end="url(#fxArrowDef)"/>
+          <path class="fx-atk-flow" d="M-20 74 C 260 74, 420 126, 600 126 S 940 74, 1220 74"/>
+          <path class="fx-def-flow" d="M1220 178 C 940 178, 780 116, 600 116 S 260 178, -20 178"/>
+          <path class="fx-front" d="M600 16 L600 224"/>
+          <g class="fx-nodes">
+            <circle cx="180" cy="74" r="4"></circle><circle cx="420" cy="108" r="4"></circle>
+            <circle cx="600" cy="121" r="6"></circle><circle cx="820" cy="104" r="4"></circle>
+            <circle cx="1040" cy="74" r="4"></circle>
+          </g>
+        </svg>
+        <div class="fx-frontline"></div>
+        <div class="fx-dash__scan"></div>
+        <div class="fx-skeleton"></div>
+      </div>
+      <div class="fx-intrusion" aria-hidden="true"><i></i><i></i><i></i><span>INTRUSION FLAG / 越界或中断 · 纯模拟告警</span></div>
       <div class="dash__head">
         <span class="lbl">DASHBOARD / 运行指标</span>
         <span class="dash__state" id="dashStateWrap"><i aria-hidden="true"></i><span id="dashState">IDLE</span></span>
@@ -192,7 +236,7 @@ try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classLi
     </div>
   </section>
 
-  <!-- ④ 逐轮证据链：00 §9.1 列为「最高」风险、§5.1 称「答辩命门」，提升为第一优先级模块 -->
+  <!-- ④ 逐轮证据链 -->
   <section class="stage stage--key" id="evidence">
     <div class="stage-head">
       <span class="stage-no">03</span>
@@ -223,7 +267,7 @@ try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classLi
     </div>
   </section>
 
-  <!-- ⑤ 结构化报告：P0 成果闭环与 PDF 导出 -->
+  <!-- ⑤ 结构化报告 -->
   <section class="stage" id="report">
     <div class="stage-head">
       <span class="stage-no">04</span>
@@ -236,7 +280,7 @@ try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classLi
     <div class="card" id="reportCard"><div class="empty" id="reportEmpty"><b>暂无报告</b><span>完成一次分析后生成可打印报告，内含脱敏留痕与演示数据水印。</span></div></div>
   </section>
 
-  <!-- ⑥ 配置快照：调试信息，降为最低优先级但不删除（#cfgMax 由 JS 写入） -->
+  <!-- ⑥ 配置快照 -->
   <section class="stage stage--minor" id="settings">
     <div class="stage-head">
       <span class="stage-no">05</span>
