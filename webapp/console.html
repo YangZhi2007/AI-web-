@@ -2,22 +2,22 @@
 <html lang="zh-CN">
 <head>
 <!--
-  PROBE / LAB · 功能页视觉重构（2026-11-10）
+  PROBE / LAB · 功能页 v0.16 增量重设计（2026-11-10）
   ---------------------------------------------------------------------------
-  Design Direction：面向「本地隔离靶场 / WAF 攻防判定」的演示受众，整体锁定
-  「电光深空 · 全息攻防态势台」：深靛蓝太空底（非纯黑）+ 电光青蓝主色 +
-  屏障绿辅助 + 品红/朱红入侵告警；靠大面积极光光带、细密等距数据网格、
-  锐利切角、发光描边与六边护盾纹理制造高对比光感，彻底替换原先
-  「板岩蓝灰 + 酸柠 + 圆角胶囊 + 哑光发丝线」的工业监测台语言。
+  权威规格：docs/07-任务状态机与态势区重设计.md。设计取向「石墨仪表台」：
+  中性石墨色阶 + 三档文字 + 单一电光青 accent；撞色仅命中绿 / 告警红两种，
+  且只在状态语义出现。冲击集中在「任务状态机 + 攻防/神经突触态势」核心区，
+  导航/表单/表格/报告收敛为安静中性，删除与任务状态无关的无意义循环氛围。
 
-  本页仅改视觉层（console.html / console.css），console.js 零改动：
-  原版 64 个静态 DOM id 全部保留（新版共 66 个 = 64 + 2 个装饰 SVG marker
-  fxArrowAtk/fxArrowDef；exportBtn 仍只由 renderReport() 动态注入），
-  全部 class / data-* / aria-* / role / tabindex、
-  #pt 跨页遮罩结构、head 首帧覆盖脚本、css 与 js 引用顺序一律保留。
-  业务与数据逻辑（MockEngine 三剧本、越界诚信标注、授权闸门、mock_flag、
-  PDF 导出打印、prefers-reduced-motion 降级）不变；零外部请求，file:// 可运行。
-  所有纹理与主题表现均为 CSS 渐变 / 内联 SVG / 伪元素，装饰层统一 aria-hidden。
+  本次 console.js 仅改状态语义与呈现（8 态状态机 resolveTerminalState），
+  业务逻辑（MockEngine 三剧本、越界诚信、授权闸门、mock_flag、打印）零改动。
+  全部静态 DOM id 保留（dash/dashState/rail/dRound/.../mTasks 等），
+  exportBtn 仍只由 renderReport() 动态注入；全部 data-* / aria-* / role / tabindex、
+  #pt 跨页遮罩、head 首帧覆盖脚本、css 与 js 引用顺序一律保留。
+  态势 SVG 改用 class 驱动结构（.sit__axis--atk/--def、.sit__ring、.sit__synapse、
+  .sit__barrier、.sit__node[data-r="1..8"]、.sit__path--key），外层仍 aria-hidden；
+  状态灯容器 #dashStateWrap 新增 aria-live="polite"。零外部请求，file:// 可运行；
+  prefers-reduced-motion 全降级且语义静态保留。
 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -30,16 +30,7 @@ try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classLi
 <link rel="stylesheet" href="css/console.css" />
 </head>
 <body>
-<!-- 纯装饰氛围层：极光 / 网格地板 / 数据流轨 / 扫描带 / 屏障角标。全部 aria-hidden，不承载业务信息 -->
-<div class="fx-atmos" aria-hidden="true">
-  <div class="fx-aurora"></div>
-  <div class="fx-grid-floor"></div>
-  <div class="fx-stream fx-stream--top"><div class="fx-stream__seq">▰▱▰▱▱▰·▰▰▱▰·▱▰▱▱▰▰·▰▱▱▰▱·▰▰▰▱▱·▱▰▰▱▰·▰▱▰▰▱▱·▱▱▰▰▱▰·▰▰▱▰▱▱·▱▰▰▱▰▰·▰▱▱▰▰▱·▰▱▰▱▱▰·▰▰▱▰·▱▰▱▱▰▰·▰▱▱▰▱·▰▰▰▱▱·▱▰▰▱▰·▰▱▰▰▱▱·▱▱▰▰▱▰·▰▰▱▰▱▱·▱▰▰▱▰▰·▰▱▱▰▰▱·</div></div>
-  <div class="fx-stream fx-stream--bottom"><div class="fx-stream__seq">▱▰▰▱▰▱·▰▱▰▰▱▱·▱▰▰▱▰▰·▰▱▱▰▰▱·▰▰▱▰▱▱·▰▱▰▱▰▱·▱▰▰▱▱▰·▰▰▱▱▰▰·▰▱▱▰▱▰·▰▰▱▰▱▱·▱▰▰▱▰▱·▰▱▰▰▱▱·▱▰▰▱▰▰·▰▱▱▰▰▱·▰▰▱▰▱▱·▰▱▰▱▰▱·▱▰▰▱▱▰·▰▰▱▱▰▰·▰▱▱▰▱▰·▰▰▱▰▱▱·</div></div>
-  <div class="fx-columns"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-  <div class="fx-scan"></div>
-  <div class="fx-frame"></div>
-</div>
+<!-- v0.16：已移除无意义循环氛围层（极光 / 网格地板 / 符号数据流滚动 / 扫描带），视觉冲击集中于态势区 -->
 <div class="wrap">
 <header class="topbar">
   <a class="brand" href="index.html" data-nav data-ripple><i></i>PROBE / LAB</a>
@@ -54,10 +45,10 @@ try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classLi
   <span class="net"><span class="dots"><i></i><i></i><i></i></span>
     <span class="ping" aria-hidden="true"></span>本地隔离靶场 · 离线运行</span>
 </header>
-<!-- 顶栏下方的实时数据轨：纯装饰包序列，横向流动 -->
+<!-- 顶栏下方的系统总线：静态只读读数，去除无意义滚动数据流 -->
 <div class="telemetry" aria-hidden="true">
-  <span class="telemetry__label">LIVE TELEMETRY / 攻防数据流</span>
-  <div class="telemetry__track"><div class="telemetry__seq">▰▰▱▰·▱▰▱▱▰▰·▰▱▱▰▱·▰▰▰▱▱·▱▰▰▱▰·▰▱▰▰▱▱·▱▱▰▰▱▰·▰▰▱▰▱▱·▱▰▰▱▰▰·▰▱▱▰▰▱·▰▰▱▰·▱▰▱▱▰▰·▰▱▱▰▱·▰▰▰▱▱·▱▰▰▱▰·▰▱▰▰▱▱·▱▱▰▰▱▰·▰▰▱▰▱▱·▱▰▰▱▰▰·▰▱▱▰▰▱·</div></div>
+  <span class="telemetry__label">SYSTEM BUS / 本地契约桩</span>
+  <div class="telemetry__track"><span class="telemetry__static">MOCK · OFFLINE · ZERO REQUEST</span></div>
   <span class="telemetry__status">LINK · SECURE</span>
 </div>
 <div class="metrics" aria-label="运行指标">
@@ -147,34 +138,48 @@ try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classLi
       <span class="stage-tag stage-tag--p0">P0 · 实时过程</span>
     </div>
     <div class="dash" id="dash" data-state="idle">
-      <!-- 攻防态势装饰层：对向数据流 / 扫描带 / 护盾网格 / 前后线节点 / 首屏扫描占位 -->
+      <!-- 态势结构层（class 驱动 / 状态驱动，无循环装饰）：左=攻击链，中=反馈闭环+神经突触，右=WAF 防线 -->
       <div class="fx-dash" aria-hidden="true">
         <div class="fx-dash__atmos"></div>
-        <div class="fx-dash__hex"></div>
         <svg class="fx-situation" viewBox="0 0 1200 240" preserveAspectRatio="none">
-          <defs>
-            <marker id="fxArrowAtk" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#ff63a8"/></marker>
-            <marker id="fxArrowDef" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#3bf5b0"/></marker>
-          </defs>
-          <path class="fx-atk" d="M-20 74 C 260 74, 420 126, 600 126 S 940 74, 1220 74" marker-end="url(#fxArrowAtk)"/>
-          <path class="fx-def" d="M1220 178 C 940 178, 780 116, 600 116 S 260 178, -20 178" marker-end="url(#fxArrowDef)"/>
-          <path class="fx-atk-flow" d="M-20 74 C 260 74, 420 126, 600 126 S 940 74, 1220 74"/>
-          <path class="fx-def-flow" d="M1220 178 C 940 178, 780 116, 600 116 S 260 178, -20 178"/>
-          <path class="fx-front" d="M600 16 L600 224"/>
-          <g class="fx-nodes">
-            <circle cx="180" cy="74" r="4"></circle><circle cx="420" cy="108" r="4"></circle>
-            <circle cx="600" cy="121" r="6"></circle><circle cx="820" cy="104" r="4"></circle>
-            <circle cx="1040" cy="74" r="4"></circle>
+          <!-- 攻击链主轴（左→中）：run 态转 accent 并低频对向流动 -->
+          <path class="sit__axis sit__axis--atk" d="M40 104 H584"/>
+          <!-- WAF 防线数据流（中→右，防线下方横向虚线，与攻击链对向） -->
+          <path class="sit__axis sit__axis--def" d="M616 152 H1160"/>
+          <!-- 反馈闭环（中央自环）：本轮反馈回流时做一次 scale/opacity 转场，不循环呼吸 -->
+          <path class="sit__ring" d="M556 92 A32 32 0 1 1 556 156"/>
+          <path class="sit__ring-tip" d="M548 150 L556 158 L564 150"/>
+          <!-- 神经突触（中央核 + 四向辐射）：随轮次点亮 -->
+          <g class="sit__synapse">
+            <path d="M600 124 L560 100 M600 124 L560 148 M600 124 L640 100 M600 124 L640 148"/>
+            <circle cx="600" cy="124" r="9"/>
           </g>
+          <!-- WAF 防线刻线组（8 根，按状态整体转场，不逐根循环） -->
+          <g class="sit__axis--def-group">
+            <path class="sit__barrier" d="M700 56 V184"/><path class="sit__barrier" d="M758 56 V184"/>
+            <path class="sit__barrier" d="M816 56 V184"/><path class="sit__barrier" d="M874 56 V184"/>
+            <path class="sit__barrier" d="M932 56 V184"/><path class="sit__barrier" d="M990 56 V184"/>
+            <path class="sit__barrier" d="M1048 56 V184"/><path class="sit__barrier" d="M1106 56 V184"/>
+          </g>
+          <!-- 8 轮次节点（data-r=1..8，与 #rail i[data-r] 一一对应；paintRail 双写 is-lit/is-degraded） -->
+          <g class="sit__nodes">
+            <circle class="sit__node" data-r="1" cx="112" cy="104" r="7"/>
+            <circle class="sit__node" data-r="2" cx="180" cy="104" r="7"/>
+            <circle class="sit__node" data-r="3" cx="248" cy="104" r="7"/>
+            <circle class="sit__node" data-r="4" cx="316" cy="104" r="7"/>
+            <circle class="sit__node" data-r="5" cx="384" cy="104" r="7"/>
+            <circle class="sit__node" data-r="6" cx="452" cy="104" r="7"/>
+            <circle class="sit__node" data-r="7" cx="520" cy="104" r="7"/>
+            <circle class="sit__node" data-r="8" cx="560" cy="104" r="7"/>
+          </g>
+          <!-- 命中关键路径（贯穿攻击链至接触面，hit/degraded 态一次性高亮） -->
+          <path class="sit__path--key" d="M40 104 H1140"/>
         </svg>
-        <div class="fx-frontline"></div>
-        <div class="fx-dash__scan"></div>
-        <div class="fx-skeleton"></div>
       </div>
       <div class="fx-intrusion" aria-hidden="true"><i></i><i></i><i></i><span>INTRUSION FLAG / 越界或中断 · 纯模拟告警</span></div>
       <div class="dash__head">
         <span class="lbl">DASHBOARD / 运行指标</span>
-        <span class="dash__state" id="dashStateWrap"><i aria-hidden="true"></i><span id="dashState">IDLE</span></span>
+        <span class="dash__state" id="dashStateWrap" aria-live="polite"><i aria-hidden="true"></i><span id="dashState">IDLE</span></span>
       </div>
       <div class="dash__body">
         <div class="gauge">

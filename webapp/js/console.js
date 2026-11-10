@@ -233,6 +233,26 @@ function setDashState(state,label){
   d.dataset.state=state;
   const t=$('#dashState');if(t)t.textContent=label;
 }
+/* 终态判定：唯一语义入口，onEvent 与 start() 收尾共用，避免两处漂移。
+   判定优先级：out_of_scope → MAX_ROUNDS → HIT+降级轮 → HIT → 兜底 error。
+   入参 report 可为 ReportStore.draft（事件期字段已填充）或 analyze 返回值。 */
+function resolveTerminalState(report){
+  const reason=report&&report.terminate_reason;
+  const oos=!!(report&&report.task&&report.task.out_of_scope);
+  const deg=(report&&report.degraded_rounds?report.degraded_rounds.length:0)>0;
+  if(oos)                   return {state:'oos',      label:'SIMULATED'};   // 诚信优先
+  if(reason==='MAX_ROUNDS') return {state:'nofind',  label:'NOT FOUND'};
+  if(reason==='HIT'&&deg)   return {state:'degraded',label:'DEGRADED'};
+  if(reason==='HIT')        return {state:'hit',     label:'HIT'};
+  return {state:'error',label:'ERROR'};                                     // 未知原因兜底
+}
+/* 终态落地：状态灯 + 运行面板文案一次对齐；返回 state 供调用方复算/断言。 */
+function applyTerminalState(report){
+  const {state,label}=resolveTerminalState(report);
+  setDashState(state,label);
+  setRunState(label,'DONE');
+  return state;
+}
 function buildRail(n){
   const rail=$('#rail');if(!rail)return;
   rail.innerHTML=Array.from({length:n},(_,i)=>
@@ -242,9 +262,16 @@ function paintRail(done,degraded=[]){
   const max=CONFIG.MAX_ROUNDS;
   $$('#rail i').forEach(el=>{
     const r=Number(el.dataset.r);
-    el.classList.toggle('on',r<=done);
-    el.classList.toggle('deg',r<=done&&degraded.indexOf(r)>-1);
+    const lit=r<=done, deg=lit&&degraded.indexOf(r)>-1;
+    el.classList.toggle('on',lit);
+    el.classList.toggle('deg',deg);
     el.classList.toggle('cur',r===done+1&&done<max);
+    /* 态势 SVG 与刻度轨同源同步：同一 round_no 双写点亮/降级刻痕（不触碰引擎数据） */
+    const node=$('.sit__node[data-r="'+r+'"]');
+    if(node){
+      node.classList.toggle('is-lit',lit);
+      node.classList.toggle('is-degraded',deg);
+    }
   });
   const txt=$('#railText');
   if(txt)txt.textContent=`轮次进度 ${Math.round(done/max*100)}%`;
@@ -268,8 +295,9 @@ function paintBars(v={}){
   markHot('#dHit',hit>0);
   markHot('#dDeg',deg>0);
 }
-function setRunState(label){
-  $('#runState').innerHTML=`DASHBOARD RETRIEVING INFO... <b>${esc(label)}</b>`;
+function setRunState(label,phase='RUN'){
+  const head=phase==='RUN'?'DASHBOARD RETRIEVING INFO...':'RUN COMPLETE ·';
+  $('#runState').innerHTML=`${head} <b>${esc(label)}</b>`;
 }
 function addRoundRow(no){
   const d=takeDetail(no)||{};
@@ -330,11 +358,13 @@ function onEvent(e){
       paintBars({sent:no,blocked:statBlocked});
       log(`第 ${no} 轮 响应分类 ${e.response_class}${e.degraded_flag?' · DEGRADED':''}`,
           e.response_class==='BLOCKED'?'warn':'ok');break;
-    case 'task.terminated':
-      setProgress(100);setThinking(false);setRunState('DONE');
-      setDashState('done','DONE');
-      paintRail(Math.min(no||maxR,maxR),[...dashDeg]);
+    case 'task.terminated':{
+      setProgress(100);setThinking(false);
+      const r=ReportStore.draft;                        // 事件期字段已填充（见 MockEngine.analyze）
+      applyTerminalState(r);                             // 唯一语义入口，取代硬编码 'done'
+      paintRail(Math.min(no||maxR,maxR),(r&&r.degraded_rounds)||[...dashDeg]);
       log(`任务终止 · 原因 ${e.terminate_reason}`);break;
+    }
   }
 }
 /* ---------- 结果与报告（保留越界诚信标注与空轮次守卫） ---------- */
@@ -466,10 +496,15 @@ async function start(){
     pulse($('#dRate'),'100%');
     paintRail(report.rounds.length,report.degraded_rounds);
     paintBars({sent:report.rounds.length,blocked:blockedN,hit:hitN,rate:100,deg:degPct});
-    setDashState(report.task.out_of_scope?'oos':'done',report.task.out_of_scope?'SIMULATED':'DONE');
+    applyTerminalState(report);                           // 与事件分支同源，杜绝"事件设新态→收尾覆盖回 done"
   }catch(err){
-    /* 取消提示与日志由 cancelRun() 统一输出；旧 token 不再写日志，避免污染新流程终端 */
-    if(!isCancelled()){setMsg('分析未完成：'+err.message,'err');log(err.message,'warn');}
+    /* 取消提示与日志由 cancelRun() 统一输出；旧 token 不写日志也不改态 */
+    if(!isCancelled()){
+      setMsg('分析未完成：'+err.message,'err');
+      log(err.message,'warn');
+      setRunState('ERROR','DONE');
+      setDashState('error','ERROR');                      // 引擎异常不再停在 run
+    }
   }finally{
     if(token===runToken){running=false;syncStart();setThinking(false);$('#cancelBtn').classList.add('hidden');}
   }

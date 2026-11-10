@@ -10,7 +10,20 @@ const HTML = fs.readFileSync('D:/AIBBBG/Version1/webapp/js/console.js', 'utf8');
 /* 直接加载外部化后的核心逻辑脚本（原内联 <script> 已拆分为 js/console.js） */
 const code = HTML;
 
-const exported = code + "\n;globalThis.__T={esc,displayUrl,scopeOK,SCRIPTS,CONFIG,RUNTIME,paintBars,paintRail,setMeter,markHot,MockEngine,AnalysisEngine};";
+/* 状态机契约函数以 typeof 安全导出：实现前为 null（新断言 FAIL、上方 76 项仍 PASS），
+   实现后为标准引用——以此证明断言确实捕获了"尚未实现"的能力（测试先行）。 */
+const exported = code + `
+;globalThis.__T={
+  esc,displayUrl,scopeOK,SCRIPTS,CONFIG,RUNTIME,paintBars,paintRail,setMeter,markHot,MockEngine,AnalysisEngine,
+  resolveTerminalState:(typeof resolveTerminalState!=='undefined'?resolveTerminalState:null),
+  applyTerminalState:(typeof applyTerminalState!=='undefined'?applyTerminalState:null),
+  setDashState:(typeof setDashState!=='undefined'?setDashState:null),
+  onEvent:(typeof onEvent!=='undefined'?onEvent:null),
+  start:(typeof start!=='undefined'?start:null),
+  cancelRun:(typeof cancelRun!=='undefined'?cancelRun:null),
+  ReportStore:(typeof ReportStore!=='undefined'?ReportStore:null),
+  setRunState:(typeof setRunState!=='undefined'?setRunState:null)
+};`;
 
 /* ---------- DOM / window mock ---------- */
 function makeEl() {
@@ -23,7 +36,8 @@ function makeEl() {
       contains(c){ return this._set.has(c); }
     },
     dataset: {}, style: { _m:{}, setProperty(k,v){ this._m[k]=v; }, width:'' },
-    textContent: '', value: '', checked: true, children: [],
+    textContent: '', value: '', checked: true, children: [], scrollTop: 0, scrollHeight: 0, disabled: false,
+    _attr: {}, setAttribute(k,v){ this._attr[k]=String(v); }, getAttribute(k){ return (k in this._attr)?this._attr[k]:null; },
     appendChild(c){ this.children.push(c); }, addEventListener(){},
     closest(){ return this; }, querySelector(){ return makeEl(); }, querySelectorAll(){ return []; },
     onclick: null, open: false,
@@ -185,6 +199,81 @@ const OUT_SCOPE = 'https://example.com';
   try { await T.MockEngine.analyze(IN_SCOPE, mkOpts(()=>true), ()=>{}); }
   catch (e) { threw = true; caught = e.message; }
   ok('取消时抛 用户取消', threw && caught === '用户取消', 'caught=' + caught);
+
+  /* ---------- 9. 状态机契约：resolveTerminalState / setDashState / applyTerminalState / onEvent ----------
+     测试先行：__T 以 typeof 安全导出，实现前为 null（本组 FAIL、上方基线仍 PASS），实现后为标准引用。 */
+  const dash = () => docMock.querySelector('#dash');
+  const dashState = () => docMock.querySelector('#dashState');
+  const rpt = (reason, deg, oos) => ({
+    terminate_reason: reason,
+    degraded_rounds: deg || [],
+    task: { out_of_scope: !!oos }
+  });
+
+  ok('状态机 resolveTerminalState 已导出', typeof T.resolveTerminalState === 'function');
+  ok('状态机 applyTerminalState 已导出', typeof T.applyTerminalState === 'function');
+  if (typeof T.resolveTerminalState === 'function') {
+    eq('状态机 HIT 无降级 → hit', T.resolveTerminalState(rpt('HIT', [])), {state:'hit', label:'HIT'});
+    eq('状态机 MAX_ROUNDS → nofind', T.resolveTerminalState(rpt('MAX_ROUNDS', [])), {state:'nofind', label:'NOT FOUND'});
+    eq('状态机 HIT+降级 → degraded', T.resolveTerminalState(rpt('HIT', [2,3,4])), {state:'degraded', label:'DEGRADED'});
+    eq('状态机 越界优先(oos+HIT+降级) → oos', T.resolveTerminalState(rpt('HIT', [2,3], true)), {state:'oos', label:'SIMULATED'});
+    eq('状态机 越界优先(oos+MAX_ROUNDS) → oos', T.resolveTerminalState(rpt('MAX_ROUNDS', [], true)), {state:'oos', label:'SIMULATED'});
+    eq('状态机 MAX_ROUNDS 优先于降级 → nofind', T.resolveTerminalState(rpt('MAX_ROUNDS', [1,2])), {state:'nofind', label:'NOT FOUND'});
+    eq('状态机 未知原因兜底 → error', T.resolveTerminalState(rpt(undefined, [])), {state:'error', label:'ERROR'});
+  }
+  if (typeof T.setDashState === 'function') {
+    T.setDashState('hit','HIT');
+    eq('状态机 setDashState 写 #dash.dataset.state', dash().dataset.state, 'hit');
+    eq('状态机 setDashState 写 #dashState 文案', dashState().textContent, 'HIT');
+    T.setDashState('idle','IDLE');
+  }
+  if (typeof T.applyTerminalState === 'function') {
+    const st = T.applyTerminalState(rpt('HIT', [2,3]));
+    eq('状态机 applyTerminalState 返回 degraded', st, 'degraded');
+    eq('状态机 applyTerminalState 落 dataset.state', dash().dataset.state, 'degraded');
+    ok('状态机 applyTerminalState 切 runState 为 RUN COMPLETE',
+      docMock.querySelector('#runState').innerHTML.includes('RUN COMPLETE'));
+  }
+  if (typeof T.onEvent === 'function' && T.ReportStore) {
+    T.ReportStore.draft = rpt('HIT', []);
+    T.onEvent({event:'task.terminated', round_no:3, terminate_reason:'HIT'});
+    eq('状态机 onEvent task.terminated(HIT) → hit', dash().dataset.state, 'hit');
+    T.ReportStore.draft = rpt('MAX_ROUNDS', []);
+    T.onEvent({event:'task.terminated', round_no:8, terminate_reason:'MAX_ROUNDS'});
+    eq('状态机 onEvent task.terminated(MAX_ROUNDS) → nofind', dash().dataset.state, 'nofind');
+    T.ReportStore.draft = rpt('HIT', [2,3,4]);
+    T.onEvent({event:'task.terminated', round_no:4, terminate_reason:'HIT'});
+    eq('状态机 onEvent task.terminated(降级) → degraded', dash().dataset.state, 'degraded');
+    T.ReportStore.draft = rpt('HIT', [], true);
+    T.onEvent({event:'task.terminated', round_no:3, terminate_reason:'HIT'});
+    eq('状态机 onEvent task.terminated(越界) → oos（最高优先级）', dash().dataset.state, 'oos');
+  }
+  if (typeof T.resolveTerminalState === 'function') {
+    T.RUNTIME.script='CONVERGE_3';
+    const r3=await T.MockEngine.analyze(IN_SCOPE, mkOpts(), ()=>{});
+    eq('状态机 端到端 CONVERGE_3 → hit', T.resolveTerminalState(r3).state, 'hit');
+    T.RUNTIME.script='NO_CONVERGE';
+    const rn=await T.MockEngine.analyze(IN_SCOPE, mkOpts(), ()=>{});
+    eq('状态机 端到端 NO_CONVERGE → nofind', T.resolveTerminalState(rn).state, 'nofind');
+    T.RUNTIME.script='DEGRADED';
+    const rd=await T.MockEngine.analyze(IN_SCOPE, mkOpts(), ()=>{});
+    eq('状态机 端到端 DEGRADED → degraded', T.resolveTerminalState(rd).state, 'degraded');
+    const ro=await T.MockEngine.analyze(OUT_SCOPE, mkOpts(), ()=>{});
+    eq('状态机 端到端 越界 CONVERGE_3 → oos', T.resolveTerminalState(ro).state, 'oos');
+  }
+  if (typeof T.start === 'function' && typeof T.cancelRun === 'function') {
+    docMock.querySelector('#urlInput').value='http://127.0.0.1/lab/x';
+    docMock.querySelector('#authChk').checked=true;
+    T.AnalysisEngine.analyze=()=>{ T.cancelRun(); return Promise.reject(new Error('桩异常-取消')); };
+    await T.start();
+    eq('状态机 取消路径 catch 不写 error（保持 cancel）', dash().dataset.state, 'cancel');
+    T.AnalysisEngine.analyze=()=>Promise.reject(new Error('引擎异常'));
+    await T.start();
+    eq('状态机 引擎异常 → error', dash().dataset.state, 'error');
+    ok('状态机 引擎异常 runState 切 RUN COMPLETE · ERROR',
+      docMock.querySelector('#runState').innerHTML.includes('RUN COMPLETE') &&
+      docMock.querySelector('#runState').innerHTML.includes('ERROR'));
+  }
 
   /* ---------- core.js：跨页过渡遮罩（.pt）与 bfcache 复位 ----------
      回归用例：从功能页「后退」回主页时，浏览器会从 bfcache 原样还原离开前的
