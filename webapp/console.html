@@ -2,331 +2,124 @@
 <html lang="zh-CN">
 <head>
 <!--
-  PROBE / LAB · 功能页 v0.16 增量重设计（2026-11-10）
-  ---------------------------------------------------------------------------
-  权威规格：docs/07-任务状态机与态势区重设计.md。设计取向「石墨仪表台」：
-  中性石墨色阶 + 三档文字 + 单一电光青 accent；撞色仅命中绿 / 告警红两种，
-  且只在状态语义出现。冲击集中在「任务状态机 + 攻防/神经突触态势」核心区，
-  导航/表单/表格/报告收敛为安静中性，删除与任务状态无关的无意义循环氛围。
-
-  本次 console.js 仅改状态语义与呈现（8 态状态机 resolveTerminalState），
-  业务逻辑（MockEngine 三剧本、越界诚信、授权闸门、mock_flag、打印）零改动。
-  全部静态 DOM id 保留（dash/dashState/rail/dRound/.../mTasks 等），
-  exportBtn 仍只由 renderReport() 动态注入；全部 data-* / aria-* / role / tabindex、
-  #pt 跨页遮罩、head 首帧覆盖脚本、css 与 js 引用顺序一律保留。
-  态势 SVG 改用 class 驱动结构（.sit__axis--atk/--def、.sit__ring、.sit__synapse、
-  .sit__barrier、.sit__node[data-r="1..8"]、.sit__path--key），外层仍 aria-hidden；
-  状态灯容器 #dashStateWrap 新增 aria-live="polite"。零外部请求，file:// 可运行；
-  prefers-reduced-motion 全降级且语义静态保留。
+  PROBE / LAB · 功能页 v0.17「高饱和撞色 · 亮底指挥台 · 翻页式架构」
+  7 个独立页面靠顶栏真翻页（data-nav + core.js 跨页过渡），小功能为子页面：
+  console 任务台 / monitor 运行监控 / evidence 证据链 / report 报告（主流程）
+  settings 配置快照 / history 历史任务 / about 合规说明（子页面）。
+  跨页状态走 sessionStorage（console.js 的 Store）：任务在任务台提交 → 监控页恢复配置
+  自动执行 → 报告/证据/历史页各自恢复，实现动画与任务逻辑的跨页同步。
+  引擎 console.js 业务逻辑（MockEngine 三剧本 / 越界诚信 / 授权闸门 / mock_flag / 8 态状态机）
+  零改动；全部静态 DOM id、data-* / aria-* / role / tabindex、#pt、打印与 44×44 契约保留。
+  零外部请求，file:// 可运行；prefers-reduced-motion 全降级。
 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Probe _ · 探测任务台 · AI自适应Web漏洞智能探测与绕过判定</title>
-<!-- 目标页首帧覆盖，避免跳转闪烁 -->
-<script>
-try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classList.add('pt-cover'); }catch(e){}
-</script>
+<title>探测任务台 · SmartWAF-Breaker</title>
+<script>try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classList.add('pt-cover'); }catch(e){}</script>
 <link rel="stylesheet" href="css/core.css" />
 <link rel="stylesheet" href="css/console.css" />
 </head>
-<body>
-<!-- v0.16：已移除无意义循环氛围层（极光 / 网格地板 / 符号数据流滚动 / 扫描带），视觉冲击集中于态势区 -->
+<body data-page="console">
 <div class="wrap">
 <header class="topbar">
   <a class="brand" href="index.html" data-nav data-ripple><i></i>PROBE / LAB</a>
-  <nav class="num-nav" aria-label="主导航">
-    <a class="is-current" href="#probe">01 概览</a>
-    <a href="#tasks">02 运行监控</a>
-    <a href="#evidence">03 证据链</a>
-    <a href="#report">04 报告</a>
-    <a href="#settings">05 配置</a>
+  <nav class="mainnav" aria-label="主导航">
+    <a class="is-current" href="console.html" data-page="console"><span class="nav-no">01</span>任务台</a>
+    <a href="monitor.html" data-page="monitor"><span class="nav-no">02</span>运行监控</a>
+    <a href="evidence.html" data-page="evidence"><span class="nav-no">03</span>证据链</a>
+    <a href="report.html" data-page="report"><span class="nav-no">04</span>报告</a>
   </nav>
-  <a class="btn-back" href="index.html" data-nav data-ripple aria-label="返回主页"><span aria-hidden="true">←</span> 主页</a>
-  <span class="net"><span class="dots"><i></i><i></i><i></i></span>
-    <span class="ping" aria-hidden="true"></span>本地隔离靶场 · 离线运行</span>
+  <div class="tools">
+    <a class="tool" href="settings.html" data-page="settings" aria-label="配置快照" title="配置快照">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M4.9 4.9l2.1 2.1m10 10 2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg><span>配置</span></a>
+    <a class="tool" href="history.html" data-page="history" aria-label="历史任务" title="历史任务">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/><path d="M12 7v5l3 2"/></svg><span>历史</span></a>
+    <a class="tool" href="about.html" data-page="about" aria-label="合规说明" title="合规说明">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg><span>说明</span></a>
+  </div>
 </header>
-<!-- 顶栏下方的系统总线：静态只读读数，去除无意义滚动数据流 -->
-<div class="telemetry" aria-hidden="true">
-  <span class="telemetry__label">SYSTEM BUS / 本地契约桩</span>
-  <div class="telemetry__track"><span class="telemetry__static">MOCK · OFFLINE · ZERO REQUEST</span></div>
-  <span class="telemetry__status">LINK · SECURE</span>
+
+<p class="crumb">控制台 <span></span> <b>任务台</b></p>
+<div class="page-head">
+  <div class="page-head__main">
+    <p class="eyebrow">STEP 01 / TASK CONSOLE</p>
+    <h1 class="page-title">探测任务台<span class="dash" aria-hidden="true"></span></h1>
+    <p class="page-sub">在授权范围内提交目标，由本地契约桩驱动逐轮自适应探测。全过程为演示数据，不向目标地址发起任何真实请求。</p>
+  </div>
+  <span class="page-no" aria-hidden="true">01</span>
 </div>
+
+<div class="grid-2">
+  <section class="card card--key card--shadow" aria-label="任务配置">
+    <h2 class="card-title">TASK CONFIGURATION / 任务配置</h2>
+    <div class="form-grid">
+      <div class="f-url field">
+        <label class="lbl" for="urlInput">Target URL / 目标地址（仅作展示字符串）</label>
+        <input id="urlInput" type="text" placeholder="http://127.0.0.1/lab/sqli_01.php" value="http://127.0.0.1/lab/sqli_01.php">
+      </div>
+      <div class="field">
+        <label class="lbl" for="typeSel">Vuln type / 漏洞类型</label>
+        <select id="typeSel"><option value="sqli">SQL 注入</option><option value="xss">XSS</option><option value="upload">文件上传</option></select>
+      </div>
+      <div class="field">
+        <label class="lbl" for="scriptSel">Scenario / 演示剧本</label>
+        <select id="scriptSel">
+          <option value="CONVERGE_3">三轮收敛命中</option>
+          <option value="NO_CONVERGE">八轮未收敛</option>
+          <option value="DEGRADED">模型降级</option>
+        </select>
+      </div>
+    </div>
+    <div class="checks">
+      <label for="authChk"><input id="authChk" type="checkbox">我已获得该目标的书面授权</label>
+      <span class="lbl">授权范围仅限 localhost / 127.0.0.1 / lab 靶场别名；越界仅作纯模拟演示</span>
+    </div>
+    <div class="actions">
+      <button id="startBtn" class="btn-solid" type="button" disabled data-ripple>开始分析 →</button>
+      <a id="runLink" class="nav-trigger" href="monitor.html" data-nav aria-hidden="true" tabindex="-1">进入监控</a>
+      <button id="cancelBtn" class="btn-ghost hidden" type="button" data-ripple>取消</button>
+      <span class="msg-box"><span id="msg" role="status"></span></span>
+    </div>
+    <p class="hint auth-hint" id="authHint">请先勾选授权确认，否则无法开始分析。</p>
+  </section>
+
+  <aside class="boundary-card" aria-label="合规与边界声明">
+    <div class="boundary-card__title"><i aria-hidden="true"></i>合规与边界 / BOUNDARY</div>
+    <ul>
+      <li>仅限 <span class="mono">localhost / 127.0.0.1 / lab</span> 靶场别名</li>
+      <li>提交前须勾选书面授权确认</li>
+      <li>演示数据 · 非实时推理 · <b>零外部请求</b></li>
+    </ul>
+    <p class="boundary-card__foot">不涉及未知漏洞挖掘，不用于未授权目标</p>
+  </aside>
+</div>
+
 <div class="metrics" aria-label="运行指标">
   <div><span class="lbl">累计任务 / TASKS</span><b id="mTasks">0</b></div>
   <div><span class="lbl">检出漏洞 / FINDINGS</span><b id="mFindings">0</b></div>
   <div><span class="lbl">平均轮次 / AVG ROUNDS</span><b id="mRounds">0</b></div>
 </div>
-<main>
-  <!-- ① 概览：紧凑页头 + 合规口径前置 -->
-  <div class="page-head" id="probe">
-    <div class="page-head__main">
-      <p class="eyebrow">STEP 01 / TASK CONSOLE</p>
-      <h1 class="page-title">探测任务台<span class="dash" aria-hidden="true"></span></h1>
-      <p class="page-sub">在授权范围内提交目标，由本地契约桩驱动逐轮自适应探测。全过程为演示数据，不向目标地址发起任何真实请求。</p>
-    </div>
-    <aside class="boundary-card" aria-label="合规与边界声明">
-      <div class="boundary-card__title"><i aria-hidden="true"></i>合规与边界 / BOUNDARY</div>
-      <ul>
-        <li>仅限 <span class="mono">localhost / 127.0.0.1 / lab</span> 靶场别名</li>
-        <li>提交前须勾选书面授权确认</li>
-        <li>演示数据 · 非实时推理 · <b>零外部请求</b></li>
-      </ul>
-      <p class="boundary-card__foot">不涉及未知漏洞挖掘，不用于未授权目标</p>
-    </aside>
-  </div>
 
-  <!-- ② 任务配置 / 历史：保留分段与全部表单契约 -->
-  <div class="segmented" role="tablist" aria-label="任务面板">
-    <button id="tabBtnNew" class="action-btn isActive" type="button" data-tab="new" role="tab" aria-selected="true" aria-controls="tabNew" tabindex="0">新建探测</button>
-    <button id="tabBtnHistory" class="action-btn" type="button" data-tab="history" role="tab" aria-selected="false" aria-controls="tabHistory" tabindex="-1">历史任务</button>
-  </div>
-  <section class="tab-panel enter" id="tabNew" role="tabpanel" aria-labelledby="tabBtnNew" aria-label="新建探测">
-    <div class="card edges" style="position:relative">
-      <div class="card-title">TASK CONFIGURATION / 任务配置</div>
-      <div class="form-grid">
-        <div class="f-url">
-          <label class="field lbl" for="urlInput">Target URL / 目标地址（仅作展示字符串）</label>
-          <input id="urlInput" type="text" placeholder="http://127.0.0.1/lab/sqli_01.php" value="http://127.0.0.1/lab/sqli_01.php">
-        </div>
-        <div>
-          <label class="field lbl" for="typeSel">Vuln type / 漏洞类型</label>
-          <select id="typeSel"><option value="sqli">SQL 注入</option><option value="xss">XSS</option><option value="upload">文件上传</option></select>
-        </div>
-        <div>
-          <label class="field lbl" for="scriptSel">Scenario / 演示剧本</label>
-          <select id="scriptSel">
-            <option value="CONVERGE_3">三轮收敛命中</option>
-            <option value="NO_CONVERGE">八轮未收敛</option>
-            <option value="DEGRADED">模型降级</option>
-          </select>
-        </div>
-        <div>
-          <label class="field lbl">Engine / 引擎</label>
-          <div class="lbl" style="padding:12px 0;color:var(--violet-ink)">MOCKENGINE · CONTRACT STUB</div>
-        </div>
-      </div>
-      <div class="checks">
-        <label for="authChk"><input id="authChk" type="checkbox">我已获得该目标的书面授权</label>
-        <span class="lbl">授权范围仅限 localhost / 127.0.0.1 / lab 靶场别名；越界仅作纯模拟演示</span>
-      </div>
-      <div class="actions">
-        <button id="startBtn" class="btn-grad" type="button" disabled data-ripple>开始分析</button>
-        <button id="cancelBtn" class="btn-ghost hidden" type="button" data-ripple>取消</button>
-        <span class="msg-box"><span id="msg" role="status"></span></span>
-      </div>
-      <p class="hint auth-hint" id="authHint">请先勾选授权确认，否则无法开始分析。</p>
-    </div>
-  </section>
-  <section class="tab-panel hidden" id="tabHistory" role="tabpanel" aria-labelledby="tabBtnHistory" aria-label="历史任务">
-    <div class="card">
-      <div class="card-title">TASK LOG / 会话内任务</div>
-      <div class="empty" id="historyEmpty"><b>暂无历史任务</b><span>完成一次分析后会在此登记，可回看轮次、终止原因与数据来源。</span></div>
-      <div class="tbl-scroll hidden" id="historyFrame"><table class="tbl"><thead><tr>
-        <th>任务 ID</th><th>时间</th><th>目标别名</th><th>剧本</th><th>轮次</th><th>终止原因</th><th>数据来源</th>
-      </tr></thead><tbody id="historyBody"></tbody></table></div>
-    </div>
-  </section>
-
-  <!-- ③ 运行监控 -->
-  <section class="stage" id="tasks">
-    <div class="stage-head">
-      <span class="stage-no">02</span>
-      <div class="stage-meta">
-        <h2 class="stage-title">运行监控 <span class="stage-kicker">LIVE PROGRESS</span></h2>
-        <p class="stage-desc">逐轮投递、WAF 拦截分类与模型决策实时可见；主读数与刻度轨以「轮次」为证据链主轴。</p>
-      </div>
-      <span class="stage-tag stage-tag--p0">P0 · 实时过程</span>
-    </div>
-    <div class="dash" id="dash" data-state="idle">
-      <!-- 态势结构层（class 驱动 / 状态驱动，无循环装饰）：左=攻击链，中=反馈闭环+神经突触，右=WAF 防线 -->
-      <div class="fx-dash" aria-hidden="true">
-        <div class="fx-dash__atmos"></div>
-        <svg class="fx-situation" viewBox="0 0 1200 240" preserveAspectRatio="none">
-          <!-- 攻击链主轴（左→中）：run 态转 accent 并低频对向流动 -->
-          <path class="sit__axis sit__axis--atk" d="M40 104 H584"/>
-          <!-- WAF 防线数据流（中→右，防线下方横向虚线，与攻击链对向） -->
-          <path class="sit__axis sit__axis--def" d="M616 152 H1160"/>
-          <!-- 反馈闭环（中央自环）：本轮反馈回流时做一次 scale/opacity 转场，不循环呼吸 -->
-          <path class="sit__ring" d="M556 92 A32 32 0 1 1 556 156"/>
-          <path class="sit__ring-tip" d="M548 150 L556 158 L564 150"/>
-          <!-- 神经突触（中央核 + 四向辐射）：随轮次点亮 -->
-          <g class="sit__synapse">
-            <path d="M600 124 L560 100 M600 124 L560 148 M600 124 L640 100 M600 124 L640 148"/>
-            <circle cx="600" cy="124" r="9"/>
-          </g>
-          <!-- WAF 防线刻线组（8 根，按状态整体转场，不逐根循环） -->
-          <g class="sit__axis--def-group">
-            <path class="sit__barrier" d="M700 56 V184"/><path class="sit__barrier" d="M758 56 V184"/>
-            <path class="sit__barrier" d="M816 56 V184"/><path class="sit__barrier" d="M874 56 V184"/>
-            <path class="sit__barrier" d="M932 56 V184"/><path class="sit__barrier" d="M990 56 V184"/>
-            <path class="sit__barrier" d="M1048 56 V184"/><path class="sit__barrier" d="M1106 56 V184"/>
-          </g>
-          <!-- 8 轮次节点（data-r=1..8，与 #rail i[data-r] 一一对应；paintRail 双写 is-lit/is-degraded） -->
-          <g class="sit__nodes">
-            <circle class="sit__node" data-r="1" cx="112" cy="104" r="7"/>
-            <circle class="sit__node" data-r="2" cx="180" cy="104" r="7"/>
-            <circle class="sit__node" data-r="3" cx="248" cy="104" r="7"/>
-            <circle class="sit__node" data-r="4" cx="316" cy="104" r="7"/>
-            <circle class="sit__node" data-r="5" cx="384" cy="104" r="7"/>
-            <circle class="sit__node" data-r="6" cx="452" cy="104" r="7"/>
-            <circle class="sit__node" data-r="7" cx="520" cy="104" r="7"/>
-            <circle class="sit__node" data-r="8" cx="560" cy="104" r="7"/>
-          </g>
-          <!-- 命中关键路径（贯穿攻击链至接触面，hit/degraded 态一次性高亮） -->
-          <path class="sit__path--key" d="M40 104 H1140"/>
-        </svg>
-      </div>
-      <div class="fx-intrusion" aria-hidden="true"><i></i><i></i><i></i><span>INTRUSION FLAG / 越界或中断 · 纯模拟告警</span></div>
-      <div class="dash__head">
-        <span class="lbl">DASHBOARD / 运行指标</span>
-        <span class="dash__state" id="dashStateWrap" aria-live="polite"><i aria-hidden="true"></i><span id="dashState">IDLE</span></span>
-      </div>
-      <div class="dash__body">
-        <div class="gauge">
-          <span class="lbl">当前轮次 / ROUND</span>
-          <div class="gauge__num"><b id="dRound">0</b><span class="cap">/ <span id="dMax">8</span></span></div>
-          <div class="rail" id="rail" aria-hidden="true"></div>
-          <div class="gauge__foot">
-            <span id="railText">轮次进度 0%</span>
-            <span>上限 <b id="dMaxNum">8</b> · 配置常量</span>
-          </div>
-        </div>
-        <div class="matrix" role="group" aria-label="运行指标">
-          <div class="cell" data-tone="sent">
-            <span class="lbl">已投递 / SENT</span>
-            <div class="cell__val"><b id="dSent">0</b></div>
-            <span class="meter" aria-hidden="true"><i id="barSent"></i></span>
-            <span class="cell__note">本地靶场模拟</span>
-          </div>
-          <div class="cell" data-tone="blocked">
-            <span class="lbl">已拦截 / BLOCKED</span>
-            <div class="cell__val"><b id="dBlocked">0</b></div>
-            <span class="meter" aria-hidden="true"><i id="barBlocked"></i></span>
-            <span class="cell__note">WAF 响应分类</span>
-          </div>
-          <div class="cell" data-tone="hit">
-            <span class="lbl">已命中 / HIT</span>
-            <div class="cell__val"><b id="dHit">0</b></div>
-            <span class="meter" aria-hidden="true"><i id="barHit"></i></span>
-            <span class="cell__note">特征命中</span>
-          </div>
-          <div class="cell" data-tone="rate">
-            <span class="lbl">完成率 / COMPLETION</span>
-            <div class="cell__val"><b id="dRate">0%</b></div>
-            <span class="meter" aria-hidden="true"><i id="barRate"></i></span>
-            <span class="cell__note">最近一次任务</span>
-          </div>
-          <div class="cell" data-tone="deg">
-            <span class="lbl">降级率 / DEGRADED</span>
-            <div class="cell__val"><b id="dDeg">0%</b></div>
-            <span class="meter" aria-hidden="true"><i id="barDeg"></i></span>
-            <span class="cell__note">降级轮单列统计</span>
-          </div>
-          <div class="cell" data-tone="tasks">
-            <span class="lbl">累计任务 / TASKS</span>
-            <div class="cell__val"><b id="dTasks">0</b></div>
-            <span class="cell__note">会话内累计</span>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="run-panel">
-      <div class="run-head">
-        <span class="spin" aria-hidden="true"></span>
-        <span class="run-state" id="runState">DASHBOARD RETRIEVING INFO... <b>IDLE</b></span>
-      </div>
-      <div class="bar" id="gradientBar" role="progressbar" aria-label="分析进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="progressBar"></i></div>
-      <div class="thinking" id="thinking"><i></i><i></i><i></i><span>模型思考中…</span><em id="waitText">已等待 0s · 系统运行中</em></div>
-      <div class="terminal mono" id="terminal"></div>
-    </div>
-  </section>
-
-  <!-- ④ 逐轮证据链 -->
-  <section class="stage stage--key" id="evidence">
-    <div class="stage-head">
-      <span class="stage-no">03</span>
-      <div class="stage-meta">
-        <h2 class="stage-title">逐轮证据链 <span class="stage-kicker">ROUND EVIDENCE</span></h2>
-        <p class="stage-desc">每轮记录响应分类、变形策略、模型决策与降级标记；下一轮策略依据上一轮响应改写，这是「以响应为反馈」而非预定义变换列表。</p>
-      </div>
-      <span class="stage-tag stage-tag--key">P0 · 答辩命门</span>
-    </div>
-    <div class="card">
-      <div class="card-title">PAYLOAD ROUNDS / 逐轮记录</div>
-      <div class="tbl-scroll"><table class="tbl"><thead><tr>
-        <th>轮次</th><th>round_id</th><th>变形策略</th><th>响应分类</th><th>判定</th><th>耗时</th><th>降级</th>
-      </tr></thead><tbody id="roundBody"></tbody></table></div>
-      <p class="hint empty empty--inline" id="roundEmpty"><b>暂无轮次记录</b><span>完成一次分析后可逐轮查验；建议先用「三轮收敛命中」，再切「八轮未收敛」「模型降级」做反向演示。</span></p>
-    </div>
-    <div class="card hidden" id="resultCard" style="margin-top:14px">
-      <div class="verdict">探测结论 <em id="verdictWord">—</em></div>
-      <div class="oos-notice hidden" id="oosResult"></div>
-      <div class="result-grid">
-        <div class="kv"><span class="lbl">漏洞类型</span><b id="rType"></b></div>
-        <div class="kv"><span class="lbl">参数位</span><b id="rParam" class="mono" style="font-size:11px"></b></div>
-        <div class="kv"><span class="lbl">风险等级</span><b id="rRisk"></b></div>
-        <div class="kv"><span class="lbl">置信度</span><b id="rConf" class="mono"></b></div>
-        <div class="kv"><span class="lbl">判定来源</span><b id="rSource"></b></div>
-      </div>
-      <div class="evidence" id="evidenceText"></div>
-    </div>
-  </section>
-
-  <!-- ⑤ 结构化报告 -->
-  <section class="stage" id="report">
-    <div class="stage-head">
-      <span class="stage-no">04</span>
-      <div class="stage-meta">
-        <h2 class="stage-title">结构化报告 <span class="stage-kicker">REPORT</span></h2>
-        <p class="stage-desc">结论 + 证据链表 + <span class="mono">mock_flag</span> 诚信标注，可导出 PDF（打印）。</p>
-      </div>
-      <span class="stage-tag">P0 · 成果闭环</span>
-    </div>
-    <div class="card" id="reportCard"><div class="empty" id="reportEmpty"><b>暂无报告</b><span>完成一次分析后生成可打印报告，内含脱敏留痕与演示数据水印。</span></div></div>
-  </section>
-
-  <!-- ⑥ 配置快照 -->
-  <section class="stage stage--minor" id="settings">
-    <div class="stage-head">
-      <span class="stage-no">05</span>
-      <div class="stage-meta">
-        <h2 class="stage-title">配置快照 <span class="stage-kicker">CONFIG SNAPSHOT</span></h2>
-        <p class="stage-desc">只读的演示参数，用于核对契约版本与轮次上限。</p>
-      </div>
-      <span class="stage-tag stage-tag--minor">辅助信息</span>
-    </div>
-    <div class="card">
-      <div class="config-grid">
-        <div><span>契约版本</span>1.0</div><div><span>引擎模式</span>mock（契约桩）</div>
-        <div><span>轮次上限</span><span id="cfgMax">8</span></div><div><span>节奏</span>demo</div>
-        <div><span>适配器</span>MOCK</div><div><span>规则集版本</span>LAB-RULESET-01</div>
-      </div>
-      <p class="hint">切换真引擎只需修改脚本顶部 <span class="mono">CONFIG.ENGINE_MODE</span> 与 <span class="mono">HttpEngine.analyze()</span>；本演示不发起任何外部请求。</p>
-    </div>
-  </section>
-</main>
 <footer>
   <div>
     <div class="foot-links">
-      <a href="#probe">概览</a><a href="#tasks">运行监控</a><a href="#evidence">证据链</a>
-      <a href="#report">报告</a><a href="#settings">配置</a>
+      <a href="console.html" data-page="console">任务台</a><a href="monitor.html" data-page="monitor">运行监控</a>
+      <a href="evidence.html" data-page="evidence">证据链</a><a href="report.html" data-page="report">报告</a>
+      <a href="settings.html" data-page="settings">配置</a><a href="history.html" data-page="history">历史</a>
+      <a href="about.html" data-page="about">说明</a>
     </div>
-    <p class="boundary" style="margin-top:14px">授权自测工具，仅用于本地隔离靶场，不用于未授权目标，不涉及未知漏洞挖掘；演示数据 · MockEngine 契约桩 · 非实时推理 · 零外部请求。</p>
+    <p class="boundary">授权自测工具，仅用于本地隔离靶场，不用于未授权目标，不涉及未知漏洞挖掘；演示数据 · MockEngine 契约桩 · 非实时推理 · 零外部请求。</p>
   </div>
   <div class="foot-end">
     <button id="soundOffBtn" class="sound-off" type="button" role="switch" aria-checked="false" title="仅视觉状态，无音频输出">SOUND OFF</button>
     <span class="lbl">演示数据 · 非实时推理 · 零外部请求</span>
   </div>
 </footer>
-<!-- 跨页过渡遮罩（首帧由 head 脚本置 .cover） -->
-<div class="pt" id="pt" aria-hidden="true">
-  <div class="pt__mark"><span class="pt__dot"></span>PROBE / LAB</div>
-</div>
+<div class="pt" id="pt" aria-hidden="true"><div class="pt__mark"><span class="pt__dot"></span>PROBE / LAB</div></div>
 </div>
 <script src="js/api.js" defer></script>
 <script src="js/console.js" defer></script>
-
-<!-- 跨页过渡 + 按钮涟漪（两页共用同一套逻辑，与 index.html 一致） -->
+<script src="js/app.js" defer></script>
 <script src="js/core.js" defer></script>
 </body>
 </html>

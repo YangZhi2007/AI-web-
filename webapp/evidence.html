@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>逐轮证据链 · SmartWAF-Breaker</title>
+<script>try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classList.add('pt-cover'); }catch(e){}</script>
+<link rel="stylesheet" href="css/core.css" />
+<link rel="stylesheet" href="css/console.css" />
+</head>
+<body data-page="evidence">
+<div class="wrap">
+<header class="topbar">
+  <a class="brand" href="index.html" data-nav data-ripple><i></i>PROBE / LAB</a>
+  <nav class="mainnav" aria-label="主导航">
+    <a href="console.html" data-page="console"><span class="nav-no">01</span>任务台</a>
+    <a href="monitor.html" data-page="monitor"><span class="nav-no">02</span>运行监控</a>
+    <a class="is-current" href="evidence.html" data-page="evidence"><span class="nav-no">03</span>证据链</a>
+    <a href="report.html" data-page="report"><span class="nav-no">04</span>报告</a>
+  </nav>
+  <div class="tools">
+    <a class="tool" href="settings.html" data-page="settings" aria-label="配置快照" title="配置快照"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M4.9 4.9l2.1 2.1m10 10 2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg><span>配置</span></a>
+    <a class="tool" href="history.html" data-page="history" aria-label="历史任务" title="历史任务"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/><path d="M12 7v5l3 2"/></svg><span>历史</span></a>
+    <a class="tool" href="about.html" data-page="about" aria-label="合规说明" title="合规说明"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg><span>说明</span></a>
+  </div>
+</header>
+
+<p class="crumb">控制台 <span></span> <b>证据链</b></p>
+<div class="page-head">
+  <div class="page-head__main">
+    <p class="eyebrow">STEP 03 / ROUND EVIDENCE</p>
+    <h1 class="page-title">逐轮证据链<span class="dash" aria-hidden="true"></span></h1>
+    <p class="page-sub">每轮记录响应分类、变形策略、模型决策与降级标记；下一轮策略依据上一轮响应改写，这是「以响应为反馈」而非预定义变换列表。</p>
+  </div>
+  <span class="page-no" aria-hidden="true">03</span>
+</div>
+
+<div class="card hidden" id="evidenceEmpty" style="border-left:6px solid var(--yel)">
+  <div class="empty"><b>暂无证据链</b><span>完成一次分析后，逐轮记录会在此呈现。请先到「任务台」提交目标，或在「运行监控」查看实时过程。</span></div>
+  <div style="text-align:center"><a class="btn-solid" href="console.html" data-nav data-ripple>前往任务台 →</a></div>
+</div>
+
+<div id="evidenceWrap">
+  <div class="stage-head" style="margin-top:8px">
+    <span class="stage-no">03</span>
+    <div class="stage-meta">
+      <h2 class="stage-title">PAYLOAD ROUNDS <span class="stage-kicker">逐轮记录</span></h2>
+      <p class="stage-desc">结论状态 <b id="evidenceState" class="mono" data-state="idle">—</b> · 命中轮以高亮标记，降级轮单列</p>
+    </div>
+    <span class="stage-tag stage-tag--key">P0 · 答辩命门</span>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="tbl-scroll"><table class="tbl"><thead><tr>
+      <th>轮次</th><th>round_id</th><th>变形策略</th><th>响应分类</th><th>判定</th><th>耗时</th><th>降级</th>
+    </tr></thead><tbody id="roundBody"></tbody></table></div>
+    <p class="hint empty empty--inline" id="roundEmpty"><b>暂无轮次记录</b><span>完成一次分析后可逐轮查验。</span></p>
+  </div>
+
+  <div class="card card--key" id="resultCard" style="margin-top:20px">
+    <div class="verdict">探测结论 <em id="verdictWord">—</em></div>
+    <div class="oos-notice hidden" id="oosResult"></div>
+    <div class="result-grid">
+      <div class="kv"><span class="lbl">漏洞类型</span><b id="rType"></b></div>
+      <div class="kv"><span class="lbl">参数位</span><b id="rParam" class="mono" style="font-size:11px"></b></div>
+      <div class="kv"><span class="lbl">风险等级</span><b id="rRisk"></b></div>
+      <div class="kv"><span class="lbl">置信度</span><b id="rConf" class="mono"></b></div>
+      <div class="kv"><span class="lbl">判定来源</span><b id="rSource"></b></div>
+    </div>
+    <div class="evidence" id="evidenceText"></div>
+    <div style="margin-top:18px"><a class="btn-solid" href="report.html" data-nav data-ripple>查看结构化报告 →</a></div>
+  </div>
+</div>
+
+<footer>
+  <div>
+    <div class="foot-links">
+      <a href="console.html" data-page="console">任务台</a><a href="monitor.html" data-page="monitor">运行监控</a>
+      <a href="evidence.html" data-page="evidence">证据链</a><a href="report.html" data-page="report">报告</a>
+      <a href="settings.html" data-page="settings">配置</a><a href="history.html" data-page="history">历史</a>
+      <a href="about.html" data-page="about">说明</a>
+    </div>
+    <p class="boundary">授权自测工具，仅用于本地隔离靶场，不用于未授权目标，不涉及未知漏洞挖掘；演示数据 · MockEngine 契约桩 · 非实时推理 · 零外部请求。</p>
+  </div>
+  <div class="foot-end">
+    <button id="soundOffBtn" class="sound-off" type="button" role="switch" aria-checked="false" title="仅视觉状态，无音频输出">SOUND OFF</button>
+    <span class="lbl">演示数据 · 非实时推理 · 零外部请求</span>
+  </div>
+</footer>
+<div class="pt" id="pt" aria-hidden="true"><div class="pt__mark"><span class="pt__dot"></span>PROBE / LAB</div></div>
+</div>
+<script src="js/api.js" defer></script>
+<script src="js/console.js" defer></script>
+<script src="js/app.js" defer></script>
+<script src="js/core.js" defer></script>
+</body>
+</html>

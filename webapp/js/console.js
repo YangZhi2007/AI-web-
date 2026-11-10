@@ -62,6 +62,21 @@ const SCRIPTS = {
     {cls:'ANOMALY',sig:'',             tag:'OP_FALLBACK_3', op:['OP_FALLBACK_3'], cost:1240,hit:true}
   ]}
 };
+/* ---------- 跨页状态桥（sessionStorage；file:// 下 try/catch 降级内存） ----------
+   v0.17 翻页式架构：任务在「任务台」提交 → 写入 Store → 监控页读取并自动执行；
+   报告 / 证据 / 历史 / 配置快照页各自从 Store 恢复，实现「动画随任务逻辑跨页同步」。 */
+const _memStore = {};
+const Store = {
+  K:{cfg:'probe.cfg', report:'probe.report', history:'probe.history'},
+  _raw:{ get(k){ try{ return sessionStorage.getItem(k); }catch(e){ return k in _memStore ? _memStore[k] : null; } },
+         set(k,v){ try{ sessionStorage.setItem(k,v); }catch(e){ _memStore[k]=v; } } },
+  getCfg(){ const s=this._raw.get(this.K.cfg); if(!s)return null; try{return JSON.parse(s);}catch(e){return null;} },
+  setCfg(c){ this._raw.set(this.K.cfg,JSON.stringify(c)); },
+  getReport(){ const s=this._raw.get(this.K.report); if(!s)return null; try{return JSON.parse(s);}catch(e){return null;} },
+  setReport(r){ this._raw.set(this.K.report,JSON.stringify(r)); },
+  getHistory(){ const s=this._raw.get(this.K.history); if(!s)return []; try{const a=JSON.parse(s);return Array.isArray(a)?a:[];}catch(e){return [];} },
+  pushHistory(h){ const a=this.getHistory(); a.unshift(h); this._raw.set(this.K.history,JSON.stringify(a.slice(0,30))); }
+};
 const ReportStore = {draft:null};
 const takeDetail = no => ReportStore.draft
   ? ReportStore.draft.rounds.find(r => r.round_no === no) || null : null;
@@ -199,27 +214,31 @@ function switchTab(name){
 let running=false, waitTimer=null, waitSec=0, runToken=0, taskCount=0, statBlocked=0;
 const taskHistory=[];
 const TYPE_NAME={sqli:'SQL 注入',xss:'XSS',upload:'文件上传'};
-function setMsg(text,kind=''){const m=$('#msg');m.textContent=text;m.className=kind;}
+function setMsg(text,kind=''){const m=$('#msg');if(m){m.textContent=text;m.className=kind;}}
 function setThinking(on){
-  $('#thinking').classList.toggle('hidden',!on);
+  const th=$('#thinking');if(th)th.classList.toggle('hidden',!on);
   clearInterval(waitTimer);waitTimer=null;
-  if(on){waitSec=0;$('#waitText').textContent='已等待 0s · 系统运行中';
-    waitTimer=setInterval(()=>{waitSec++;$('#waitText').textContent=`已等待 ${waitSec}s · 系统运行中`;},1000);}
+  const wt=$('#waitText');
+  if(on){waitSec=0;if(wt)wt.textContent='已等待 0s · 系统运行中';
+    waitTimer=setInterval(()=>{waitSec++;const w=$('#waitText');if(w)w.textContent=`已等待 ${waitSec}s · 系统运行中`;},1000);}
 }
 function setProgress(p){
   const v=Math.min(100,Math.max(0,p));
-  $('#progressBar').style.width=v+'%';
-  $('#gradientBar').setAttribute('aria-valuenow',String(Math.round(v)));
+  const pb=$('#progressBar');if(pb)pb.style.width=v+'%';
+  const gb=$('#gradientBar');if(gb)gb.setAttribute('aria-valuenow',String(Math.round(v)));
 }
 function log(text,kind=''){
+  const term=$('#terminal');if(!term)return;
   const d=document.createElement('div');
   d.className='line '+kind;
   d.textContent=`[${new Date().toLocaleTimeString('zh-CN',{hour12:false})}] ${text}`;
-  $('#terminal').appendChild(d);$('#terminal').scrollTop=$('#terminal').scrollHeight;
+  term.appendChild(d);term.scrollTop=term.scrollHeight;
 }
 function syncStart(){
-  $('#startBtn').disabled=running||!$('#authChk').checked;
-  $('#authHint').textContent=$('#authChk').checked
+  const btn=$('#startBtn'),chk=$('#authChk'),hint=$('#authHint');
+  if(!btn||!chk)return;
+  btn.disabled=running||!chk.checked;
+  if(hint)hint.textContent=chk.checked
     ? '授权已确认 · 本页不会向该地址发起任何真实请求。'
     : '请先勾选授权确认，否则无法开始分析。';
 }
@@ -296,10 +315,12 @@ function paintBars(v={}){
   markHot('#dDeg',deg>0);
 }
 function setRunState(label,phase='RUN'){
+  const el=$('#runState');if(!el)return;
   const head=phase==='RUN'?'DASHBOARD RETRIEVING INFO...':'RUN COMPLETE ·';
-  $('#runState').innerHTML=`${head} <b>${esc(label)}</b>`;
+  el.innerHTML=`${head} <b>${esc(label)}</b>`;
 }
 function addRoundRow(no){
+  const body=$('#roundBody');if(!body)return null;
   const d=takeDetail(no)||{};
   const tr=document.createElement('tr');
   tr.dataset.round=String(no);
@@ -308,8 +329,8 @@ function addRoundRow(no){
     <td><span class="tag normal" data-f="cls">分析中</span></td>
     <td data-f="verdict">—</td><td data-f="cost">—</td>
     <td data-f="deg">—</td>`;
-  $('#roundBody').appendChild(tr);
-  $('#roundEmpty').classList.add('hidden');
+  body.appendChild(tr);
+  const empty=$('#roundEmpty');if(empty)empty.classList.add('hidden');
   return tr;
 }
 function setRowField(no,name,value,cls){
@@ -369,15 +390,17 @@ function onEvent(e){
 }
 /* ---------- 结果与报告（保留越界诚信标注与空轮次守卫） ---------- */
 function renderResult(r){
+  if(!r||!r.task)return;
   const f=r.findings[0], hit=r.rounds.find(x=>x.hit_signal), oos=r.task.out_of_scope;
-  $('#rType').textContent=TYPE_NAME[r.task.vuln_type]||r.task.vuln_type;
-  $('#rParam').textContent=f?f.param_ref:(r.rounds[0]?r.rounds[0].param_ref:'—');
-  $('#rRisk').textContent=oos?'—（纯模拟）':(f?f.risk_level:'—');
-  $('#rConf').textContent=oos?'—（纯模拟）':(f?f.confidence.toFixed(2):'—');
-  $('#rSource').textContent=oos?'—（纯模拟）':(f?f.verdict_source:'规则基线（未命中）');
-  $('#verdictWord').textContent=oos?'模拟命中':(r.terminate_reason==='HIT'?'已检出':'未检出');
+  const put=(sel,v)=>{const e=$(sel);if(e)e.textContent=v;};
+  put('#rType',TYPE_NAME[r.task.vuln_type]||r.task.vuln_type);
+  put('#rParam',f?f.param_ref:(r.rounds[0]?r.rounds[0].param_ref:'—'));
+  put('#rRisk',oos?'—（纯模拟）':(f?f.risk_level:'—'));
+  put('#rConf',oos?'—（纯模拟）':(f?f.confidence.toFixed(2):'—'));
+  put('#rSource',oos?'—（纯模拟）':(f?f.verdict_source:'规则基线（未命中）'));
+  put('#verdictWord',oos?'模拟命中':(r.terminate_reason==='HIT'?'已检出':'未检出'));
   const notice=$('#oosResult');
-  notice.textContent=oos?OOS_NOTICE:'';notice.classList.toggle('hidden',!oos);
+  if(notice){notice.textContent=oos?OOS_NOTICE:'';notice.classList.toggle('hidden',!oos);}
   const blocked=r.rounds.filter(x=>x.response_class==='BLOCKED').map(x=>x.round_no);
   const ev=hit
     ? `关键证据摘要：第 ${blocked.join('、')} 轮被 WAF 拦截，第 ${hit.round_no} 轮变形后${oos?'在模拟序列中命中特征':'成功检出'}；每条结论可回溯到 round_id。`
@@ -385,9 +408,10 @@ function renderResult(r){
   const deg=r.degraded_rounds.length
     ? ` 其中第 ${r.degraded_rounds.join('、')} 轮为降级轮次，已单列，不计入主指标统计。`
     : ' 本次无降级轮次。';
-  $('#evidenceText').textContent=(oos?'【纯模拟演示，不对应任何真实目标】':'')+ev+deg;
+  put('#evidenceText',(oos?'【纯模拟演示，不对应任何真实目标】':'')+ev+deg);
 }
 function renderReport(r){
+  const card=$('#reportCard');if(!card||!r||!r.task)return;
   const oos=r.task.out_of_scope, degN=r.degraded_rounds.length;
   const termText={
     HIT:degN?`命中目标特征（含 ${degN} 轮降级，降级轮次不计入主指标）`:'命中目标特征，正常终止（HIT）',
@@ -401,7 +425,7 @@ function renderReport(r){
     <td>${x.degraded_flag?'DEGRADED':'—'}</td></tr>`).join('');
   const raw=r.rounds.map(x=>`<b class="mono" style="font-size:11px">第 ${x.round_no} 轮 · ${esc(x.round_id)}</b>
     <pre>${esc(x.model_decision_raw)}</pre>`).join('');
-  $('#reportCard').innerHTML=`
+  card.innerHTML=`
     <div class="card-title">SECURITY ASSESSMENT REPORT / 探测报告</div>
     <div class="report-sec"><h3>01 封面信息</h3>
       ${oos?`<div class="oos-notice">${esc(OOS_NOTICE)}</div>`:''}
@@ -436,53 +460,63 @@ function renderReport(r){
       </tbody></table></div></div>
     <div class="watermark">${esc(r.task.task_id)} · ${oos?'纯模拟演示 · 不对应真实目标':'仅限授权范围内使用'} · 第 1 / 1 页</div>
     <button id="exportBtn" class="btn-grad no-print" type="button" style="margin-top:14px" data-ripple>导出 PDF（打印）</button>`;
-  $('#exportBtn').onclick=()=>{
+  const eb=$('#exportBtn');if(eb)eb.onclick=()=>{
     $$('details.raw').forEach(d=>{d.open=true;});   // 打印前展开，避免 Chromium 折叠内容丢失
     window.print();
   };
 }
 function renderHistory(){
-  $('#historyBody').innerHTML=taskHistory.map(h=>`<tr>
+  const body=$('#historyBody');if(!body)return;
+  body.innerHTML=taskHistory.map(h=>`<tr>
     <td class="mono">${esc(h.id)}</td><td class="mono">${esc(h.time)}</td><td>${esc(h.alias)}</td>
     <td class="mono">${esc(h.script)}</td><td>${h.rounds}</td><td class="mono">${esc(h.reason)}</td>
     <td>mock_flag=true</td></tr>`).join('');
-  $('#historyEmpty').classList.add('hidden');$('#historyFrame').classList.remove('hidden');
+  const empty=$('#historyEmpty'),frame=$('#historyFrame');
+  if(empty)empty.classList.add('hidden');if(frame)frame.classList.remove('hidden');
 }
 /* ---------- 主流程 ---------- */
 function resetUI(){
-  $('#roundBody').innerHTML='';$('#terminal').innerHTML='';
-  $('#roundEmpty').classList.remove('hidden');
-  $('#resultCard').classList.add('hidden');
-  $('#cancelBtn').classList.remove('hidden');
+  const rb=$('#roundBody');if(rb)rb.innerHTML='';const tm=$('#terminal');if(tm)tm.innerHTML='';
+  const re=$('#roundEmpty');if(re)re.classList.remove('hidden');
+  const rc=$('#resultCard');if(rc)rc.classList.add('hidden');
+  const cb=$('#cancelBtn');if(cb)cb.classList.remove('hidden');
   setProgress(0);setThinking(true);setRunState('RUNNING');
-  $('#dRound').textContent='0';$('#dSent').textContent='0';
-  $('#dBlocked').textContent='0';$('#dHit').textContent='0';statBlocked=0;
+  ['#dRound','#dSent','#dBlocked','#dHit'].forEach(s=>{const e=$(s);if(e)e.textContent='0';});statBlocked=0;
   /* 仪表台复位：刻度轨清空、比例条归零、降级轮集合清空 */
   dashDeg.clear();
   paintRail(0);paintBars({});
   setDashState('run','RUNNING');
 }
-async function start(){
+/* runTask：跨页共用的任务执行核心。opts 可由「任务台」表单或「监控页」从 Store 恢复后传入，
+   使同一套引擎/事件/状态机在两个页面表现完全一致（动画随任务逻辑跨页同步）。 */
+async function runTask(opts){
   if(running)return;
-  if(!$('#authChk').checked){setMsg('请先勾选授权确认','err');return;}
-  const url=$('#urlInput').value.trim();
+  const o=opts||{};
+  const url=(o.url!==undefined?o.url:($('#urlInput')?$('#urlInput').value:'')).trim();
+  const authed=o.authed!==undefined?o.authed:!!($('#authChk')&&$('#authChk').checked);
+  if(!authed){setMsg('请先勾选授权确认','err');return;}
   if(!/^https?:\/\/[^\s]+$/i.test(url)){setMsg('请输入以 http:// 或 https:// 开头的合法地址','err');return;}
   if(!scopeOK(url))setMsg(OOS_NOTICE,'warn');
-  RUNTIME.script=SCRIPTS[$('#scriptSel').value]?$('#scriptSel').value:'CONVERGE_3';
+  const scriptVal=o.script!==undefined?o.script:($('#scriptSel')?$('#scriptSel').value:'CONVERGE_3');
+  RUNTIME.script=SCRIPTS[scriptVal]?scriptVal:'CONVERGE_3';
   const token=++runToken, isCancelled=()=>token!==runToken;
   running=true;syncStart();resetUI();
-  const options={vulnType:$('#typeSel').value,
+  const options={vulnType:o.vulnType!==undefined?o.vulnType:($('#typeSel')?$('#typeSel').value:'sqli'),
     authorizationId:'AUTH-LAB-DEMO-001',isCancelled};
   try{
     const report=await AnalysisEngine.analyze(url,options,onEvent);
     renderResult(report);renderReport(report);
-    $('#resultCard').classList.remove('hidden');
+    const rc=$('#resultCard');if(rc)rc.classList.remove('hidden');
     if(report.task.out_of_scope)setMsg('演示完成 · 目标超出授权范围，纯模拟数据，未发起任何请求','warn');
     else setMsg('分析完成 · 报告已生成（演示数据，非实时推理）','ok');
     taskCount++;
-    taskHistory.unshift({id:report.task.task_id,time:fmt(report.task.started_at),alias:report.task.target_alias,
-      script:report.task.script_tag,rounds:report.rounds.length,reason:report.terminate_reason});
+    const entry={id:report.task.task_id,time:fmt(report.task.started_at),alias:report.task.target_alias,
+      script:report.task.script_tag,rounds:report.rounds.length,reason:report.terminate_reason};
+    taskHistory.unshift(entry);
     renderHistory();
+    /* 跨页持久化：报告 + 历史 + 配置快照，供证据/报告/历史/监控页恢复 */
+    Store.setReport(report);Store.pushHistory(entry);
+    Store.setCfg({url,vulnType:options.vulnType,script:RUNTIME.script});
     pulse($('#mTasks'),String(taskCount));
     pulse($('#dTasks'),String(taskCount));
     pulse($('#mFindings'),String(report.findings.length));
@@ -506,53 +540,57 @@ async function start(){
       setDashState('error','ERROR');                      // 引擎异常不再停在 run
     }
   }finally{
-    if(token===runToken){running=false;syncStart();setThinking(false);$('#cancelBtn').classList.add('hidden');}
+    if(token===runToken){running=false;syncStart();setThinking(false);const cb=$('#cancelBtn');if(cb)cb.classList.add('hidden');}
   }
 }
+/* start：任务台与测试共用的入口。测试通过 mock DOM 直接调用，行为保持不变。 */
+async function start(){ return runTask(); }
 function cancelRun(){
   if(!running)return;
   runToken++;
-  $('#cancelBtn').classList.add('hidden');
+  const cb=$('#cancelBtn');if(cb)cb.classList.add('hidden');
   setThinking(false);
   running=false;syncStart();setRunState('CANCELLED');
   setDashState('cancel','CANCELLED');   /* 刻度轨停在中断处，如实反映未跑完 */
   setMsg('已取消 · 任务已中断（演示数据）','warn');
   log('用户取消任务，已停止后续轮次','warn');
 }
-/* ---------- 绑定 ---------- */
-$('#authChk').addEventListener('change',syncStart);
-$('#startBtn').addEventListener('click',start);
-$('#cancelBtn').addEventListener('click',cancelRun);
-$('#urlInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!$('#startBtn').disabled)start();});
+/* ---------- 绑定（多页面：对每个元素判空，缺失即跳过，绝不抛错） ---------- */
+const on=(sel,evt,fn)=>{const el=$(sel);if(el)el.addEventListener(evt,fn);};
+on('#authChk','change',syncStart);
+on('#startBtn','click',()=>runTask());
+on('#cancelBtn','click',cancelRun);
+on('#urlInput','keydown',e=>{if(e.key==='Enter'&&$('#startBtn')&&!$('#startBtn').disabled)runTask();});
 $$('.action-btn').forEach(b=>{
   b.addEventListener('click',()=>switchTab(b.dataset.tab));
   b.addEventListener('mouseenter',()=>b.classList.add('isHovered'));
   b.addEventListener('mouseleave',()=>b.classList.remove('isHovered'));
 });
-$('#soundOffBtn').addEventListener('click',()=>{
-  const on=$('#soundOffBtn').getAttribute('aria-checked')!=='true';
-  $('#soundOffBtn').setAttribute('aria-checked',String(on));
-  $('#soundOffBtn').textContent=on?'SOUND ON':'SOUND OFF';
+on('#soundOffBtn','click',()=>{
+  const b=$('#soundOffBtn');const now=b.getAttribute('aria-checked')!=='true';
+  b.setAttribute('aria-checked',String(now));b.textContent=now?'SOUND ON':'SOUND OFF';
 });
-/* 导航当前项 */
-if('IntersectionObserver' in window){
-  const io=new IntersectionObserver(es=>es.forEach(e=>{
-    if(!e.isIntersecting)return;
-    $$('.num-nav a').forEach(a=>a.classList.toggle('is-current',a.getAttribute('href')==='#'+e.target.id));
-  }),{rootMargin:'-25% 0px -65% 0px'});
-  ['probe','tasks','evidence','report','settings'].forEach(id=>{const el=$('#'+id);if(el)io.observe(el);});
-}
 /* 答辩现场可用 ?script=NO_CONVERGE|DEGRADED|CONVERGE_3 直接切剧本 */
 const qs=new URLSearchParams(location.search).get('script');
 if(qs&&SCRIPTS[qs])RUNTIME.script=qs;
-$('#scriptSel').value=RUNTIME.script;
-$('#dMax').textContent=String(CONFIG.MAX_ROUNDS);
-$('#dMaxNum').textContent=String(CONFIG.MAX_ROUNDS);
-$('#cfgMax').textContent=String(CONFIG.MAX_ROUNDS);
+const scriptSel=$('#scriptSel');if(scriptSel)scriptSel.value=RUNTIME.script;
+['#dMax','#dMaxNum','#cfgMax'].forEach(s=>{const e=$(s);if(e)e.textContent=String(CONFIG.MAX_ROUNDS);});
 /* 仪表台初始化：刻度轨按配置常量生成，初始为空态 */
 buildRail(CONFIG.MAX_ROUNDS);
 paintRail(0);paintBars({});
 setDashState('idle','IDLE');
 /* 关键数字 ScrambleText 入场 */
-['#mTasks','#mFindings','#mRounds'].forEach(s=>scramble($(s),'0',360));
+['#mTasks','#mFindings','#mRounds'].forEach(s=>{const e=$(s);if(e)scramble(e,'0',360);});
 syncStart();
+
+/* ---------- 跨页接口：供 app.js 编排 7 个页面 ---------- */
+window.Probe={
+  CONFIG, RUNTIME, SCRIPTS, Store,
+  runTask, start, cancelRun,
+  setDashState, applyTerminalState, resolveTerminalState,
+  paintRail, paintBars, buildRail,
+  renderResult, renderReport, renderHistory,
+  switchTab, syncStart,
+  getHistory:()=>taskHistory.slice(),
+  getRunning:()=>running
+};

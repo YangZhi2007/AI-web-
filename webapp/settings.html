@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>配置快照 · SmartWAF-Breaker</title>
+<script>try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classList.add('pt-cover'); }catch(e){}</script>
+<link rel="stylesheet" href="css/core.css" />
+<link rel="stylesheet" href="css/console.css" />
+</head>
+<body data-page="settings">
+<div class="wrap">
+<header class="topbar">
+  <a class="brand" href="index.html" data-nav data-ripple><i></i>PROBE / LAB</a>
+  <nav class="mainnav" aria-label="主导航">
+    <a href="console.html" data-page="console"><span class="nav-no">01</span>任务台</a>
+    <a href="monitor.html" data-page="monitor"><span class="nav-no">02</span>运行监控</a>
+    <a href="evidence.html" data-page="evidence"><span class="nav-no">03</span>证据链</a>
+    <a href="report.html" data-page="report"><span class="nav-no">04</span>报告</a>
+  </nav>
+  <div class="tools">
+    <a class="tool is-current" href="settings.html" data-page="settings" aria-label="配置快照" title="配置快照"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M4.9 4.9l2.1 2.1m10 10 2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg><span>配置</span></a>
+    <a class="tool" href="history.html" data-page="history" aria-label="历史任务" title="历史任务"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/><path d="M12 7v5l3 2"/></svg><span>历史</span></a>
+    <a class="tool" href="about.html" data-page="about" aria-label="合规说明" title="合规说明"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg><span>说明</span></a>
+  </div>
+</header>
+
+<p class="crumb">控制台 <span></span> 工具 <span></span> <b>配置快照</b></p>
+<div class="page-head">
+  <div class="page-head__main">
+    <p class="eyebrow">UTILITY / CONFIG SNAPSHOT</p>
+    <h1 class="page-title">配置快照<span class="dash" aria-hidden="true"></span></h1>
+    <p class="page-sub">只读的演示参数，用于核对契约版本、引擎模式与轮次上限。修改真实引擎只需改脚本顶部 CONFIG 常量。</p>
+  </div>
+  <span class="page-no" aria-hidden="true">05</span>
+</div>
+
+<div class="grid-2">
+  <section class="card card--key card--shadow" aria-label="演示参数">
+    <h2 class="card-title">CONFIG / 演示参数</h2>
+    <div class="config-grid" style="border:0">
+      <div><span>契约版本 / CONTRACT</span><b id="cfgContract">1.0</b></div>
+      <div><span>引擎模式 / ENGINE</span><b id="cfgMode">mock</b></div>
+      <div><span>轮次上限 / MAX ROUNDS</span><b id="cfgMax">8</b></div>
+      <div><span>节奏 / TICK SPEED</span><b id="cfgTick">demo</b></div>
+      <div><span>适配器 / ADAPTER</span><b id="cfgAdapter">MOCK</b></div>
+      <div><span>规则集 / RULESET</span><b id="cfgRuleset">LAB-RULESET-01</b></div>
+    </div>
+    <p class="hint">切换真引擎只需修改脚本顶部 <span class="mono">CONFIG.ENGINE_MODE</span> 与 <span class="mono">HttpEngine.analyze()</span>；本演示不发起任何外部请求。</p>
+  </section>
+  <aside class="boundary-card" aria-label="三套演示剧本">
+    <div class="boundary-card__title"><i aria-hidden="true"></i>演示剧本 / SCENARIOS</div>
+    <ul>
+      <li><b>三轮收敛命中</b> · 3 轮检出，状态 HIT</li>
+      <li><b>八轮未收敛</b> · 满 8 轮如实记为未检出</li>
+      <li><b>模型降级</b> · 含 3 个降级轮，命中但单列</li>
+    </ul>
+    <p class="boundary-card__foot">越界目标一律进入纯模拟，不对应真实站点</p>
+  </aside>
+</div>
+
+<footer>
+  <div>
+    <div class="foot-links">
+      <a href="console.html" data-page="console">任务台</a><a href="monitor.html" data-page="monitor">运行监控</a>
+      <a href="evidence.html" data-page="evidence">证据链</a><a href="report.html" data-page="report">报告</a>
+      <a href="settings.html" data-page="settings">配置</a><a href="history.html" data-page="history">历史</a>
+      <a href="about.html" data-page="about">说明</a>
+    </div>
+    <p class="boundary">授权自测工具，仅用于本地隔离靶场，不用于未授权目标，不涉及未知漏洞挖掘；演示数据 · MockEngine 契约桩 · 非实时推理 · 零外部请求。</p>
+  </div>
+  <div class="foot-end">
+    <button id="soundOffBtn" class="sound-off" type="button" role="switch" aria-checked="false" title="仅视觉状态，无音频输出">SOUND OFF</button>
+    <span class="lbl">演示数据 · 非实时推理 · 零外部请求</span>
+  </div>
+</footer>
+<div class="pt" id="pt" aria-hidden="true"><div class="pt__mark"><span class="pt__dot"></span>PROBE / LAB</div></div>
+</div>
+<script src="js/api.js" defer></script>
+<script src="js/console.js" defer></script>
+<script src="js/app.js" defer></script>
+<script src="js/core.js" defer></script>
+</body>
+</html>

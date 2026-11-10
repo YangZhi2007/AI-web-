@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>合规与说明 · SmartWAF-Breaker</title>
+<script>try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classList.add('pt-cover'); }catch(e){}</script>
+<link rel="stylesheet" href="css/core.css" />
+<link rel="stylesheet" href="css/console.css" />
+</head>
+<body data-page="about">
+<div class="wrap">
+<header class="topbar">
+  <a class="brand" href="index.html" data-nav data-ripple><i></i>PROBE / LAB</a>
+  <nav class="mainnav" aria-label="主导航">
+    <a href="console.html" data-page="console"><span class="nav-no">01</span>任务台</a>
+    <a href="monitor.html" data-page="monitor"><span class="nav-no">02</span>运行监控</a>
+    <a href="evidence.html" data-page="evidence"><span class="nav-no">03</span>证据链</a>
+    <a href="report.html" data-page="report"><span class="nav-no">04</span>报告</a>
+  </nav>
+  <div class="tools">
+    <a class="tool" href="settings.html" data-page="settings" aria-label="配置快照" title="配置快照"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M4.9 4.9l2.1 2.1m10 10 2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg><span>配置</span></a>
+    <a class="tool" href="history.html" data-page="history" aria-label="历史任务" title="历史任务"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/><path d="M12 7v5l3 2"/></svg><span>历史</span></a>
+    <a class="tool is-current" href="about.html" data-page="about" aria-label="合规说明" title="合规说明"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg><span>说明</span></a>
+  </div>
+</header>
+
+<p class="crumb">控制台 <span></span> 工具 <span></span> <b>合规与说明</b></p>
+<div class="page-head">
+  <div class="page-head__main">
+    <p class="eyebrow">UTILITY / BOUNDARY &amp; ABOUT</p>
+    <h1 class="page-title">合规与说明<span class="dash" aria-hidden="true"></span></h1>
+    <p class="page-sub">本工具为授权自测演示系统，运行于本地隔离靶场。全部数据为 MockEngine 契约桩生成，非实时推理，不发起任何真实请求。</p>
+  </div>
+  <span class="page-no" aria-hidden="true">07</span>
+</div>
+
+<div class="grid-2">
+  <section class="card card--key card--shadow" aria-label="使用边界">
+    <h2 class="card-title">BOUNDARY / 使用边界</h2>
+    <div class="about-sec">
+      <h3>授权范围</h3>
+      <p>仅限对 <span class="mono">localhost / 127.0.0.1 / ::1 / lab</span> 及 <span class="mono">*.lab</span> 靶场别名进行演示。提交前须勾选书面授权确认。</p>
+    </div>
+    <div class="about-sec">
+      <h3>越界处理</h3>
+      <p>输入非授权地址时，系统一律进入「纯模拟」模式：不对应任何真实站点、不发起任何请求、不产生任何真实安全结论，结论栏如实标注「模拟命中」。</p>
+    </div>
+    <div class="about-sec">
+      <h3>数据性质</h3>
+      <p>所有轮次记录、模型决策原文与报告均为 <span class="mono">mock_flag=true</span> 的演示数据。算子序列仅含编号，不含任何真实载荷文本。</p>
+    </div>
+  </section>
+
+  <aside class="boundary-card" aria-label="操作流程">
+    <div class="boundary-card__title"><i aria-hidden="true"></i>操作流程 / FLOW</div>
+    <ul>
+      <li><b>01 任务台</b> · 配置目标、漏洞类型、剧本并授权</li>
+      <li><b>02 运行监控</b> · 态势动画随轮次实时推进</li>
+      <li><b>03 证据链</b> · 逐轮响应分类与关键路径回溯</li>
+      <li><b>04 报告</b> · 五附录结构化报告，可导出 PDF</li>
+    </ul>
+    <p class="boundary-card__foot">顶栏可随时翻页；配置/历史/说明为独立子页面</p>
+  </aside>
+</div>
+
+<footer>
+  <div>
+    <div class="foot-links">
+      <a href="console.html" data-page="console">任务台</a><a href="monitor.html" data-page="monitor">运行监控</a>
+      <a href="evidence.html" data-page="evidence">证据链</a><a href="report.html" data-page="report">报告</a>
+      <a href="settings.html" data-page="settings">配置</a><a href="history.html" data-page="history">历史</a>
+      <a href="about.html" data-page="about">说明</a>
+    </div>
+    <p class="boundary">授权自测工具，仅用于本地隔离靶场，不用于未授权目标，不涉及未知漏洞挖掘；演示数据 · MockEngine 契约桩 · 非实时推理 · 零外部请求。</p>
+  </div>
+  <div class="foot-end">
+    <button id="soundOffBtn" class="sound-off" type="button" role="switch" aria-checked="false" title="仅视觉状态，无音频输出">SOUND OFF</button>
+    <span class="lbl">演示数据 · 非实时推理 · 零外部请求</span>
+  </div>
+</footer>
+<div class="pt" id="pt" aria-hidden="true"><div class="pt__mark"><span class="pt__dot"></span>PROBE / LAB</div></div>
+</div>
+<script src="js/api.js" defer></script>
+<script src="js/console.js" defer></script>
+<script src="js/app.js" defer></script>
+<script src="js/core.js" defer></script>
+</body>
+</html>
