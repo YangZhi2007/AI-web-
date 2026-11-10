@@ -63,15 +63,23 @@ const SCRIPTS = {
   ]}
 };
 /* ---------- 跨页状态桥（sessionStorage；file:// 下 try/catch 降级内存） ----------
-   v0.17 翻页式架构：任务在「任务台」提交 → 写入 Store → 监控页读取并自动执行；
+   v0.17 翻页式架构：任务在「任务台」点击「开始分析」→ 写一次性 pendingRun 意图 + cfg 只读快照
+   → 监控页读取 pendingRun（读即清除）后才执行 runTask。cfg 仅为配置快照，与"是否执行"解耦：
+   浏览 / 刷新 / 跨页导航因无 pendingRun 一律不触发任务。
    报告 / 证据 / 历史 / 配置快照页各自从 Store 恢复，实现「动画随任务逻辑跨页同步」。 */
 const _memStore = {};
 const Store = {
-  K:{cfg:'probe.cfg', report:'probe.report', history:'probe.history'},
+  K:{cfg:'probe.cfg', report:'probe.report', history:'probe.history', pendingRun:'probe.pendingRun'},
   _raw:{ get(k){ try{ return sessionStorage.getItem(k); }catch(e){ return k in _memStore ? _memStore[k] : null; } },
-         set(k,v){ try{ sessionStorage.setItem(k,v); }catch(e){ _memStore[k]=v; } } },
+         set(k,v){ try{ sessionStorage.setItem(k,v); }catch(e){ _memStore[k]=v; } },
+         remove(k){ try{ sessionStorage.removeItem(k); }catch(e){ delete _memStore[k]; } } },
   getCfg(){ const s=this._raw.get(this.K.cfg); if(!s)return null; try{return JSON.parse(s);}catch(e){return null;} },
   setCfg(c){ this._raw.set(this.K.cfg,JSON.stringify(c)); },
+  /* 一次性执行意图：仅任务台点击「开始分析」置位；监控页读取后立即清除并消费。
+     与 cfg 解耦——cfg 残留只作只读快照展示，绝不代表"该执行一次任务"。 */
+  getPendingRun(){ return this._raw.get(this.K.pendingRun)==='1'; },
+  setPendingRun(){ this._raw.set(this.K.pendingRun,'1'); },
+  clearPendingRun(){ this._raw.remove(this.K.pendingRun); },
   getReport(){ const s=this._raw.get(this.K.report); if(!s)return null; try{return JSON.parse(s);}catch(e){return null;} },
   setReport(r){ this._raw.set(this.K.report,JSON.stringify(r)); },
   getHistory(){ const s=this._raw.get(this.K.history); if(!s)return []; try{const a=JSON.parse(s);return Array.isArray(a)?a:[];}catch(e){return [];} },
@@ -514,7 +522,9 @@ async function runTask(opts){
       script:report.task.script_tag,rounds:report.rounds.length,reason:report.terminate_reason};
     taskHistory.unshift(entry);
     renderHistory();
-    /* 跨页持久化：报告 + 历史 + 配置快照，供证据/报告/历史/监控页恢复 */
+    /* 跨页持久化：报告 + 历史 + 配置快照，供证据/报告/历史/监控页恢复。
+       cfg 仅作只读快照（回填监控页配置条），不再作为执行开关；执行只由任务台置位的
+       一次性 pendingRun 驱动，故此处回写 cfg 不会导致监控页刷新/导航重跑。 */
     Store.setReport(report);Store.pushHistory(entry);
     Store.setCfg({url,vulnType:options.vulnType,script:RUNTIME.script});
     pulse($('#mTasks'),String(taskCount));

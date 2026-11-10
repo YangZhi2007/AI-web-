@@ -1,8 +1,8 @@
 /* v0.17 翻页式架构 · 端到端 CDP 验收
  * 用法：node docs/scripts/e2e-pages-test.js
  * 依赖：本机 Chrome + Node 22 全局 WebSocket（零 npm 依赖）。
- * 覆盖：菜单翻页 / 任务台提交→监控页自动执行 / 6 类终态 / 跨页数据恢复 /
- *       高饱和配色 / 无溢出 / 44px 命中 / RM / 打印 / file:// 零外部请求。 */
+ * 覆盖：菜单翻页 / 仅点击「开始分析」才触发（浏览·残留 cfg·刷新·跨页导航均不执行）/
+ *       6 类终态 / 跨页数据恢复 / 高饱和配色 / 无溢出 / 44px 命中 / RM / 打印 / file:// 零外部请求。*/
 const { spawn } = require('child_process');
 const http = require('http');
 const path = require('path');
@@ -59,9 +59,31 @@ class CDP {
     await c.send('Page.enable'); await c.send('Runtime.enable');
     await c.send('Network.enable');
 
+    // 辅助：等待目标页 data-page（core.js 跨页过渡 480ms + 新文档加载 + app.js 初始化）
+    const waitPage = async (pg, max = 50) => {
+      for (let i = 0; i < max; i++) {
+        try { const cur = await c.eval(`document.body&&document.body.getAttribute('data-page')`); if (cur === pg) return true; } catch (e) {}
+        await sleep(150);
+      }
+      return false;
+    };
+    // 辅助：清空跨页 Store 全部键（含一次性意图标记），保证用例互不污染
+    const clearStore = () => c.eval(`['probe.cfg','probe.report','probe.history','probe.pendingRun'].forEach(k=>{try{sessionStorage.removeItem(k)}catch(e){}});`);
+    // 辅助：轮询 dash 到任一终态
+    const waitTerminal = async (max = 100, gap = 250) => {
+      let s = 'idle';
+      for (let i = 0; i < max; i++) {
+        s = await c.eval(`document.querySelector('#dash').dataset.state`);
+        if (['hit','nofind','degraded','oos','cancel','error'].includes(s)) break;
+        await sleep(gap);
+      }
+      return s;
+    };
+
     // ---- 1. 任务台：高饱和配色 + 顶栏菜单 + 44px 命中 ----
     await c.viewport(1440, 900);
     await c.goto(fileUrl('console.html'));
+    await clearStore();  // 干净基线：清空跨页 Store（历史报告/配置/一次性意图）
     const consoleInfo = await c.eval(`(()=>{
       const bg=getComputedStyle(document.body).backgroundColor;
       const accent=getComputedStyle(document.documentElement).getPropertyValue('--key').trim();
@@ -79,17 +101,52 @@ class CDP {
     ok('工具区 3 个子页面', consoleInfo.tools.length === 3, consoleInfo.tools.join('/'));
     ok('1440 宽交互目标无 <44px', consoleInfo.under44.length === 0, JSON.stringify(consoleInfo.under44.slice(0, 4)));
 
-    // ---- 2. 提交任务 → 触发翻页到监控页（直接设 Store 后导航，模拟捕获阶段写入）----
+    // ---- 1.5【新增·仅点击才触发】空 Store 直接打开监控页 → 保持 idle、无 report、不执行 ----
+    await c.goto(fileUrl('monitor.html'));
+    await sleep(450);
+    const monEmpty = await c.eval(`(()=>({
+      state:document.querySelector('#dash').dataset.state,
+      report:!!sessionStorage.getItem('probe.report'),
+      hint:!document.querySelector('#monitorHint').classList.contains('hidden')
+    }))()`);
+    ok('空 Store 直接打开监控页 → dash 保持 idle', monEmpty.state === 'idle', 'state=' + monEmpty.state);
+    ok('空 Store 直接打开监控页 → 未产生 report', monEmpty.report === false);
+    ok('空 Store 直接打开监控页 → 显示引导空态', monEmpty.hint === true);
+
+    // ---- 1.6【新增·cfg 与执行解耦】仅残留 probe.cfg 打开监控页 → 不执行（idle）----
     await c.eval(`sessionStorage.setItem('probe.cfg', JSON.stringify({url:'http://127.0.0.1/lab/sqli_01.php',vulnType:'sqli',script:'CONVERGE_3'}));`);
     await c.goto(fileUrl('monitor.html'));
-    // 轮询 dataset.state 到终态（轮询，不固定 sleep）
-    let dashState = 'idle', tries = 0;
-    while (tries++ < 80) {
-      dashState = await c.eval(`document.querySelector('#dash').dataset.state`);
-      if (['hit','nofind','degraded','oos','cancel','error'].includes(dashState)) break;
-      await sleep(250);
-    }
-    ok('监控页自动执行到终态 hit', dashState === 'hit', 'state=' + dashState);
+    await sleep(450);
+    const monCfgOnly = await c.eval(`(()=>({
+      state:document.querySelector('#dash').dataset.state,
+      target:document.querySelector('#mTarget').textContent,
+      report:!!sessionStorage.getItem('probe.report')
+    }))()`);
+    ok('仅残留 cfg 打开监控页 → 不执行(state=idle)', monCfgOnly.state === 'idle', 'state=' + monCfgOnly.state);
+    ok('仅残留 cfg 仍回填只读配置快照', /127\.0\.0\.1/.test(monCfgOnly.target), 'mTarget=' + monCfgOnly.target);
+    ok('仅残留 cfg 打开监控页 → 未产生 report', monCfgOnly.report === false);
+
+    // ---- 2. 任务台真实点击「开始分析」（勾选授权）→ 翻到监控页只执行一次 ----
+    await c.goto(fileUrl('console.html'));
+    const pre = await c.eval(`(()=>{
+      const u=document.querySelector('#urlInput'); if(u) u.value='http://127.0.0.1/lab/sqli_01.php';
+      const t=document.querySelector('#typeSel'); if(t) t.value='sqli';
+      const s=document.querySelector('#scriptSel'); if(s) s.value='CONVERGE_3';
+      const chk=document.querySelector('#authChk'); if(chk && !chk.checked) chk.click();
+      return {checked: chk?chk.checked:null, disabled: document.querySelector('#startBtn').disabled,
+              pending: sessionStorage.getItem('probe.pendingRun')};
+    })()`);
+    ok('勾选授权后「开始分析」按钮可用', pre.checked === true && pre.disabled === false, JSON.stringify(pre));
+    ok('点击前无 pendingRun 意图', pre.pending === null, 'pending=' + pre.pending);
+    await c.eval(`document.querySelector('#startBtn').click();`);
+    const armed = await c.eval(`({pending:sessionStorage.getItem('probe.pendingRun'),cfg:!!sessionStorage.getItem('probe.cfg')})`);
+    ok('点击「开始分析」置位一次性 pendingRun', armed.pending === '1' && armed.cfg === true, JSON.stringify(armed));
+    ok('点击「开始分析」翻页到监控页', await waitPage('monitor'));
+    const dashState = await waitTerminal(80, 250);
+    ok('监控页仅执行一次到终态 hit', dashState === 'hit', 'state=' + dashState);
+    const oneRun = await c.eval(`JSON.parse(sessionStorage.getItem('probe.history')||'[]').length`);
+    ok('一次点击只落一条历史（无重复执行）', oneRun === 1, 'history=' + oneRun);
+    ok('消费后 pendingRun 已清除', (await c.eval(`sessionStorage.getItem('probe.pendingRun')`)) === null);
     // 终态转场 320ms：等过渡完成再采样 opacity，避免读到动画中间值（假阴性）
     await sleep(420);
     const mon = await c.eval(`(()=>{
@@ -110,6 +167,21 @@ class CDP {
     ok('态势台深色焦点', /rgb\(12, 20, 24\)/.test(mon.bgDark), mon.bgDark);
     ok('报告已跨页持久化', mon.hasReport === true);
     ok('历史已跨页持久化', mon.hasHistory >= 1, 'n=' + mon.hasHistory);
+
+    // ---- 2.5【新增·幂等】任务完成后刷新监控页 → 不重跑、不写历史，仅从 report 回显终态 ----
+    const histBefore = await c.eval(`JSON.parse(sessionStorage.getItem('probe.history')||'[]').length`);
+    await c.goto(fileUrl('monitor.html'));  // 重新加载同页 = 刷新
+    await sleep(500);
+    const monReload = await c.eval(`(()=>({
+      state:document.querySelector('#dash').dataset.state,
+      hist:JSON.parse(sessionStorage.getItem('probe.history')||'[]').length,
+      pending:!!sessionStorage.getItem('probe.pendingRun'),
+      target:document.querySelector('#mTarget').textContent
+    }))()`);
+    ok('刷新监控页不重跑（history 条数不增加）', monReload.hist === histBefore, histBefore + '→' + monReload.hist);
+    ok('刷新后无 pendingRun 残留', monReload.pending === false);
+    ok('刷新后从 report 只读回显终态 hit', monReload.state === 'hit', 'state=' + monReload.state);
+    ok('刷新后配置快照仍在（cfg 只读保留）', /127\.0\.0\.1/.test(monReload.target), 'mTarget=' + monReload.target);
 
     // ---- 3. 证据链页恢复逐轮表 ----
     await c.goto(fileUrl('evidence.html'));
@@ -150,15 +222,30 @@ class CDP {
       ok('子页面 ' + p + ' 可达', pg === p);
     }
 
+    // ---- 6.5【新增·导航不触发】带 pendingRun 访问子页面 → 不执行任何任务 ----
+    await c.goto(fileUrl('console.html'));
+    await c.eval(`sessionStorage.setItem('probe.pendingRun','1');
+      sessionStorage.setItem('probe.cfg', JSON.stringify({url:'http://127.0.0.1/lab/x',vulnType:'sqli',script:'CONVERGE_3'}));`);
+    const navBase = await c.eval(`JSON.parse(sessionStorage.getItem('probe.history')||'[]').length`);
+    for (const p of ['settings', 'history', 'about']) {
+      await c.goto(fileUrl(p + '.html'));
+      await sleep(120);
+    }
+    const navResult = await c.eval(`({hist:JSON.parse(sessionStorage.getItem('probe.history')||'[]').length,
+      pending:sessionStorage.getItem('probe.pendingRun')})`);
+    ok('带 pendingRun 访问子页面不触发任务（history 不增）', navResult.hist === navBase, navBase + '→' + navResult.hist);
+    ok('pendingRun 不被子页面误消费（仅监控页消费）', navResult.pending === '1');
+    await c.eval(`sessionStorage.removeItem('probe.pendingRun');`);  // 清掉模拟意图，避免污染后续用例
+
     // ---- 7. NO_CONVERGE → nofind（不被覆盖）----
-    await c.eval(`sessionStorage.setItem('probe.cfg', JSON.stringify({url:'http://127.0.0.1/lab/x',vulnType:'sqli',script:'NO_CONVERGE'}));`);
+    await c.eval(`sessionStorage.setItem('probe.pendingRun','1');sessionStorage.setItem('probe.cfg', JSON.stringify({url:'http://127.0.0.1/lab/x',vulnType:'sqli',script:'NO_CONVERGE'}));`);
     await c.goto(fileUrl('monitor.html'));
     let st2 = 'idle', t2 = 0;
     while (t2++ < 100) { st2 = await c.eval(`document.querySelector('#dash').dataset.state`); if (['hit','nofind','degraded','oos','cancel','error'].includes(st2)) break; await sleep(250); }
     ok('NO_CONVERGE → nofind（关键回归不被覆盖）', st2 === 'nofind', 'state=' + st2);
 
     // ---- 8. 越界 → oos ----
-    await c.eval(`sessionStorage.setItem('probe.cfg', JSON.stringify({url:'https://example.com/x',vulnType:'sqli',script:'CONVERGE_3'}));`);
+    await c.eval(`sessionStorage.setItem('probe.pendingRun','1');sessionStorage.setItem('probe.cfg', JSON.stringify({url:'https://example.com/x',vulnType:'sqli',script:'CONVERGE_3'}));`);
     await c.goto(fileUrl('monitor.html'));
     let st3 = 'idle', t3 = 0;
     while (t3++ < 80) { st3 = await c.eval(`document.querySelector('#dash').dataset.state`); if (['hit','nofind','degraded','oos','cancel','error'].includes(st3)) break; await sleep(250); }
@@ -212,7 +299,7 @@ class CDP {
 
     // ---- 12. reduced-motion 降级 ----
     await c.send('Emulation.setEmulatedMedia', { media: 'screen', features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
-    await c.eval(`sessionStorage.setItem('probe.cfg', JSON.stringify({url:'http://127.0.0.1/lab/x',vulnType:'sqli',script:'CONVERGE_3'}));`);
+    await c.eval(`sessionStorage.setItem('probe.pendingRun','1');sessionStorage.setItem('probe.cfg', JSON.stringify({url:'http://127.0.0.1/lab/x',vulnType:'sqli',script:'CONVERGE_3'}));`);
     await c.goto(fileUrl('monitor.html'));
     let st4 = 'idle', t4 = 0;
     while (t4++ < 80) { st4 = await c.eval(`document.querySelector('#dash').dataset.state`); if (['hit','nofind','degraded','oos','cancel','error'].includes(st4)) break; await sleep(200); }

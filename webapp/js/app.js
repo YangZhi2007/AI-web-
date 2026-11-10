@@ -2,9 +2,9 @@
  * app.js · v0.17 翻页式架构的跨页编排层
  * -----------------------------------------------------------------------------
  * 依赖 console.js 暴露的 window.Probe（引擎/状态机/Store 均在其中）。
- * 职责：① 顶栏当前项高亮（按 data-page）；② 监控页从 Store 恢复配置并自动
- * 执行 runTask（动画与任务逻辑跨页同步）；③ 证据/报告/历史页从 Store 恢复
- * 渲染；④ 任务台提交后写入配置快照；⑤ 会话指标从历史重算。
+ * 职责：① 顶栏当前项高亮（按 data-page）；② 监控页仅消费任务台点击「开始分析」置位的
+ * 一次性 pendingRun 意图后才执行 runTask（浏览/刷新/跨页导航一律不触发）；③ 证据/报告/
+ * 历史页从 Store 恢复渲染；④ 任务台提交后写配置快照 + pendingRun 意图；⑤ 会话指标从历史重算。
  * 零外部请求、file:// 可运行；所有 DOM 访问判空，缺失即跳过。
  * ========================================================================== */
 (function(){
@@ -32,25 +32,53 @@
     Object.keys(m).forEach(function(sel){ var el=$(sel); if(el) el.textContent=String(m[sel]); });
   }
 
-  /* ② 监控页：恢复配置 → 自动跑 → 状态机驱动态势动画；未提交则显示引导空态 */
+  /* ② 监控页：仪表盘，本身不干活。仅当任务台点击「开始分析」置位的一次性 pendingRun
+     存在时才消费并执行 runTask；纯浏览/刷新/跨页导航只读回显，绝不触发任务。
+     cfg 仅作只读配置快照条，与"是否执行"彻底解耦。 */
   function bootMonitor(){
     var cfg = P.Store.getCfg();
     var hint = $('#monitorHint');
     var goBtn = $('#goConsole');
+    var dash = $('#dash');
+
+    /* 只读回填配置快照条（有无 cfg 都与执行无关） */
+    if(cfg){
+      var put=function(sel,v){var e=$(sel);if(e)e.textContent=v;};
+      put('#mTarget',cfg.url); put('#mType',({sqli:'SQL 注入',xss:'XSS',upload:'文件上传'})[cfg.vulnType]||cfg.vulnType);
+      put('#mScript',cfg.script); put('#mScope',/lab|localhost|127\.0\.0\.1|::1/.test(cfg.url)?'授权靶场':'越界 · 纯模拟');
+    }
+
+    /* 一次性消费用户意图：读即清除，保证刷新/后退/跨页不重复执行（跨文档 runTask 的
+       if(running) 守卫只在同页有效，幂等必须靠这里清除 pendingRun 保证）。 */
+    var pending = !!(P.Store.getPendingRun && P.Store.getPendingRun());
+    if(pending) P.Store.clearPendingRun();
+
+    if(pending && cfg){
+      if(hint) hint.classList.add('hidden');
+      if(goBtn) goBtn.classList.add('hidden');
+      /* 授权视为已在任务台勾选确认；仅此处、仅此刻执行一次 */
+      P.runTask({url:cfg.url, vulnType:cfg.vulnType, script:cfg.script, authed:true});
+      return;
+    }
+
+    /* 纯浏览：有历史报告则只读回显最近一次终态（不执行、不写历史/上报），否则保持 idle */
+    var report = P.Store.getReport && P.Store.getReport();
+    if(report){
+      if(hint) hint.classList.add('hidden');
+      if(goBtn) goBtn.classList.add('hidden');
+      if(P.applyTerminalState) P.applyTerminalState(report);  // 仅渲染终态，绝无副作用写
+      return;
+    }
+
+    /* 无报告：保持 idle；无配置快照时给引导空态 */
+    if(dash){ dash.dataset.state='idle'; var t=$('#dashState'); if(t)t.textContent='IDLE'; }
     if(!cfg){
       if(hint) hint.classList.remove('hidden');
       if(goBtn) goBtn.classList.remove('hidden');
-      var dash=$('#dash'); if(dash){ dash.dataset.state='idle'; var t=$('#dashState'); if(t)t.textContent='IDLE'; }
-      return;
+    }else{
+      if(hint) hint.classList.add('hidden');
+      if(goBtn) goBtn.classList.add('hidden');
     }
-    if(hint) hint.classList.add('hidden');
-    if(goBtn) goBtn.classList.add('hidden');
-    /* 回填配置快照条（只读展示） */
-    var put=function(sel,v){var e=$(sel);if(e)e.textContent=v;};
-    put('#mTarget',cfg.url); put('#mType',({sqli:'SQL 注入',xss:'XSS',upload:'文件上传'})[cfg.vulnType]||cfg.vulnType);
-    put('#mScript',cfg.script); put('#mScope',/lab|localhost|127\.0\.0\.1|::1/.test(cfg.url)?'授权靶场':'越界 · 纯模拟');
-    /* 让引擎从已存配置执行；授权视为已在任务台确认 */
-    P.runTask({url:cfg.url, vulnType:cfg.vulnType, script:cfg.script, authed:true});
   }
 
   /* ③a 证据页：从 Store 报告恢复逐轮表 + 结论 */
@@ -131,9 +159,10 @@
     put('#cfgRuleset','LAB-RULESET-01'); put('#cfgContract','1.0');
   }
 
-  /* ④ 任务台：校验通过后写配置快照，拦截引擎本地执行，交 data-nav 过渡翻到监控页自动跑。
-     捕获阶段 + stopImmediatePropagation，确保 console.js 的 startBtn→runTask 不在本页重复执行，
-     任务只在监控页跑一次（动画与任务逻辑同页同步）。测试不经 app.js，故 101 项不受影响。 */
+  /* ④ 任务台：校验通过后写配置快照 + 一次性 pendingRun 意图，拦截引擎本地执行，
+     交 data-nav 过渡翻到监控页；仅监控页消费 pendingRun 后执行任务（只跑一次）。
+     捕获阶段 + stopImmediatePropagation，确保 console.js 的 startBtn→runTask 不在本页重复执行。
+     测试不经 app.js，故 101 项不受影响。 */
   function bootConsole(){
     var btn=$('#startBtn');
     if(btn){
@@ -150,6 +179,9 @@
         e.stopImmediatePropagation();
         P.Store.setCfg({url:url, vulnType:$('#typeSel')?$('#typeSel').value:'sqli',
           script:$('#scriptSel')?$('#scriptSel').value:'CONVERGE_3'});
+        /* 一次性执行意图：只有真实点击「开始分析」才置位；监控页读后立即清除并消费。
+           cfg 仅回填只读快照条，不再作为执行开关，故浏览/导航/刷新都不会触发任务。 */
+        if(P.Store.setPendingRun) P.Store.setPendingRun();
         var link=$('#runLink');
         if(link) link.click();            // 触发 core.js 的圆形揭幕跨页过渡
         else location.href='monitor.html';

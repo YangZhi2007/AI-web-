@@ -6,8 +6,9 @@
   7 个独立页面靠顶栏真翻页（data-nav + core.js 跨页过渡），小功能为子页面：
   console 任务台 / monitor 运行监控 / evidence 证据链 / report 报告（主流程）
   settings 配置快照 / history 历史任务 / about 合规说明（子页面）。
-  跨页状态走 sessionStorage（console.js 的 Store）：任务在任务台提交 → 监控页恢复配置
-  自动执行 → 报告/证据/历史页各自恢复，实现动画与任务逻辑的跨页同步。
+  跨页状态走 sessionStorage（console.js 的 Store）：任务在任务台点击「开始分析」→ 写一次性
+  pendingRun 意图 + cfg 只读快照 → 监控页消费 pendingRun（读即清除）后执行一次 → 报告/证据/
+  历史页各自恢复；cfg 残留仅作快照展示，浏览/刷新/跨页导航不触发任务。
   引擎 console.js 业务逻辑（MockEngine 三剧本 / 越界诚信 / 授权闸门 / mock_flag / 8 态状态机）
   零改动；全部静态 DOM id、data-* / aria-* / role / tabindex、#pt、打印与 44×44 契约保留。
   零外部请求，file:// 可运行；prefers-reduced-motion 全降级。
