@@ -416,7 +416,7 @@ input[type=checkbox]:checked{
 .dash[data-state="degraded"] .sit__node{stroke:var(--sig-hit)}
 .dash[data-state="degraded"] .sit__node.is-degraded{stroke:var(--t-3)}
 /* oos：告警品红（诚信优先，覆盖 hit/degraded/nofind） */
-.dash[data-state="oos"] .dash__state{color:var(--sig-alert-soft)}
+.dash[data-state="oos"] .dash__state{color:var(--alert-ink)}
 .dash[data-state="oos"] .dash__state i{background:var(--sig-alert-soft)}
 .dash[data-state="oos"] .fx-dash__atmos{opacity:1}
 .dash[data-state="oos"] .sit__axis--atk{stroke:var(--sig-alert-soft)}
@@ -470,7 +470,7 @@ input[type=checkbox]:checked{
 .tag{display:inline-block;padding:4px 8px;border:1px solid var(--line2);border-radius:var(--r-in);font:10px var(--mono)}
 .tag::before{content:"";display:inline-block;width:5px;height:5px;margin-right:6px;background:currentColor;vertical-align:1px}
 .tag.normal::before{width:6px;height:1px}
-.tag.blocked{color:var(--sig-alert);border-color:var(--sig-alert);background:var(--sig-alert-dim)}
+.tag.blocked{color:var(--danger-ink);border-color:var(--sig-alert);background:var(--sig-alert-dim)}
 .tag.blocked::before{clip-path:polygon(50% 0,100% 100%,0 100%)}
 .tag.anomaly{color:var(--accent);border-color:var(--accent-line);background:var(--accent-dim)}
 .tag.anomaly::before{background:transparent;border:1px solid currentColor;border-radius:50%}
