@@ -1,8 +1,10 @@
-/* v0.17 翻页式架构 · 端到端 CDP 验收
+/* v0.18 SOC 攻防仪表 · 端到端 CDP 验收
  * 用法：node docs/scripts/e2e-pages-test.js
  * 依赖：本机 Chrome + Node 22 全局 WebSocket（零 npm 依赖）。
  * 覆盖：菜单翻页 / 仅点击「开始分析」才触发（浏览·残留 cfg·刷新·跨页导航均不执行）/
- *       6 类终态 / 跨页数据恢复 / 高饱和配色 / 无溢出 / 44px 命中 / RM / 打印 / file:// 零外部请求。*/
+ *       6 类终态 / 跨页数据恢复 / 克制冷静配色 / 攻防四段拓扑 / 数据流线型 /
+ *       状态形状编码 / 呈现层阶段反馈 / 无溢出 / 44px 命中 / RM / 打印 / file:// 零外部请求。
+ * 注：颜色断言按「亮度 / 色度语义」判定，不写死某个版本的 hex，避免换色即误报。*/
 const { spawn } = require('child_process');
 const http = require('http');
 const path = require('path');
@@ -79,6 +81,11 @@ class CDP {
       }
       return s;
     };
+    /* 颜色语义判定：亮度用于区分亮底 / 深色焦点，色度用于区分高饱和撞色 / 克制冷静。
+       均按 WCAG 相对亮度与 RGB 色度实算，不依赖具体 hex 字面量。 */
+    const rgb = s => (String(s).match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+    const lumRGB = s => { const c = rgb(s).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+    const chroma = s => { const a = rgb(s); return a.length === 3 ? (Math.max(...a) - Math.min(...a)) / 255 : 1; };
 
     // ---- 1. 任务台：高饱和配色 + 顶栏菜单 + 44px 命中 ----
     await c.viewport(1440, 900);
@@ -90,13 +97,17 @@ class CDP {
       const navs=[...document.querySelectorAll('.mainnav a')].map(a=>a.textContent.trim());
       const tools=[...document.querySelectorAll('.tool')].map(a=>a.getAttribute('data-page'));
       const starts=getComputedStyle(document.querySelector('#startBtn')).backgroundColor;
+      /* 用临时元素解析 var(--key) 的最终色值，验证单一低饱和 accent（不再每页一色） */
+      const probe=document.createElement('span'); probe.style.color='var(--key)'; document.body.appendChild(probe);
+      const keyRGB=getComputedStyle(probe).color; probe.remove();
       const rects=[...document.querySelectorAll('button,input,select,a.brand,.tool,.mainnav a')].map(e=>{const r=e.getBoundingClientRect();return {t:e.tagName+'.'+e.className,w:Math.round(r.width),h:Math.round(r.height)};});
       const under44=rects.filter(r=>r.w>0&&r.h>0&&(r.w<44||r.h<44));
-      return {bg,accent,navs,tools,starts,under44,page:document.body.getAttribute('data-page')};
+      return {bg,accent,keyRGB,navs,tools,starts,under44,page:document.body.getAttribute('data-page')};
     })()`);
     ok('任务台 data-page=console', consoleInfo.page === 'console');
-    ok('亮底（非暗黑）', /^rgb\(24[0-9], 24[0-9], 23[0-9]\)/.test(consoleInfo.bg) || consoleInfo.bg.indexOf('242') > -1, 'bg=' + consoleInfo.bg);
-    ok('高饱和主色 token 存在', !!consoleInfo.accent, '--key=' + consoleInfo.accent);
+    ok('亮底冷中性（非暗黑）', lumRGB(consoleInfo.bg) > 0.75, 'bg=' + consoleInfo.bg + ' L=' + lumRGB(consoleInfo.bg).toFixed(2));
+    ok('统一单一低饱和 accent（移除高饱和撞色）', !!consoleInfo.accent && chroma(consoleInfo.keyRGB) < 0.45,
+      'key=' + consoleInfo.keyRGB + ' chroma=' + chroma(consoleInfo.keyRGB).toFixed(2));
     ok('主导航 4 项', consoleInfo.navs.length === 4, consoleInfo.navs.join('/'));
     ok('工具区 3 个子页面', consoleInfo.tools.length === 3, consoleInfo.tools.join('/'));
     ok('1440 宽交互目标无 <44px', consoleInfo.under44.length === 0, JSON.stringify(consoleInfo.under44.slice(0, 4)));
@@ -164,9 +175,47 @@ class CDP {
     ok('命中关键路径高亮', parseFloat(mon.keyPath) >= 0.9, 'opacity=' + mon.keyPath);
     ok('状态灯文案 HIT', mon.stateTxt === 'HIT', mon.stateTxt);
     ok('运行面板 RUN COMPLETE', /RUN COMPLETE/.test(mon.runTxt), mon.runTxt.trim());
-    ok('态势台深色焦点', /rgb\(12, 20, 24\)/.test(mon.bgDark), mon.bgDark);
+    ok('态势台深色焦点（唯一深色区）', lumRGB(mon.bgDark) < 0.05, mon.bgDark + ' L=' + lumRGB(mon.bgDark).toFixed(3));
     ok('报告已跨页持久化', mon.hasReport === true);
     ok('历史已跨页持久化', mon.hasHistory >= 1, 'n=' + mon.hasHistory);
+
+    // ---- 2.4【v0.18】攻防拓扑 / 数据流线型 / 状态形状编码 / 呈现层阶段反馈 ----
+    const topo = await c.eval(`(()=>{
+      const q=s=>document.querySelector(s), qa=s=>[...document.querySelectorAll(s)];
+      const nodes=qa('.sit__node');
+      const flows=qa('.sit__flow').map(e=>getComputedStyle(e).strokeDasharray);
+      const card=q('.card'), dash=q('#dash'), lamp=q('.dash__state i');
+      return {
+        labels:qa('.sit__label').length, zones:qa('.sit__zone').length,
+        nodeCount:nodes.length, allRect:nodes.every(n=>n.tagName.toLowerCase()==='rect'),
+        dataR:nodes.map(n=>n.getAttribute('data-r')).join(','),
+        flowKinds:new Set(flows).size, flows:flows,
+        barriers:qa('.sit__barrier').length, legend:qa('.sit__legend-item').length,
+        phase:dash.getAttribute('data-phase'),
+        flowMeta:q('#sitFlowMeta')?q('#sitFlowMeta').textContent:'',
+        flowMetaClipped:(()=>{const m=q('#sitFlowMeta');return m?m.scrollWidth>m.clientWidth+1:false})(),
+        radius:card?getComputedStyle(card).borderRadius:'',
+        shadow:card?getComputedStyle(card).boxShadow:'',
+        stateShape:lamp?getComputedStyle(lamp,'::after').content:''
+      };
+    })()`);
+    ok('攻防四段拓扑（攻击方/通道/防线/目标）', topo.labels===4 && topo.zones===4, 'labels='+topo.labels+' zones='+topo.zones);
+    ok('8 个方形轮次节点（移除圆润造型）', topo.nodeCount===8 && topo.allRect && topo.dataR==='1,2,3,4,5,6,7,8',
+      'rect='+topo.allRect+' r='+topo.dataR);
+    ok('三条流量通道线型各异（方向/路径可辨）', topo.flowKinds>=3, JSON.stringify(topo.flows));
+    ok('WAF 防线 8 根 + 线型图例（状态不靠单色）', topo.barriers===8 && topo.legend>=5,
+      'barriers='+topo.barriers+' legend='+topo.legend+' shape='+topo.stateShape);
+    ok('呈现层阶段随任务推进', topo.phase==='breach', 'phase='+topo.phase+' meta='+topo.flowMeta);
+    ok('流状态文案完整（方向/路径/流量可读）', topo.flowMetaClipped===false && topo.flowMeta.length>10,
+      'clipped='+topo.flowMetaClipped+' meta='+topo.flowMeta);
+    /* 实心偏移阴影 = 模糊半径为 0 且两个偏移 ≥4px；soft neutral 阴影 blur>0，不算 */
+    const shadowNums=(String(topo.shadow).match(/(-?[\d.]+)px/g)||[]).map(s=>parseFloat(s));
+    const hasOffsetShadow=shadowNums.length>=3 && shadowNums[2]===0 &&
+      Math.abs(shadowNums[0])>=4 && Math.abs(shadowNums[1])>=4;
+    ok('近直角卡片 + 无实心偏移阴影', parseFloat(topo.radius)<=4 && !hasOffsetShadow,
+      'r='+topo.radius+' shadow='+topo.shadow);
+    ok('状态灯形状编码（非单一颜色区分）', typeof topo.stateShape==='string' && topo.stateShape!=='none',
+      'shape='+topo.stateShape);
 
     // ---- 2.5【新增·幂等】任务完成后刷新监控页 → 不重跑、不写历史，仅从 report 回显终态 ----
     const histBefore = await c.eval(`JSON.parse(sessionStorage.getItem('probe.history')||'[]').length`);

@@ -38,15 +38,15 @@
 <!-- 配置快照条：从 Store 恢复，让跨页执行可追溯 -->
 <div class="card" style="padding:14px 18px;margin-bottom:20px" aria-label="当前任务快照">
   <div class="config-grid" style="border:0">
-    <div><span>目标 / TARGET</span><b id="mTarget" class="mono" style="font-size:12px">—</b></div>
-    <div><span>漏洞类型 / TYPE</span><b id="mType" style="font-size:12px">—</b></div>
-    <div><span>剧本 / SCENARIO</span><b id="mScript" class="mono" style="font-size:12px">—</b></div>
-    <div><span>范围 / SCOPE</span><b id="mScope" style="font-size:12px">—</b></div>
+    <div><span>目标 / TARGET</span><b id="mTarget" class="mono" style="font-size:13px">—</b></div>
+    <div><span>漏洞类型 / TYPE</span><b id="mType" style="font-size:13px">—</b></div>
+    <div><span>剧本 / SCENARIO</span><b id="mScript" class="mono" style="font-size:13px">—</b></div>
+    <div><span>范围 / SCOPE</span><b id="mScope" style="font-size:13px">—</b></div>
   </div>
 </div>
 
 <!-- 未提交引导空态 -->
-<div class="card hidden" id="monitorHint" style="border-left:6px solid var(--mag)">
+<div class="card hidden" id="monitorHint" style="border-left:2px solid var(--sig-alert)">
   <div class="empty"><b>尚无运行中的任务</b><span>请先在「任务台」配置目标并勾选授权，提交后本页将自动执行并实时呈现态势。</span></div>
   <div style="text-align:center;margin-top:8px"><a id="goConsole" class="btn-solid hidden" href="console.html" data-nav data-ripple>前往任务台 →</a></div>
 </div>
@@ -62,36 +62,79 @@
   </div>
 
   <div class="dash" id="dash" data-state="idle">
-    <div class="fx-dash" aria-hidden="true">
-      <div class="fx-dash__atmos"></div>
-      <svg class="fx-situation" viewBox="0 0 1200 240" preserveAspectRatio="none">
-        <path class="sit__axis sit__axis--atk" d="M40 104 H584"/>
-        <path class="sit__axis sit__axis--def" d="M616 152 H1160"/>
-        <path class="sit__ring" d="M556 92 A32 32 0 1 1 556 156"/>
-        <path class="sit__ring-tip" d="M548 150 L556 158 L564 150"/>
-        <g class="sit__synapse">
-          <path d="M600 124 L560 100 M600 124 L560 148 M600 124 L640 100 M600 124 L640 148"/>
-          <circle cx="600" cy="124" r="9"/>
-        </g>
-        <g class="sit__axis--def-group">
-          <path class="sit__barrier" d="M700 56 V184"/><path class="sit__barrier" d="M758 56 V184"/>
-          <path class="sit__barrier" d="M816 56 V184"/><path class="sit__barrier" d="M874 56 V184"/>
-          <path class="sit__barrier" d="M932 56 V184"/><path class="sit__barrier" d="M990 56 V184"/>
-          <path class="sit__barrier" d="M1048 56 V184"/><path class="sit__barrier" d="M1106 56 V184"/>
-        </g>
-        <g class="sit__nodes">
-          <circle class="sit__node" data-r="1" cx="112" cy="104" r="7"/><circle class="sit__node" data-r="2" cx="180" cy="104" r="7"/>
-          <circle class="sit__node" data-r="3" cx="248" cy="104" r="7"/><circle class="sit__node" data-r="4" cx="316" cy="104" r="7"/>
-          <circle class="sit__node" data-r="5" cx="384" cy="104" r="7"/><circle class="sit__node" data-r="6" cx="452" cy="104" r="7"/>
-          <circle class="sit__node" data-r="7" cx="520" cy="104" r="7"/><circle class="sit__node" data-r="8" cx="560" cy="104" r="7"/>
-        </g>
-        <path class="sit__path--key" d="M40 104 H1140"/>
-      </svg>
-    </div>
     <div class="fx-intrusion" aria-hidden="true"><i></i><i></i><i></i><span>INTRUSION FLAG / 越界或中断 · 纯模拟告警</span></div>
     <div class="dash__head">
       <span class="lbl">DASHBOARD / 运行指标</span>
       <span class="dash__state" id="dashStateWrap" aria-live="polite"><i aria-hidden="true"></i><span id="dashState">IDLE</span></span>
+    </div>
+
+    <!-- 攻防拓扑（v0.18）：攻击方 → 流量通道 → WAF 防线 → 目标，四段分区清晰可辨。
+         .sit__node[data-r] 由 console.js paintRail 按同一 round_no 双写 is-lit / is-degraded；
+         三条流量通道以线型编码（实线箭头=攻击流 / 虚线=拦截 / 粗实线=命中路径）；
+         防线竖线随拦截反馈由虚线转实线；命中关键路径贯穿攻击方到目标。
+         文字标签与图例为 HTML 层，避免 SVG 拉伸变形；状态区分不依赖单一颜色。 -->
+    <div class="fx-dash" aria-hidden="true">
+      <div class="sit__labels">
+        <span class="sit__label sit__label--atk">01 攻击方 / ATTACKER</span>
+        <span class="sit__label">02 流量通道 / TRAFFIC</span>
+        <span class="sit__label sit__label--def">03 WAF 防线 / DEFENSE</span>
+        <span class="sit__label">04 目标 / TARGET</span>
+      </div>
+      <svg class="fx-situation" viewBox="0 0 1200 200" preserveAspectRatio="xMidYMid meet">
+        <g class="sit__zones">
+          <rect class="sit__zone" x="16" y="24" width="330" height="152"/>
+          <rect class="sit__zone" x="356" y="24" width="320" height="152"/>
+          <rect class="sit__zone sit__zone--def" x="686" y="24" width="380" height="152"/>
+          <rect class="sit__zone" x="1076" y="24" width="108" height="152"/>
+        </g>
+        <!-- 攻击链：有向主线 + 箭头；8 个方形轮次节点按轮点亮 -->
+        <path class="sit__axis sit__axis--atk" d="M32 100 H340"/>
+        <path class="sit__arrow" d="M330 92 L340 100 L330 108"/>
+        <g class="sit__nodes">
+          <rect class="sit__node" data-r="1" x="40" y="93" width="14" height="14"/>
+          <rect class="sit__node" data-r="2" x="78" y="93" width="14" height="14"/>
+          <rect class="sit__node" data-r="3" x="116" y="93" width="14" height="14"/>
+          <rect class="sit__node" data-r="4" x="154" y="93" width="14" height="14"/>
+          <rect class="sit__node" data-r="5" x="192" y="93" width="14" height="14"/>
+          <rect class="sit__node" data-r="6" x="230" y="93" width="14" height="14"/>
+          <rect class="sit__node" data-r="7" x="268" y="93" width="14" height="14"/>
+          <rect class="sit__node" data-r="8" x="306" y="93" width="14" height="14"/>
+        </g>
+        <!-- 流量通道：实线攻击流 / 虚线拦截 / 粗实线命中，方向由箭头给出 -->
+        <path class="sit__flow sit__flow--atk" d="M366 72 H666"/>
+        <path class="sit__arrow" d="M656 64 L666 72 L656 80"/>
+        <path class="sit__flow sit__flow--blocked" d="M366 100 H666"/>
+        <path class="sit__flow sit__flow--hit" d="M366 128 H666"/>
+        <path class="sit__arrow sit__arrow--def" d="M656 120 L666 128 L656 136"/>
+        <!-- 反馈闭环 + 神经突触：命中时点亮 -->
+        <g class="sit__synapse">
+          <path d="M516 100 L488 80 M516 100 L488 120 M516 100 L544 80 M516 100 L544 120"/>
+          <circle cx="516" cy="100" r="9"/>
+          <path class="sit__ring" d="M482 92 A18 18 0 1 1 482 108"/>
+          <path class="sit__ring-tip" d="M476 104 L482 110 L488 104"/>
+        </g>
+        <!-- WAF 防线：8 根竖线，拦截时由虚线转实线 -->
+        <g class="sit__barriers">
+          <path class="sit__barrier" d="M706 40 V160"/><path class="sit__barrier" d="M750 40 V160"/>
+          <path class="sit__barrier" d="M794 40 V160"/><path class="sit__barrier" d="M838 40 V160"/>
+          <path class="sit__barrier" d="M882 40 V160"/><path class="sit__barrier" d="M926 40 V160"/>
+          <path class="sit__barrier" d="M970 40 V160"/><path class="sit__barrier" d="M1014 40 V160"/>
+        </g>
+        <path class="sit__arrow sit__arrow--def" d="M1056 92 L1066 100 L1056 108"/>
+        <path class="sit__axis sit__axis--def" d="M1068 100 H1096"/>
+        <rect class="sit__target" x="1100" y="82" width="36" height="36"/>
+        <!-- 命中关键路径：贯穿攻击方到目标，仅命中 / 降级态出现 -->
+        <path class="sit__path--key" d="M32 100 H1100"/>
+      </svg>
+      <div class="sit__legend">
+        <span class="sit__legend-item"><i class="lg-solid"></i>攻击流 →</span>
+        <span class="sit__legend-item"><i class="lg-dash"></i>拦截 / 阻断</span>
+        <span class="sit__legend-item"><i class="lg-thick"></i>命中路径</span>
+        <span class="sit__legend-item"><i class="lg-node"></i>已执行轮次</span>
+        <span class="sit__legend-item"><i class="lg-deg"></i>降级轮</span>
+      </div>
+      <div class="sit__flowmeta" id="sitFlowMeta">待命 · 无数据流</div>
+      <div class="fx-dash__atmos"></div>
     </div>
     <div class="dash__body">
       <div class="gauge">

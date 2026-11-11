@@ -81,6 +81,85 @@
     }
   }
 
+  /* ⑥ 呈现层遥测桥（v0.18）：只读观察引擎已经写入的 DOM，把任务进程映射为态势台反馈。
+     职责边界：不修改任何业务数据、不触发任务、不写 Store，只增删 CSS class 与一行只读
+     流状态说明。覆盖状态：攻击发起 / 加载中 / 拦截 / 命中 / 防御成功 / 数据刷新 /
+     空状态 / 越界中断；状态区分同时靠形状、线型与文字，不依赖单一颜色。 */
+  function bootTelemetry(){
+    var dash=$('#dash'); if(!dash) return;
+    var meta=$('#sitFlowMeta');
+    var thinking=$('#thinking');
+    var body=$('.dash__body');
+    var prev={sent:'',blocked:'',hit:'',round:''};
+    var blockedTimer=null;
+
+    function num(sel){ var e=$(sel); return e?e.textContent.trim():'0'; }
+    function phase(){
+      var st=dash.dataset.state||'idle';
+      /* run 期 thinking 全程可见，故用「是否已有轮次」区分建立链路与攻击发起：
+         第 1 轮 round.started 写入 #dRound 后才算攻击流真正开始推进。 */
+      var started=Number(num('#dRound'))>0;
+      if(st==='idle') return 'empty';
+      if(st==='run')  return started?'attack':'loading';
+      if(st==='hit')  return 'breach';
+      if(st==='degraded') return 'breach-degraded';
+      if(st==='nofind') return 'defended';
+      if(st==='oos') return 'flagged';
+      if(st==='cancel'||st==='error') return 'aborted';
+      return 'standby';
+    }
+    function flowText(p){
+      var s=num('#dSent'),b=num('#dBlocked'),h=num('#dHit'),r=num('#dRound');
+      var flow='ATTACK → WAF | 轮次 '+r+' · 投递 '+s+' · 拦截 '+b+' · 命中 '+h;
+      switch(p){
+        case 'empty':            return '待命 · 无数据流';
+        case 'loading':          return '建立链路 · 等待首轮响应';
+        case 'attack':           return flow;
+        case 'breach':           return 'ATTACK → TARGET | 命中路径已建立 · '+h+' 次命中';
+        case 'breach-degraded':  return 'ATTACK → TARGET | 命中路径（含降级轮）';
+        case 'defended':         return 'WAF 全量拦截 · 未建立命中路径 · '+b+' 次阻断';
+        case 'flagged':          return '越界 / 中断 · 纯模拟告警';
+        case 'aborted':          return '任务中断 · 链路已断开';
+        default:                 return flow;
+      }
+    }
+    function syncPhase(){
+      var p=phase();
+      if(dash.getAttribute('data-phase')!==p) dash.setAttribute('data-phase',p);
+      if(meta) meta.textContent=flowText(p);
+    }
+    /* 数据刷新：数字变化时一次性下划线扫过；拦截数增加时防线由虚转实短促反馈 */
+    function observeNumbers(){
+      [['#dSent','sent'],['#dBlocked','blocked'],['#dHit','hit'],['#dRound','round']].forEach(function(d){
+        var v=num(d[0]);
+        if(v===prev[d[1]]) return;
+        var grewBlocked=(d[1]==='blocked'&&Number(v)>Number(prev[d[1]]||0));
+        prev[d[1]]=v;
+        var el=$(d[0]); var cell=el&&el.closest?el.closest('.cell'):null;
+        if(cell){
+          cell.classList.remove('is-updated');
+          void cell.offsetWidth;                       // 强制重排以重启动画
+          cell.classList.add('is-updated');
+          (function(c){ setTimeout(function(){ c.classList.remove('is-updated'); },460); })(cell);
+        }
+        if(grewBlocked){
+          dash.classList.add('is-blocked');
+          clearTimeout(blockedTimer);
+          blockedTimer=setTimeout(function(){ dash.classList.remove('is-blocked'); },900);
+        }
+      });
+      syncPhase();
+    }
+    if('MutationObserver' in window){
+      /* 三个观察者都过滤了自身会写入的属性，避免回调递归 */
+      new MutationObserver(observeNumbers).observe(body||dash,
+        {childList:true,characterData:true,subtree:true});
+      new MutationObserver(syncPhase).observe(dash,{attributes:true,attributeFilter:['data-state']});
+      if(thinking) new MutationObserver(syncPhase).observe(thinking,{attributes:true,attributeFilter:['class']});
+    }
+    observeNumbers();   // 同步初始态（纯浏览回显终态时同样正确）
+  }
+
   /* ③a 证据页：从 Store 报告恢复逐轮表 + 结论 */
   function restoreRounds(report){
     var body=$('#roundBody'); if(!body) return;
@@ -196,7 +275,8 @@
     markNav();
     renderMetrics();
     if(page==='console')  bootConsole();
-    if(page==='monitor')  bootMonitor();
+    /* 先挂呈现层观察者，再让监控页消费意图 / 回显终态，确保全流程反馈都被捕捉 */
+    if(page==='monitor'){ bootTelemetry(); bootMonitor(); }
     if(page==='evidence') bootEvidence();
     if(page==='report')   bootReport();
     if(page==='history')  bootHistory();
