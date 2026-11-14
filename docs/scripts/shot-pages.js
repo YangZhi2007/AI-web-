@@ -1,8 +1,8 @@
-/* v0.18 SOC 攻防仪表 · 视觉存档截图
+/* v0.19 多巴胺撞色 · 视觉存档截图
  * 5 张：任务台 / 监控空状态 / 命中态 / 防御成功(未检出) / 证据链。
  * 注意：v0.17.2 起「仅点击开始分析才触发」，脚本等价触发方式为
  *       sessionStorage 同时写入 probe.cfg + probe.pendingRun='1'（监控页读即清除）。
- * 输出保留 v0.17 原图不动，作为改动对照证据。 */
+ * 输出名 v0.19；保留 v0.16 / v0.17 / v0.18 全部原图不动，作为改动对照证据。 */
 const { spawn } = require('child_process');
 const http = require('http');
 const fs = require('fs');
@@ -38,30 +38,30 @@ class CDP{
   await c.goto(fileUrl('console.html'));
   await c.eval(`sessionStorage.clear();`);
   await c.goto(fileUrl('console.html'));await sleep(400);
-  await c.shot('功能页-1440-v0.18-任务台.png');
+  await c.shot('功能页-1440-v0.19-任务台.png');
 
   // ② 监控页空状态（无 cfg / 无 pending / 无 report）
   await c.eval(`sessionStorage.clear();`);
   await c.goto(fileUrl('monitor.html'));await sleep(400);
   await c.scroll(260);   // 让引导空态与完整态势台同框
-  await c.shot('功能页-1440-v0.18-空状态.png');
+  await c.shot('功能页-1440-v0.19-空状态.png');
 
   // ③ 命中态（CONVERGE_3，等价一次真实点击）
   await c.arm('CONVERGE_3');
   await c.goto(fileUrl('monitor.html'));
   console.log('命中态终态:',await c.waitState('hit'));
-  await sleep(450);await c.scroll(260);await c.shot('功能页-1440-v0.18-命中态势.png');
+  await sleep(450);await c.scroll(260);await c.shot('功能页-1440-v0.19-命中态势.png');
 
   // ④ 防御成功 / 未检出（NO_CONVERGE 八轮全拦截）
   await c.arm('NO_CONVERGE');
   await c.goto(fileUrl('monitor.html'));
   console.log('未检出终态:',await c.waitState('nofind'));
-  await sleep(450);await c.scroll(260);await c.shot('功能页-1440-v0.18-防御成功.png');
+  await sleep(450);await c.scroll(260);await c.shot('功能页-1440-v0.19-防御成功.png');
 
   // ⑤ 证据链（回到命中报告，重新跑一次 CONVERGE_3 以留证据）
   await c.arm('CONVERGE_3');
   await c.goto(fileUrl('monitor.html'));
   console.log('证据链前置终态:',await c.waitState('hit'));
   await c.goto(fileUrl('evidence.html'));await sleep(400);
-  await c.shot('功能页-1440-v0.18-证据链.png');
+  await c.shot('功能页-1440-v0.19-证据链.png');
 }catch(e){console.error(e&&e.stack||e);process.exitCode=1;}finally{chrome.kill('SIGKILL');}})();

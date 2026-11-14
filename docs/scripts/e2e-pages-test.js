@@ -1,10 +1,12 @@
-/* v0.18 SOC 攻防仪表 · 端到端 CDP 验收
+/* v0.19 多巴胺撞色 · 端到端 CDP 验收
  * 用法：node docs/scripts/e2e-pages-test.js
  * 依赖：本机 Chrome + Node 22 全局 WebSocket（零 npm 依赖）。
  * 覆盖：菜单翻页 / 仅点击「开始分析」才触发（浏览·残留 cfg·刷新·跨页导航均不执行）/
- *       6 类终态 / 跨页数据恢复 / 克制冷静配色 / 攻防四段拓扑 / 数据流线型 /
- *       状态形状编码 / 呈现层阶段反馈 / 无溢出 / 44px 命中 / RM / 打印 / file:// 零外部请求。
- * 注：颜色断言按「亮度 / 色度语义」判定，不写死某个版本的 hex，避免换色即误报。*/
+ *       6 类终态 / 跨页数据恢复 / 明亮带色相底 + 主页四原色 + 逐页主色 / 攻防四段拓扑 /
+ *       数据流线型 / 状态形状编码 / 呈现层阶段反馈 / 无溢出 / 44px 命中 / RM / 打印 /
+ *       file:// 零外部请求。
+ * 注：颜色断言按「亮度 / 色度语义」判定（方向翻转 + 增加约束，不放宽阈值）；
+ *     唯一写死的是主页设计语言契约 --accent=#c8f560（非版本色值）。断言总数 61 → 62。*/
 const { spawn } = require('child_process');
 const http = require('http');
 const path = require('path');
@@ -97,7 +99,7 @@ class CDP {
       const navs=[...document.querySelectorAll('.mainnav a')].map(a=>a.textContent.trim());
       const tools=[...document.querySelectorAll('.tool')].map(a=>a.getAttribute('data-page'));
       const starts=getComputedStyle(document.querySelector('#startBtn')).backgroundColor;
-      /* 用临时元素解析 var(--key) 的最终色值，验证单一低饱和 accent（不再每页一色） */
+      /* 用临时元素解析 var(--key) 的最终色值（挂在 body 上，能读到逐页覆写） */
       const probe=document.createElement('span'); probe.style.color='var(--key)'; document.body.appendChild(probe);
       const keyRGB=getComputedStyle(probe).color; probe.remove();
       const rects=[...document.querySelectorAll('button,input,select,a.brand,.tool,.mainnav a')].map(e=>{const r=e.getBoundingClientRect();return {t:e.tagName+'.'+e.className,w:Math.round(r.width),h:Math.round(r.height)};});
@@ -105,9 +107,18 @@ class CDP {
       return {bg,accent,keyRGB,navs,tools,starts,under44,page:document.body.getAttribute('data-page')};
     })()`);
     ok('任务台 data-page=console', consoleInfo.page === 'console');
-    ok('亮底冷中性（非暗黑）', lumRGB(consoleInfo.bg) > 0.75, 'bg=' + consoleInfo.bg + ' L=' + lumRGB(consoleInfo.bg).toFixed(2));
-    ok('统一单一低饱和 accent（移除高饱和撞色）', !!consoleInfo.accent && chroma(consoleInfo.keyRGB) < 0.45,
-      'key=' + consoleInfo.keyRGB + ' chroma=' + chroma(consoleInfo.keyRGB).toFixed(2));
+    /* v0.19：亮底必须带色相（非暗黑 / 非冷灰），新增 chroma>0.03 比旧断言更严 */
+    ok('明亮带色相底（非暗黑 / 非冷灰）',
+       lumRGB(consoleInfo.bg) > 0.75 && chroma(consoleInfo.bg) > 0.03,
+       'bg=' + consoleInfo.bg + ' L=' + lumRGB(consoleInfo.bg).toFixed(2) +
+       ' chroma=' + chroma(consoleInfo.bg).toFixed(3));
+    /* v0.19：--accent 必须是主页原值 #c8f560；高饱和是特性，不再是「移除撞色」 */
+    const accentRaw = await c.eval(
+      `getComputedStyle(document.documentElement).getPropertyValue('--accent').trim().toLowerCase()`);
+    ok('复用主页四原色 + 逐页主色（高饱和，非单色）',
+       accentRaw === '#c8f560' && chroma(consoleInfo.keyRGB) > 0.45,
+       '--accent=' + accentRaw + ' key=' + consoleInfo.keyRGB +
+       ' chroma=' + chroma(consoleInfo.keyRGB).toFixed(2));
     ok('主导航 4 项', consoleInfo.navs.length === 4, consoleInfo.navs.join('/'));
     ok('工具区 3 个子页面', consoleInfo.tools.length === 3, consoleInfo.tools.join('/'));
     ok('1440 宽交互目标无 <44px', consoleInfo.under44.length === 0, JSON.stringify(consoleInfo.under44.slice(0, 4)));
@@ -175,7 +186,10 @@ class CDP {
     ok('命中关键路径高亮', parseFloat(mon.keyPath) >= 0.9, 'opacity=' + mon.keyPath);
     ok('状态灯文案 HIT', mon.stateTxt === 'HIT', mon.stateTxt);
     ok('运行面板 RUN COMPLETE', /RUN COMPLETE/.test(mon.runTxt), mon.runTxt.trim());
-    ok('态势台深色焦点（唯一深色区）', lumRGB(mon.bgDark) < 0.05, mon.bgDark + ' L=' + lumRGB(mon.bgDark).toFixed(3));
+    ok('态势台为明亮高饱和内容焦点（非深色区）',
+       lumRGB(mon.bgDark) > 0.7 && chroma(mon.bgDark) > 0.1,
+       mon.bgDark + ' L=' + lumRGB(mon.bgDark).toFixed(3) +
+       ' chroma=' + chroma(mon.bgDark).toFixed(3));
     ok('报告已跨页持久化', mon.hasReport === true);
     ok('历史已跨页持久化', mon.hasHistory >= 1, 'n=' + mon.hasHistory);
 
@@ -196,11 +210,13 @@ class CDP {
         flowMetaClipped:(()=>{const m=q('#sitFlowMeta');return m?m.scrollWidth>m.clientWidth+1:false})(),
         radius:card?getComputedStyle(card).borderRadius:'',
         shadow:card?getComputedStyle(card).boxShadow:'',
+        btnRadius:(()=>{const b=q('.btn-solid')||q('.btn-grad');
+                        return b?parseFloat(getComputedStyle(b).borderRadius):0;})(),
         stateShape:lamp?getComputedStyle(lamp,'::after').content:''
       };
     })()`);
     ok('攻防四段拓扑（攻击方/通道/防线/目标）', topo.labels===4 && topo.zones===4, 'labels='+topo.labels+' zones='+topo.zones);
-    ok('8 个方形轮次节点（移除圆润造型）', topo.nodeCount===8 && topo.allRect && topo.dataR==='1,2,3,4,5,6,7,8',
+    ok('8 个方形轮次节点（形状编码保留）', topo.nodeCount===8 && topo.allRect && topo.dataR==='1,2,3,4,5,6,7,8',
       'rect='+topo.allRect+' r='+topo.dataR);
     ok('三条流量通道线型各异（方向/路径可辨）', topo.flowKinds>=3, JSON.stringify(topo.flows));
     ok('WAF 防线 8 根 + 线型图例（状态不靠单色）', topo.barriers===8 && topo.legend>=5,
@@ -212,8 +228,10 @@ class CDP {
     const shadowNums=(String(topo.shadow).match(/(-?[\d.]+)px/g)||[]).map(s=>parseFloat(s));
     const hasOffsetShadow=shadowNums.length>=3 && shadowNums[2]===0 &&
       Math.abs(shadowNums[0])>=4 && Math.abs(shadowNums[1])>=4;
-    ok('近直角卡片 + 无实心偏移阴影', parseFloat(topo.radius)<=4 && !hasOffsetShadow,
-      'r='+topo.radius+' shadow='+topo.shadow);
+    ok('主页 pill 圆角对齐 + 无实心偏移阴影',
+       topo.btnRadius >= 20 && parseFloat(topo.radius) >= 8 &&
+       parseFloat(topo.radius) <= 16 && !hasOffsetShadow,
+       'btnR=' + topo.btnRadius + ' cardR=' + topo.radius + ' shadow=' + topo.shadow);
     ok('状态灯形状编码（非单一颜色区分）', typeof topo.stateShape==='string' && topo.stateShape!=='none',
       'shape='+topo.stateShape);
 
@@ -306,7 +324,7 @@ class CDP {
     const mob = await c.eval(`(()=>({sw:document.documentElement.scrollWidth,cw:document.documentElement.clientWidth}))()`);
     ok('390 宽无横向溢出', mob.sw <= mob.cw + 1, 'scrollW=' + mob.sw + ' clientW=' + mob.cw);
 
-    // ---- 9b. 各页主按钮文字对比度（运行时实测，WCAG）----
+    // ---- 9b. 各页主按钮文字对比度（运行时实测，WCAG）+ 逐页主色探针 ----
     const wcag = `function lum(hex){const h=hex.replace('#','');const c=[0,2,4].map(i=>parseInt(h.substr(i,2),16)/255).map(v=>v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4));return 0.2126*c[0]+0.7152*c[1]+0.0722*c[2];}
       function cr(a,b){const x=lum(a),y=lum(b);return (Math.max(x,y)+0.05)/(Math.min(x,y)+0.05);}
       function hexOf(rgb){const m=rgb.match(/\\d+/g);return m?'#'+m.slice(0,3).map(n=>(+n).toString(16).padStart(2,'0')).join(''):rgb;}`;
@@ -316,14 +334,26 @@ class CDP {
       await c.goto(fileUrl(p + '.html'));
       const r = await c.eval(`(()=>{ ${wcag}
         const b=document.querySelector('.btn-solid')||document.querySelector('.btn-grad');
-        if(!b) return null;
-        const cs=getComputedStyle(b);
-        const ratio=cr(hexOf(cs.color),hexOf(cs.backgroundColor));
-        return {page:'${p}',ratio:+ratio.toFixed(2),fg:cs.color,bg:cs.backgroundColor};
+        /* 三个工具子页没有主按钮：仍返回本页 --key 探针，保证 7 页全采样；
+           ratio 置 null，不参与按钮对比度判定（与 v0.18 语义一致） */
+        const cs=b?getComputedStyle(b):null;
+        const ratio=cs?cr(hexOf(cs.color),hexOf(cs.backgroundColor)):null;
+        /* v0.19：解析本页 --key 的最终色值（探针挂在 body 上才能读到 body[data-page] 覆写） */
+        const probe=document.createElement('span');
+        probe.style.color='var(--key)';document.body.appendChild(probe);
+        const key=getComputedStyle(probe).color;probe.remove();
+        return {page:'${p}',ratio:ratio===null?null:+ratio.toFixed(2),
+                fg:cs?cs.color:'',bg:cs?cs.backgroundColor:'',key:key};
       })()`);
       if (r) btnRatios.push(r);
     }
-    const badBtn = btnRatios.filter(r => r.ratio < 4.5);
+    /* v0.19 新增断言：7 页 --key 逐页主色互不相同且均为高饱和（加严：必须恰好采到 7 页） */
+    const pageKeys = btnRatios.map(r => r.key);
+    const PAGE7 = ['console','monitor','evidence','report','settings','history','about'];
+    ok('7 页 --key 逐页主色互不相同且均为高饱和',
+       pageKeys.length === 7 && new Set(pageKeys).size === 7 && pageKeys.every(k => chroma(k) > 0.45),
+       pageKeys.map((k,i) => PAGE7[i] + ':' + chroma(k).toFixed(2)).join(' '));
+    const badBtn = btnRatios.filter(r => r.ratio !== null && r.ratio < 4.5);
     ok('各页主按钮文字对比度 ≥4.5:1', badBtn.length === 0,
       btnRatios.map(r => r.page + ':' + r.ratio).join(' ') + (badBtn.length ? ' BAD=' + JSON.stringify(badBtn) : ''));
     await c.viewport(1440, 900);

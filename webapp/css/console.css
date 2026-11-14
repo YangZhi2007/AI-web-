@@ -1,112 +1,131 @@
 /* ============================================================================
-   PROBE / LAB · console.css · v0.18「SOC 攻防仪表 · 克制冷静 · 高对比」
+   PROBE / LAB · console.css · v0.19「多巴胺撞色 · 对齐主页设计语言」
    ----------------------------------------------------------------------------
-   取向（unslop 五线）
-     Product   隔离靶场逐轮自适应探测 WAF、每轮证据可回溯的演示控制台（答辩 / 评审）
-     Character 冷静 / 精密 / 可追溯
-     World     夜间安全运营中心（SOC）的示波台与网络拓扑图
-     Moments   ① 监控页「攻防拓扑态势台」：攻击方 → 流量通道 → WAF 防线 → 目标，
-                 轮次节点按轮点亮，是全站唯一信息密集焦点
-               ② 证据链「从 BLOCKED 到命中」的关键路径行
-     Signature 一条贯穿态势台的有向流轨（箭头 + 线型变化），只出现在态势区；
-               状态灯用方形 / 菱形 / 斜纹 / 双框编码，状态区分不依赖单一颜色
+   取向：继承主页 index.html 的设计语言 —— 酸柠绿 #c8f560 / 青 #4fe3d0 /
+     珊瑚 #ff6b6b / 亮黄 #f5c451 四原色、Roboto Condensed 压缩展示字、
+     52px pill 按钮、11px/.12em/uppercase mono 小标签、涟漪与圆形揭幕、
+     主页缓动与时长 token、内联线性 SVG 图标 —— 叠加明亮高饱和撞色表面。
+     不复制主页深墨底；不回退 v0.17（88px/800 巨标题、150px 巨页码、
+     8px 8px 0 实心偏移黑阴影、硬边切角、蓝紫七色轮转）。
 
-   纪律
-     4px 栅格；一个冷中性 Ink ramp + 三档文字 + 单一钢青 accent；
-     无 hue 渐变 / 渐变文字 / 发光 / 彩色阴影 / 径向色洗 / emoji / 感叹号；
-     无高饱和撞色、无实心偏移阴影、无巨型压缩字、无 clip-path 装饰；
-     字号 12/13/14/16/20/28/34，字重 400/500/600；正文对比度 ≥4.5:1；
-     圆角 2–4px（近直角）；动效只转场 color / background / border / opacity /
-     transform / stroke-dashoffset；44×44 命中、打印、reduced-motion 契约保留。
+   纪律（unslop）
+     撞色集中在内容时刻（页头编号徽标 / 卡片色块 / 8 态灯 / pill 主按钮 /
+     比例条 / 态势台拓扑与指标格），chrome（顶栏 / 面包屑 / 页脚）安静浅亮；
+     不新增渐变文字 / emoji / 无意义循环动画 / 彩色发光堆叠；
+     状态区分不依赖单一颜色；装饰不干扰信息主次。
+     亮四色只作填充（配 --accent-ink 深墨字）；文字 / 描边 / 形状剪影一律
+     用同色相深语义色（--sig-* / --st-* / --sit-* / --sit-cut），保 ≥4.5:1。
 
    兼容性
-     7 个页面全部 HTML 类名与 id 原样保留；--accent / --mag / --yel 等别名保留，
-     供 core.css 的 .pt / .ripple 与页面内联样式解析；8 态 data-state 选择器保留；
-     .sit__node[data-r] 由 console.js paintRail 双写 is-lit / is-degraded，结构不变。
+     7 个页面全部 HTML 类名与 id 原样保留；:root 现有 139 个自定义属性名
+     一个不删一个不改名（只改 :root 里的值），供 core.css 的 .pt / .ripple、
+     3 处内联 var(--accent) / var(--sig-alert) 与 8 态 data-state 选择器解析；
+     新增 13 个对齐主页的 token；7 条 body[data-page] 逐页主色覆写；
+     .sit__node[data-r] 由 console.js paintRail 双写 is-lit / is-degraded，
+     四段拓扑 / 8 方形节点 / 3 通道 / 8 防线 / 图例 / 读数 / 6 指标格一项不删；
+     reduced-motion 与 @media print 两段逐字保留（打印黑白输出豁免）。
    ============================================================================ */
 
 /* ---------- 1. Token ---------- */
 :root{
-  /* 冷中性 Ink ramp（页面主体：亮底、冷静、高对比） */
-  --n-bg:#EDF1F3; --n-surface:#F8FAFB; --n-raised:#E6ECEF; --n-sunken:#E1E8EB;
-  --n-line:rgba(16,28,36,.12); --n-line-2:rgba(16,28,36,.22); --n-line-3:rgba(16,28,36,.38);
-  --t-1:#101C24; --t-2:#40525E; --t-3:#536773;
+  /* 表面与 hairline：带色相浅亮底（非纯白 / 非冷灰 / 非深蓝灰） */
+  --n-bg:#F7FBE8; --n-surface:#FFFDF4; --n-raised:#F2F8DC; --n-sunken:#EDF6D2;
+  --n-line:rgba(16,33,10,.12); --n-line-2:rgba(16,33,10,.24); --n-line-3:rgba(16,33,10,.38);
+  --t-1:#16210E; --t-2:#3E4A2E; --t-3:#5A6647;
 
-  /* 单一 accent：钢青（低饱和），只用于主操作 / 选中 / 关键读数 */
-  --accent:#2A6C7E; --accent-ink:#1B4C5A; --accent-soft:rgba(42,108,126,.10);
-  --accent-line:rgba(42,108,126,.34);
+  /* 四强调：主页 index.css 原值逐字复用（亮填充色，其上文字用深墨） */
+  --accent:#c8f560; --accent-ink:#0a0c0f; --accent-soft:rgba(200,245,96,.12);
+  --accent-line:rgba(200,245,96,.45);
 
-  /* 语义色：压低饱和，只承载含义；同时由形状 / 线型 / 文字二次编码 */
-  --sig-ok:#3C7A61;      --sig-ok-soft:rgba(60,122,97,.10);      /* 命中 / 防御成功 */
-  --sig-block:#96694C;   --sig-block-soft:rgba(150,105,76,.10);  /* 拦截 */
-  --sig-alert:#9A5462;   --sig-alert-soft:rgba(154,84,98,.10);   /* 越界 / 告警 */
-  --sig-deg:#82702F;     --sig-deg-soft:rgba(130,112,47,.10);    /* 降级 */
-  --sig-err:#A0503F;     --sig-err-soft:rgba(160,80,63,.10);     /* 取消 / 异常 */
-  --sig-idle:#5C6F7A;                                             /* 待机 / 空态 */
+  /* 语义色 --sig-*：同色相深版，专供浅亮底上的文字 / 描边 / 边框 */
+  --sig-ok:#0B6E60;      --sig-ok-soft:rgba(11,110,96,.10);      /* 命中 / 防御成功 */
+  --sig-block:#7A5200;   --sig-block-soft:rgba(122,82,0,.10);   /* 拦截 */
+  --sig-alert:#B0232F;   --sig-alert-soft:rgba(176,35,47,.10);  /* 越界 / 告警 */
+  --sig-deg:#8A4B00;     --sig-deg-soft:rgba(138,75,0,.10);     /* 降级 */
+  --sig-err:#B0232F;     --sig-err-soft:rgba(176,35,47,.10);    /* 取消 / 异常 */
+  --sig-idle:#5A6647;                                            /* 待机 / 空态 */
 
-  /* 8 态：文字取深墨保证 ≥4.5:1；灯体取对应语义色但形状不同 */
-  --st-idle:var(--sig-idle); --st-run:var(--accent-ink); --st-hit:var(--sig-ok);
-  --st-nofind:var(--t-2); --st-deg:var(--sig-deg); --st-oos:var(--sig-alert);
-  --st-cancel:var(--sig-err); --st-error:var(--sig-err);
-  --dot-idle:var(--sig-idle); --dot-run:var(--accent); --dot-hit:var(--sig-ok);
-  --dot-nofind:var(--t-3); --dot-deg:var(--sig-deg); --dot-oos:var(--sig-alert);
-  --dot-cancel:var(--sig-err); --dot-error:var(--sig-err);
+  /* 8 态：--st-* 文字 / 读数取深语义；--dot-* 灯体填充取高饱和亮色 */
+  --st-idle:#5A6647; --st-run:#4A6B00; --st-hit:#0B6E60;
+  --st-nofind:#3E4A2E; --st-deg:#7A5200; --st-oos:#B0232F;
+  --st-cancel:#B0232F; --st-error:#B0232F;
+  --dot-idle:#5A6647; --dot-run:#c8f560; --dot-hit:#4fe3d0;
+  --dot-nofind:#5A6647; --dot-deg:#f5c451; --dot-oos:#ff6b6b;
+  --dot-cancel:#ff6b6b; --dot-error:#ff6b6b;
 
-  /* 态势台：全站唯一深色区，所有色彩都压低饱和，靠明度与线型区分 */
-  --sit-bg:#0A1218; --sit-panel:#101C24; --sit-raised:#14222B;
-  --sit-line:rgba(178,205,216,.12); --sit-line-2:rgba(178,205,216,.24);
-  --sit-txt:#B4C6D0; --sit-txt-dim:#8298A4;
-  --sit-atk:#6FA6B7;    /* 攻击链 / 攻击流 */
-  --sit-def:#A98C76;    /* WAF 防线 / 拦截 */
-  --sit-node:#8FB0BC;   /* 轮次节点 */
-  --sit-hit:#6FA98A;    /* 命中路径 */
-  --sit-deg:#A99A6C;    /* 降级刻痕 */
+  /* 态势台：亮底 + 深语义描边 + 深墨剪影（不再有深色大面积表面） */
+  --sit-bg:#EAF7CE; --sit-panel:#FFFDF4; --sit-raised:#F2F8DC;
+  --sit-line:rgba(16,33,10,.18); --sit-line-2:rgba(16,33,10,.34);
+  --sit-txt:#16210E; --sit-txt-dim:#3E4A2E;
+  --sit-atk:#B0232F;    /* 攻击链 / 攻击流（深珊瑚） */
+  --sit-def:#7A5200;    /* WAF 防线 / 拦截（深琥珀） */
+  --sit-node:#16210E;   /* 轮次节点描边 + 点亮填充（深橄榄墨） */
+  --sit-hit:#0B6E60;    /* 命中路径 / 关键路径（深青） */
+  --sit-deg:#8A4B00;    /* 降级刻痕 / 斜纹（深赭橙） */
+  --sit-cut:#16210E;    /* 【新增】形状剪影 / 刻痕 / 灯体描边专用深墨 */
 
-  /* 统一主色：不再「每页一色」，全站单一 accent */
+  /* 逐页主色基础层：--key-btn / --key-btn-ink 一律酸柠底 + 深墨字（不用白字） */
   --key:var(--accent); --key-ink:var(--accent-ink); --key-dim:var(--accent-soft);
-  --key-btn:var(--accent); --key-btn-ink:#FFFFFF;
+  --key-btn:var(--accent); --key-btn-ink:var(--accent-ink);
 
-  /* 节奏：一条缓动曲线 + 三档时长 */
-  --d-inst:140ms; --d-step:220ms; --d-state:360ms;
-  --ease:cubic-bezier(.22,1,.36,1);
+  /* 节奏：主页缓动曲线；v0.18 三档时长名保留其值（--d-state 必须 360ms，守住 E2E 时序） */
+  --d-inst:160ms; --d-step:220ms; --d-state:360ms;
+  --ease:cubic-bezier(.16,1,.3,1);
 
-  /* 形状：近直角（用户要求移除圆润造型），嵌套半径相加 */
-  --r:4px; --r-in:2px;
+  /* 形状：主页圆角（卡片 12px / 内层 8px / 按钮全 pill） */
+  --r:12px; --r-in:8px;
 
-  /* 字体：界面一套，等宽只用于数字 / 元信息；弃用压缩黑体 Bahnschrift */
+  /* 字体：压缩展示字只用于标题 / 按钮 / KPI 数值；中文正文保留系统界面字体 */
   --body:"Inter","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",system-ui,sans-serif;
-  --mono:"IBM Plex Mono","JetBrains Mono","Cascadia Code","SFMono-Regular","Consolas",ui-monospace,monospace;
-  --display:var(--body);
+  --mono:"Roboto Mono","Cascadia Mono","Consolas",monospace;
+  --display:"Roboto Condensed","RobotoCondensed","Bahnschrift SemiCondensed","DIN Condensed","Arial Narrow","PingFang SC","Microsoft YaHei","Noto Sans CJK SC",sans-serif;
 
-  /* ---- 兼容别名：core.css 的 .pt / .ripple 与页面内联样式仍引用这些名字 ---- */
+  /* ---- 兼容别名：core.css 的 .pt / .ripple 与页面内联样式仍引用这些名字（139 名全保留） ---- */
   --bg:var(--n-bg); --bg2:var(--n-sunken); --panel:var(--n-surface); --panel2:var(--n-raised);
   --panel3:var(--n-raised); --line:var(--n-line); --line2:var(--n-line-2); --line3:var(--n-line-3);
   --primary:var(--accent); --primary-ink:var(--accent-ink); --primary-soft:var(--accent-soft);
   --secondary:var(--t-2); --secondary-soft:var(--n-raised);
-  --barrier:var(--sig-ok); --barrier-ink:var(--sig-ok); --barrier-soft:var(--sig-ok-soft);
-  --alert:var(--sig-alert); --alert-ink:var(--sig-alert); --alert-soft:var(--sig-alert-soft);
-  --danger:var(--sig-err); --danger-ink:var(--sig-err); --danger-soft:var(--sig-err-soft);
-  --warn:var(--sig-deg); --warn-ink:var(--sig-deg); --warn-soft:var(--sig-deg-soft);
+  --barrier:var(--sig-ok); --barrier-ink:#0B6E60; --barrier-soft:var(--sig-ok-soft);
+  --alert:var(--sig-alert); --alert-ink:#B0232F; --alert-soft:var(--sig-alert-soft);
+  --danger:#ff6b6b; --danger-ink:#B0232F; --danger-soft:rgba(255,107,107,.12);
+  --warn:#f5c451; --warn-ink:#7A5200; --warn-soft:rgba(245,196,81,.14);
   --cyan:var(--accent); --cyan-ink:var(--accent-ink); --cyan-dim:var(--accent-soft);
-  --mag:var(--sig-alert); --mag-ink:var(--sig-alert); --mag-dim:var(--sig-alert-soft);
-  --yel:var(--sig-deg); --yel-ink:var(--sig-deg); --yel-dim:var(--sig-deg-soft);
-  --blu:var(--accent); --blu-ink:var(--accent-ink); --blu-dim:var(--accent-soft);
-  --verm:var(--sig-err); --verm-ink:var(--sig-err); --verm-dim:var(--sig-err-soft);
-  --vio:var(--accent); --vio-ink:var(--accent-ink); --vio-dim:var(--accent-soft);
-  --grn:var(--sig-ok); --grn-ink:var(--sig-ok); --grn-dim:var(--sig-ok-soft);
-  --green:var(--sig-ok); --green2:var(--sig-ok); --blue:var(--accent); --red:var(--sig-err);
-  --red-ink:var(--sig-err); --yellow:var(--sig-deg); --lime:var(--sig-deg); --violet:var(--accent);
-  --violet-ink:var(--accent-ink); --accent-2:var(--sig-ok); --accent2-soft:var(--sig-ok-soft);
-  --accent2-ink:var(--sig-ok); --ink-on-alert:#FFFFFF;
-  --micro:var(--d-inst); --d-fast:var(--d-step); --slow:var(--d-state);
+  --mag:var(--sig-alert); --mag-ink:#B0232F; --mag-dim:var(--sig-alert-soft);
+  --yel:var(--sig-deg); --yel-ink:#8A4B00; --yel-dim:var(--sig-deg-soft);
+  --blu:var(--accent-2); --blu-ink:#0B6E60; --blu-dim:var(--accent2-soft);
+  --verm:var(--sig-err); --verm-ink:#B0232F; --verm-dim:var(--sig-err-soft);
+  --vio:var(--accent-2); --vio-ink:#0B6E60; --vio-dim:var(--accent2-soft);
+  --grn:var(--sig-ok); --grn-ink:#0B6E60; --grn-dim:var(--sig-ok-soft);
+  --green:var(--sig-ok); --green2:var(--sig-ok); --blue:var(--accent-2); --red:var(--sig-err);
+  --red-ink:#B0232F; --yellow:var(--sig-deg); --lime:var(--sig-deg); --violet:var(--accent-2);
+  --violet-ink:#0B6E60; --accent-2:#4fe3d0; --accent2-soft:rgba(79,227,208,.12);
+  --accent2-ink:#0B6E60; --ink-on-alert:#0a0c0f;
+  --micro:var(--d-fast); --d-fast:.16s; --slow:var(--d-state);
   --grid-line:var(--sit-line);
   --ink:var(--t-1); --ink-2:var(--t-2); --ink-3:var(--t-3);
   --card:var(--n-surface); --card-2:var(--n-sunken); --paper:var(--n-bg);
   --hair:var(--n-line); --hair-2:var(--n-line-2); --grid:var(--n-line);
+
+  /* ---- v0.19 新增 13 个对齐主页的 token（单值源，均指向基础 token） ---- */
+  --bg-2:var(--n-sunken); --surface:var(--n-surface); --surface-2:var(--n-raised);
+  --line-2:var(--n-line-2); --line-3:var(--n-line-3);
+  --r-sm:8px; --r-pill:9999px;
+  --ease-2:cubic-bezier(.45,0,.1,1);
+  --d:.5s; --d-slow:1s; --d-loop:22s;
+  --display-cn:var(--display);
 }
-/* 保留 body[data-page] 钩子（脚本 / 未来扩展可读），但不再切换配色 —— 统一规范 */
-body[data-page]{ --key:var(--accent); --key-ink:var(--accent-ink); --key-dim:var(--accent-soft);
-                 --key-btn:var(--accent); --key-btn-ink:#FFFFFF; }
+
+/* ---------- 1.1 逐页主色（7 条 body[data-page] 覆写） ----------
+   四主流程页用主页四原色，三子页用同族高饱和衍生；chroma 全部 >0.45 且 7 页互不相同。
+   --key-btn / --key-btn-ink 成对给出：按 PRD §4.3「primary 一律酸柠底深墨字」，7 页统一酸柠底；
+   --key 只做页面身份编码，由下方 12+ 处 var(--key) 引用点承载。 */
+body[data-page="console"]  { --key:#c8f560; --key-ink:#0a0c0f; --key-dim:rgba(200,245,96,.12);  --key-btn:#c8f560; --key-btn-ink:#0a0c0f; }
+body[data-page="monitor"]  { --key:#4fe3d0; --key-ink:#0a0c0f; --key-dim:rgba(79,227,208,.12);  --key-btn:#c8f560; --key-btn-ink:#0a0c0f; }
+body[data-page="evidence"] { --key:#f5c451; --key-ink:#0a0c0f; --key-dim:rgba(245,196,81,.12);  --key-btn:#c8f560; --key-btn-ink:#0a0c0f; }
+body[data-page="report"]   { --key:#ff6b6b; --key-ink:#0a0c0f; --key-dim:rgba(255,107,107,.12); --key-btn:#c8f560; --key-btn-ink:#0a0c0f; }
+body[data-page="settings"] { --key:#A9DF3C; --key-ink:#0a0c0f; --key-dim:rgba(169,223,60,.12);  --key-btn:#c8f560; --key-btn-ink:#0a0c0f; }
+body[data-page="history"]  { --key:#2FC9B4; --key-ink:#0a0c0f; --key-dim:rgba(47,201,180,.12);  --key-btn:#c8f560; --key-btn-ink:#0a0c0f; }
+body[data-page="about"]    { --key:#F5A623; --key-ink:#0a0c0f; --key-dim:rgba(245,166,35,.12);  --key-btn:#c8f560; --key-btn-ink:#0a0c0f; }
 
 /* ---------- 2. 基础 ---------- */
 *{box-sizing:border-box}
@@ -114,23 +133,27 @@ html{overflow-x:clip;background:var(--n-bg)}
 html,body{margin:0;padding:0}
 body{background:var(--n-bg);color:var(--t-1);min-height:100vh;min-height:100dvh;overflow-x:clip;
   font:400 14px/1.6 var(--body),sans-serif;position:relative}
+/* 单层双 radial 氛围层：等价主页 index.css:69-87，不新增第三层、不复制 .halo */
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.7;
+  background:radial-gradient(52% 46% at 74% 30%,var(--accent-soft) 0%,transparent 72%),
+             radial-gradient(44% 42% at 10% 94%,var(--accent2-soft) 0%,transparent 72%)}
 button,input,select{font:inherit;color:inherit}
 a{color:inherit;text-decoration:none}
 button{cursor:pointer;min-height:44px}
 input,select{min-height:44px}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .hidden{display:none !important}
 .mono{font-family:var(--mono),monospace;font-variant-numeric:tabular-nums}
-.lbl{font:500 13px/1.5 var(--mono);letter-spacing:.01em;color:var(--t-2)}
-.eyebrow{font:500 12px/1.4 var(--mono);letter-spacing:.02em;color:var(--t-3);text-transform:none;margin:0 0 12px}
-.hint{font-size:13px;color:var(--t-2);line-height:1.7;margin:12px 0 0}
+.lbl{font:500 11px/1.5 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.eyebrow{font:500 11px/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin:0 0 12px}
+.hint{font-size:13px;color:var(--ink-2);line-height:1.7;margin:12px 0 0}
 
 /* ---------- 3. 顶栏 + 菜单（真翻页，入口一个不删） ---------- */
 .wrap{max-width:1440px;margin:0 auto;padding:0 32px}
 .topbar{display:flex;align-items:center;gap:24px;min-height:64px;border-bottom:1px solid var(--n-line-2)}
 .brand{display:inline-flex;align-items:center;gap:10px;min-height:44px;white-space:nowrap;
   font:600 16px/1 var(--body);letter-spacing:.01em;color:var(--t-1)}
-.brand i{width:10px;height:10px;background:var(--accent);display:block;flex:none}
+.brand i{width:12px;height:12px;background:var(--accent);border-radius:2px;display:block;flex:none}
 .mainnav{display:flex;align-items:stretch;gap:0;margin-left:8px}
 .mainnav a{position:relative;display:inline-flex;align-items:center;min-height:56px;padding:0 16px;
   font:500 14px/1 var(--body);color:var(--t-2);border-bottom:2px solid transparent;
@@ -151,32 +174,35 @@ input,select{min-height:44px}
   font:500 12px/1 var(--mono);color:var(--t-2)}
 .net .dots{display:inline-flex;gap:3px}.net .dots i{width:5px;height:5px;background:var(--sig-ok);display:block}
 
-/* ---------- 4. 页头：去掉巨型压缩字与淡化巨页码 ---------- */
+/* ---------- 4. 页头：压缩展示字只用于标题，不恢复 88px/800 巨标题 ---------- */
 .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:32px;padding:32px 0 24px;
   border-bottom:1px solid var(--n-line)}
 .page-head__main{min-width:0}
-.page-title{margin:0;font:500 32px/1.2 var(--body);letter-spacing:-.01em;color:var(--t-1);
+.page-title{margin:0;font:500 32px/1.2 var(--display-cn);letter-spacing:-.01em;color:var(--t-1);
   display:flex;align-items:center;gap:12px}
-.page-title .dash{display:inline-block;width:4px;height:24px;background:var(--accent);flex:none}
+.page-title .dash{display:inline-block;width:4px;height:24px;background:var(--key);flex:none}
 .page-sub{max-width:64ch;margin:12px 0 0;font-size:14px;color:var(--t-2);line-height:1.7}
-.page-no{font:500 12px/1 var(--mono);color:var(--t-3);border:1px solid var(--n-line);
-  padding:8px 10px;border-radius:var(--r-in);user-select:none;flex:none;white-space:nowrap}
+/* 编号徽标：逐页主色填充 + 深墨字 + pill，与主页品牌方点同源 */
+.page-no{font:500 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;
+  color:var(--key-ink);background:var(--key);border:1px solid var(--key);border-radius:var(--r-pill);
+  padding:8px 14px;user-select:none;flex:none;white-space:nowrap}
 .crumb{display:flex;align-items:center;gap:10px;margin:16px 0 0;font:500 12px/1 var(--mono);color:var(--t-3)}
 .crumb b{color:var(--t-1);font-weight:500}
 .crumb span{width:14px;height:1px;background:var(--n-line-3)}
 
-/* ---------- 5. 卡片：hairline + 极淡中性阴影，无偏移实心底 ---------- */
+/* ---------- 5. 卡片：hairline + 极淡中性阴影，无实心偏移阴影 ---------- */
 .card{background:var(--n-surface);border:1px solid var(--n-line);border-radius:var(--r);padding:24px;
-  box-shadow:0 1px 2px rgba(16,28,36,.04)}
-.card--key{border-left:2px solid var(--accent)}
-.card--shadow{box-shadow:0 1px 2px rgba(16,28,36,.05)}
-.card-title{font:500 13px/1.4 var(--mono);letter-spacing:.01em;color:var(--t-2);text-transform:none;
+  box-shadow:0 1px 2px rgba(16,33,10,.05)}
+.card--key{border-left:2px solid var(--key)}
+.card--shadow{box-shadow:0 1px 2px rgba(16,33,10,.05)}
+.card-title{font:500 11px/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);
   margin:0 0 20px;padding-bottom:12px;border-bottom:1px solid var(--n-line);display:flex;align-items:center;gap:10px}
-.card-title::before{content:"";width:2px;height:13px;background:var(--accent);display:block;flex:none}
+.card-title::before{content:"";width:2px;height:13px;background:var(--key);display:block;flex:none}
 .grid-2{display:grid;grid-template-columns:1.5fr 1fr;gap:20px;align-items:start}
 .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-/* 页面内联的 6px 彩色左边框统一收敛为 2px hairline（不改 HTML，覆盖内联样式） */
-.card[style*="border-left"],.boundary-card[style*="border-top"]{border-left-width:2px !important;border-left-style:solid}
+/* 页面内联的彩色左边框统一收敛为 2px hairline 并跟随逐页主色（不改 HTML，覆盖内联样式） */
+.card[style*="border-left"],.boundary-card[style*="border-top"]{border-left-width:2px !important;
+  border-left-style:solid !important;border-left-color:var(--key) !important}
 
 .boundary-card{background:var(--n-surface);border:1px solid var(--n-line);border-top:2px solid var(--sig-alert);
   border-radius:var(--r);padding:24px}
@@ -185,20 +211,23 @@ input,select{min-height:44px}
 .boundary-card ul{margin:0;padding-left:20px}.boundary-card li{font-size:13px;color:var(--t-2);margin:8px 0;line-height:1.7}
 .boundary-card__foot{margin:16px 0 0;font-size:12px;color:var(--t-3);border-top:1px solid var(--n-line);padding-top:12px}
 
-/* ---------- 6. 按钮：统一尺寸 / 圆角 / 对比度，无位移阴影 ---------- */
+/* ---------- 6. 按钮：收敛到主页 .btn 规格（52px / pill / 压缩展示字 / 酸柠底深墨字） ---------- */
 .btn-solid,.btn-ghost,.btn-grad{display:inline-flex;align-items:center;justify-content:center;gap:10px;
-  min-height:44px;padding:0 20px;border-radius:var(--r-in);font:500 14px/1 var(--body);
-  transition:background var(--d-inst),color var(--d-inst),border-color var(--d-inst),transform var(--d-inst)}
+  min-height:52px;padding:0 30px;border-radius:var(--r-pill);font:600 16px/1 var(--display-cn);letter-spacing:.02em;
+  transition:transform var(--d-fast) var(--ease),box-shadow var(--d-fast) var(--ease),
+             background var(--d-fast) var(--ease),color var(--d-fast) var(--ease),border-color var(--d-fast) var(--ease)}
 .btn-solid{background:var(--key-btn);color:var(--key-btn-ink);border:1px solid var(--key-btn)}
-.btn-solid:not(:disabled):hover{background:var(--accent-ink)}
-.btn-solid:not(:disabled):active{transform:translateY(1px)}
-.btn-solid:disabled{opacity:.45;cursor:not-allowed}
-.btn-ghost{background:var(--n-surface);color:var(--t-1);border:1px solid var(--n-line-2)}
-.btn-ghost:hover{border-color:var(--accent-line);background:var(--n-raised)}
+.btn-solid:not(:disabled):hover{transform:translateY(-3px);box-shadow:0 12px 34px rgba(200,245,96,.3)}
+.btn-solid:not(:disabled):active{transform:translateY(-1px) scale(.98)}
+.btn-solid:disabled{opacity:.4;cursor:not-allowed}
+.btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--line-2)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--ink);box-shadow:inset 0 0 0 1px var(--accent-soft)}
 .btn-grad{background:var(--key-btn);color:var(--key-btn-ink);border:1px solid var(--key-btn)}
-.btn-grad:hover{background:var(--accent-ink)}
+.btn-grad:hover{transform:translateY(-3px);box-shadow:0 12px 34px rgba(200,245,96,.3)}
 .btn-back{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;color:var(--t-2);font:500 12px/1 var(--mono)}
 .btn-back:hover{color:var(--accent-ink)}
+/* 覆盖 monitor.html:161 内联 min-height:36px，守住 44×44 契约（不改 HTML） */
+.btn-ghost[style*="min-height"]{min-height:52px !important}
 /* 供脚本触发 data-nav 过渡的隐藏链接：占位但不可见、不占交互，仍可被 .click() 调用 */
 .nav-trigger{position:absolute;width:0;height:0;overflow:hidden;opacity:0;pointer-events:none}
 
@@ -219,7 +248,7 @@ input[type=text]::placeholder{color:var(--t-3)}
   transition:background var(--d-inst),border-color var(--d-inst)}
 .checks input[type=checkbox]:checked{background:var(--accent);border-color:var(--accent)}
 .checks input[type=checkbox]:checked::after{content:"";position:absolute;left:14px;top:9px;width:10px;height:18px;
-  border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+  border:solid var(--accent-ink);border-width:0 2px 2px 0;transform:rotate(45deg)}
 .checks .lbl{font-weight:400}
 .actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:24px}
 .actions .btn-solid{min-width:160px}
@@ -231,34 +260,34 @@ input[type=text]::placeholder{color:var(--t-3)}
 #msg.err{color:var(--sig-err)}#msg.warn{color:var(--sig-deg)}#msg.ok{color:var(--sig-ok)}
 .auth-hint{margin-top:12px}
 
-/* ---------- 8. 指标条 / KPI：数字为主，去色条与装饰 ---------- */
+/* ---------- 8. 指标条 / KPI：数字用压缩展示字，顶边跟随逐页主色 ---------- */
 .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--n-line);border-radius:var(--r);
   background:var(--n-surface);margin-top:24px;overflow:hidden}
 .metrics>div{padding:20px 24px;border-right:1px solid var(--n-line);position:relative}
 .metrics>div:last-child{border-right:0}
 .metrics .lbl{display:block;margin-bottom:8px}
-.metrics b{font:500 32px/1 var(--mono);color:var(--t-1);font-variant-numeric:tabular-nums}
-.metrics>div::after{content:"";position:absolute;left:0;top:0;width:100%;height:2px;background:var(--accent);opacity:.5}
+.metrics b{font:500 32px/1 var(--display);color:var(--t-1);font-variant-numeric:tabular-nums}
+.metrics>div::after{content:"";position:absolute;left:0;top:0;width:100%;height:2px;background:var(--key);opacity:.5}
 .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.kpi{background:var(--n-surface);border:1px solid var(--n-line);border-top:2px solid var(--k,var(--accent));border-radius:var(--r);padding:18px 20px}
+.kpi{background:var(--n-surface);border:1px solid var(--n-line);border-top:2px solid var(--k,var(--key));border-radius:var(--r);padding:18px 20px}
 .kpi .lbl{display:block}
-.kpi b{display:block;margin-top:8px;font:500 28px/1 var(--mono);font-variant-numeric:tabular-nums}
+.kpi b{display:block;margin-top:8px;font:500 28px/1 var(--display);font-variant-numeric:tabular-nums}
 
-/* ---------- 9. 攻防态势台（全站唯一深色区，信息主次的核心） ---------- */
+/* ---------- 9. 攻防态势台（明亮高饱和内容焦点，信息主次的核心） ---------- */
 .stage{margin-top:32px}
 .stage-head{display:flex;align-items:center;gap:16px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--n-line-2)}
-.stage-no{flex:none;min-width:40px;font:500 16px/1 var(--mono);color:var(--t-3)}
+.stage-no{flex:none;min-width:40px;font:500 16px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--t-3)}
 .stage-meta{flex:1;min-width:0}
 .stage-title{margin:0;font:500 16px/1.3 var(--body);color:var(--t-1)}
-.stage-kicker{font:500 12px/1 var(--mono);color:var(--t-3);margin-left:10px;letter-spacing:.01em}
+.stage-kicker{font:500 12px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--t-3);margin-left:10px}
 .stage-desc{margin:6px 0 0;font-size:13px;color:var(--t-2);line-height:1.6}
-.stage-tag{flex:none;font:500 11px/1 var(--mono);padding:8px 10px;border:1px solid var(--n-line-2);
+.stage-tag{flex:none;font:500 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;padding:8px 10px;border:1px solid var(--n-line-2);
   border-radius:var(--r-in);color:var(--t-2);background:var(--n-surface)}
-.stage-tag--key{background:var(--n-raised);color:var(--t-1);border-color:var(--n-line-2)}
+.stage-tag--key{background:var(--key);color:var(--key-ink);border-color:var(--key)}
 
 .dash{position:relative;background:var(--sit-bg);border:1px solid var(--sit-line-2);border-radius:var(--r);
   color:var(--sit-txt);overflow:hidden}
-/* 网格只出现在态势台内，且极淡：不干扰攻防信息主次 */
+/* 网格只出现在态势台内，且极淡：不干扰攻防信息主次（深墨 hairline 亮底上仍可见） */
 .dash::before{content:"";position:absolute;inset:0;pointer-events:none;
   background-image:linear-gradient(var(--sit-line) 1px,transparent 1px),linear-gradient(90deg,var(--sit-line) 1px,transparent 1px);
   background-size:40px 40px;opacity:.45}
@@ -291,22 +320,22 @@ input[type=text]::placeholder{color:var(--t-3)}
 .sit__barrier{stroke:var(--sit-def);stroke-width:2;stroke-dasharray:3 5;opacity:.4;
   transition:stroke-dasharray var(--d-state),opacity var(--d-state),stroke var(--d-state)}
 .sit__target{fill:none;stroke:var(--sit-txt-dim);stroke-width:1.5;opacity:.7}
-/* 轮次节点：方形（移除圆润造型），空心 / 实心 / 斜纹 / 双框四态 */
-.sit__node{fill:var(--sit-bg);stroke:var(--sit-node);stroke-width:1.5;opacity:.5;
+/* 轮次节点：方形，暖奶油空心 / 深墨实心 / 斜纹 / 双框四态（空心↔实心形状编码更强） */
+.sit__node{fill:var(--sit-panel);stroke:var(--sit-node);stroke-width:1.5;opacity:.5;
   transition:fill var(--d-step),opacity var(--d-step),transform var(--d-step),stroke var(--d-step);
   transform-box:fill-box;transform-origin:center}
 .sit__node.is-lit{fill:var(--sit-node);opacity:1;transform:scale(1.12)}
 .sit__node.is-degraded{stroke:var(--sit-deg);stroke-dasharray:2 2}
-/* 命中关键路径：贯穿攻击方到目标，命中态才出现 */
+/* 命中关键路径：贯穿攻击方到目标，命中态才出现（--d-state 保持 360ms，守住 E2E 采样时序） */
 .sit__path--key{fill:none;stroke:var(--sit-hit);stroke-width:2;opacity:0;
   transition:opacity var(--d-state),stroke-dasharray var(--d-state)}
-/* 拓扑分区文字标签（HTML 层，避免 SVG 拉伸变形） */
+/* 拓扑分区文字标签（HTML 层）：态势台内只翻色，不加 .12em（守住 flowMeta 不截断契约） */
 .sit__labels{position:absolute;left:0;right:0;top:0;display:grid;
   grid-template-columns:28% 28% 30% 14%;height:20px;z-index:1}
 .sit__label{font:500 12px/20px var(--mono);letter-spacing:.01em;color:var(--sit-txt-dim);white-space:nowrap;overflow:hidden}
 .sit__label--atk{color:var(--sit-atk)}
 .sit__label--def{color:var(--sit-def)}
-/* 图例：线型 + 文字，保证状态区分不依赖单一颜色 */
+/* 图例：线型 + 文字，保证状态区分不依赖单一颜色（字距保持紧凑） */
 .sit__legend{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
   height:22px;padding-right:280px;font:500 11px/1 var(--mono);color:var(--sit-txt-dim);z-index:1}
 .sit__legend-item{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
@@ -314,14 +343,14 @@ input[type=text]::placeholder{color:var(--t-3)}
 .sit__legend-item .lg-solid{background:var(--sit-atk)}
 .sit__legend-item .lg-dash{background:repeating-linear-gradient(90deg,var(--sit-def) 0 3px,transparent 3px 6px)}
 .sit__legend-item .lg-thick{height:3px;background:var(--sit-hit)}
-.sit__legend-item .lg-node{width:8px;height:8px;background:var(--sit-node);border:1px solid var(--sit-bg)}
+.sit__legend-item .lg-node{width:8px;height:8px;background:var(--sit-panel);border:1px solid var(--sit-cut)}
 .sit__legend-item .lg-deg{width:8px;height:8px;background:transparent;border:1px dashed var(--sit-deg)}
 .sit__flowmeta{position:absolute;right:0;bottom:0;max-width:272px;overflow:hidden;text-overflow:ellipsis;
   font:500 11px/22px var(--mono);color:var(--sit-txt);white-space:nowrap;text-align:right;z-index:1}
 /* 越界 / 中断告警带：斜纹 + 文字，不靠单一红色 */
 .fx-intrusion{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;gap:10px;padding:8px 20px;
-  background:repeating-linear-gradient(135deg,rgba(154,84,98,.18) 0 8px,transparent 8px 16px);
-  border-top:1px solid var(--sig-alert);color:#E2C4CB;font:500 11px/1.4 var(--mono);letter-spacing:.02em;
+  background:repeating-linear-gradient(135deg,rgba(176,35,47,.16) 0 8px,transparent 8px 16px);
+  border-top:1px solid var(--sig-alert);color:var(--st-oos);font:500 11px/1.4 var(--mono);letter-spacing:.02em;
   opacity:0;transform:translateY(100%);transition:opacity var(--d-state),transform var(--d-state)}
 .fx-intrusion i{width:6px;height:6px;background:currentColor;display:block;flex:none}
 .fx-intrusion i:nth-child(2){opacity:.6}.fx-intrusion i:nth-child(3){opacity:.3}
@@ -330,29 +359,29 @@ input[type=text]::placeholder{color:var(--t-3)}
 .dash__head .lbl{color:var(--sit-txt-dim);opacity:1;letter-spacing:.02em;font-size:12px}
 .dash__state{display:inline-flex;align-items:center;gap:10px;font:500 13px/1 var(--mono);color:var(--st-idle);
   transition:color var(--d-inst)}
-/* 状态灯：12px 方形 + 形状编码，颜色只是第二通道 */
+/* 状态灯：12px 方形 + 形状编码，颜色只是第二通道（基础描边恒定深墨，亮底上必可见） */
 .dash__state i{position:relative;width:12px;height:12px;background:transparent;
-  border:2px solid var(--dot-idle);display:block;flex:none;
+  border:2px solid var(--sit-cut);display:block;flex:none;
   transition:background var(--d-inst),border-color var(--d-inst),transform var(--d-inst)}
 .dash__body{position:relative;display:grid;grid-template-columns:minmax(240px,300px) 1fr;gap:24px;padding:8px 20px 20px}
-/* 态势台内所有 .lbl 必须切到深底文字色，否则浅色主题墨色在深底上不足 4.5:1 */
+/* 态势台内所有 .lbl 切到亮底文字色（深墨，8.41:1） */
 .gauge .lbl,.dash__body .lbl{color:var(--sit-txt-dim)}
 .gauge__num{display:flex;align-items:baseline;gap:8px;margin:6px 0 14px}
-.gauge__num b{font:500 40px/1 var(--mono);color:#E4EEF2;font-variant-numeric:tabular-nums}
+.gauge__num b{font:500 40px/1 var(--mono);color:var(--ink);font-variant-numeric:tabular-nums}
 .gauge__num .cap{font:500 13px/1 var(--mono);color:var(--sit-txt-dim)}
 .rail{display:flex;gap:4px;margin-bottom:10px}
 .rail i{flex:1;min-width:0;height:26px;display:flex;align-items:center;justify-content:center;
   font:500 11px/1 var(--mono);color:var(--sit-txt-dim);background:transparent;
   border:1px solid var(--sit-line-2);border-radius:0;
   transition:background var(--d-step),border-color var(--d-step),color var(--d-step)}
-.rail i.on{background:var(--sit-node);border-color:var(--sit-node);color:var(--sit-bg)}
+.rail i.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .rail i.deg{background:transparent;border-color:var(--sit-deg);border-style:dashed;color:var(--sit-deg)}
 .rail i.cur{border-color:var(--sit-atk);border-style:dashed}
 .gauge__foot{display:flex;justify-content:space-between;font:500 11px/1 var(--mono);color:var(--sit-txt-dim)}
 .matrix{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;align-content:start}
 .cell{position:relative;background:var(--sit-panel);border:1px solid var(--sit-line);border-radius:var(--r-in);padding:12px}
 .cell .lbl{color:var(--sit-txt-dim);opacity:1;font-size:11px;letter-spacing:.01em}
-.cell__val b{display:block;margin:8px 0;font:500 26px/1 var(--mono);color:#E4EEF2;font-variant-numeric:tabular-nums}
+.cell__val b{display:block;margin:8px 0;font:500 26px/1 var(--mono);color:var(--ink);font-variant-numeric:tabular-nums}
 .cell__note{font:500 11px/1 var(--mono);color:var(--sit-txt-dim)}
 .meter{display:block;height:3px;margin:10px 0 8px;background:var(--sit-line);border-radius:0;overflow:hidden}
 .meter i{display:block;height:100%;width:0;background:var(--sit-atk);transition:width var(--d-state) var(--ease)}
@@ -367,28 +396,30 @@ input[type=text]::placeholder{color:var(--t-3)}
   animation:refreshSweep 420ms var(--ease) 1 forwards}
 @keyframes refreshSweep{from{transform:scaleX(0);transform-origin:left}to{transform:scaleX(1);transform-origin:left;opacity:0}}
 
-/* 9.2 八态：颜色 + 形状双编码 —— 色觉障碍下仍可区分 */
-.dash[data-state="idle"] .dash__state{color:var(--sit-txt)}
-.dash[data-state="idle"] .dash__state i{border-color:var(--dot-idle);background:transparent}
-.dash[data-state="run"] .dash__state{color:#CFE3EA}
-.dash[data-state="run"] .dash__state i{background:var(--dot-run);border-color:var(--dot-run);animation:stateTick 1.4s var(--ease) infinite}
+/* 9.2 八态：颜色 + 形状双编码 —— 色觉障碍下仍可区分。
+     文字 → --st-* 深语义；灯体填充 → --dot-* 高饱和亮色；所有描边与刻痕 → --sit-cut 深墨。
+     8 个 data-state 选择器一条不动，形状 / 线型 / 文字三通道全保留。 */
+.dash[data-state="idle"] .dash__state{color:var(--st-idle)}
+.dash[data-state="idle"] .dash__state i{border-color:var(--sit-cut);background:transparent}
+.dash[data-state="run"] .dash__state{color:var(--st-run)}
+.dash[data-state="run"] .dash__state i{background:var(--dot-run);border-color:var(--sit-cut);animation:stateTick 1.4s var(--ease) infinite}
 @keyframes stateTick{0%,100%{opacity:1}50%{opacity:.35}}
-.dash[data-state="hit"] .dash__state{color:#BFE0D0}
-.dash[data-state="hit"] .dash__state i{background:var(--dot-hit);border-color:var(--dot-hit)}
-.dash[data-state="hit"] .dash__state i::after{content:"";position:absolute;left:1px;right:1px;top:3px;height:2px;background:var(--sit-bg)}
-.dash[data-state="nofind"] .dash__state{color:#CFE3EA}
-.dash[data-state="nofind"] .dash__state i{border-color:var(--dot-nofind);background:transparent}
-.dash[data-state="nofind"] .dash__state i::after{content:"";position:absolute;left:-2px;top:3px;width:12px;height:2px;background:var(--dot-nofind);transform:rotate(-45deg)}
-.dash[data-state="degraded"] .dash__state{color:#DDD2A6}
-.dash[data-state="degraded"] .dash__state i{background:var(--dot-deg);border-color:var(--dot-deg);transform:rotate(45deg)}
-.dash[data-state="oos"] .dash__state{color:#E4C2CA}
-.dash[data-state="oos"] .dash__state i{background:transparent;border-color:var(--dot-oos);box-shadow:inset 0 0 0 2px var(--sit-bg),0 0 0 1px var(--dot-oos)}
-.dash[data-state="cancel"] .dash__state,.dash[data-state="error"] .dash__state{color:#E8C6BE}
-.dash[data-state="cancel"] .dash__state i,.dash[data-state="error"] .dash__state i{background:var(--dot-cancel);border-color:var(--dot-cancel)}
+.dash[data-state="hit"] .dash__state{color:var(--st-hit)}
+.dash[data-state="hit"] .dash__state i{background:var(--dot-hit);border-color:var(--sit-cut)}
+.dash[data-state="hit"] .dash__state i::after{content:"";position:absolute;left:1px;right:1px;top:3px;height:2px;background:var(--sit-cut)}
+.dash[data-state="nofind"] .dash__state{color:var(--st-nofind)}
+.dash[data-state="nofind"] .dash__state i{border-color:var(--sit-cut);background:transparent}
+.dash[data-state="nofind"] .dash__state i::after{content:"";position:absolute;left:-2px;top:3px;width:12px;height:2px;background:var(--sit-cut);transform:rotate(-45deg)}
+.dash[data-state="degraded"] .dash__state{color:var(--st-deg)}
+.dash[data-state="degraded"] .dash__state i{background:var(--dot-deg);border-color:var(--sit-cut);transform:rotate(45deg)}
+.dash[data-state="oos"] .dash__state{color:var(--st-oos)}
+.dash[data-state="oos"] .dash__state i{background:transparent;border-color:var(--sit-cut);box-shadow:inset 0 0 0 2px var(--sit-cut),0 0 0 1px var(--sit-cut)}
+.dash[data-state="cancel"] .dash__state,.dash[data-state="error"] .dash__state{color:var(--st-cancel)}
+.dash[data-state="cancel"] .dash__state i,.dash[data-state="error"] .dash__state i{background:var(--dot-cancel);border-color:var(--sit-cut)}
 .dash[data-state="cancel"] .dash__state i::after,.dash[data-state="error"] .dash__state i::after{
-  content:"";position:absolute;left:3px;top:-2px;width:2px;height:12px;background:var(--sit-bg);transform:rotate(45deg)}
+  content:"";position:absolute;left:3px;top:-2px;width:2px;height:12px;background:var(--sit-cut);transform:rotate(45deg)}
 
-/* 终态图形：命中路径 / 防线 / 突触 / 告警带 */
+/* 终态图形：命中路径 / 防线 / 突触 / 告警带（选择器零改动，值随 --sit-* 承接） */
 .dash[data-state="hit"] .sit__path--key,.dash[data-state="degraded"] .sit__path--key{opacity:.95}
 .dash[data-state="degraded"] .sit__path--key{stroke-dasharray:6 8}
 .dash[data-state="hit"] .sit__flow--hit,.dash[data-state="degraded"] .sit__flow--hit{opacity:.9}
@@ -408,7 +439,7 @@ input[type=text]::placeholder{color:var(--t-3)}
 @keyframes sitFlow{to{stroke-dashoffset:-28}}
 
 /* 9.3 细分阶段：由 app.js 呈现层遥测桥只读派生，不参与业务逻辑。
-     让「加载中 / 攻击发起 / 防御成功 / 空状态」在图形上可区分，而非只换颜色。 */
+     让「加载中 / 攻击发起 / 防御成功 / 空状态」在图形上可区分，而非只换颜色。选择器一条不动。 */
 .dash[data-phase="empty"] .sit__flow,.dash[data-phase="empty"] .sit__arrow{opacity:.12}
 .dash[data-phase="empty"] .sit__zone{opacity:.5}
 .dash[data-phase="loading"] .sit__flow--atk{opacity:.35;animation:none;stroke-dasharray:2 6}
@@ -421,9 +452,9 @@ input[type=text]::placeholder{color:var(--t-3)}
 .dash[data-phase="flagged"] .fx-dash{border-bottom-style:dashed}
 .dash[data-phase="aborted"] .sit__flow{opacity:.12;animation:none}
 
-/* ---------- 10. 运行面板 / 进度 / 终端 ---------- */
+/* ---------- 10. 运行面板 / 进度 / 终端（终端与代码块改亮代码面） ---------- */
 .run-panel{margin-top:16px;padding:20px 22px;background:var(--n-surface);border:1px solid var(--n-line);
-  border-left:2px solid var(--accent);border-radius:var(--r)}
+  border-left:2px solid var(--key);border-radius:var(--r)}
 .run-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .spin{width:14px;height:14px;border:2px solid var(--n-line-2);border-top-color:var(--accent);border-radius:0;flex:none;
   animation:spin 1s linear infinite}
@@ -431,13 +462,13 @@ input[type=text]::placeholder{color:var(--t-3)}
 .run-state{font:500 13px/1.4 var(--mono);color:var(--t-2)}
 .run-state b{color:var(--t-1);font-weight:500}
 .bar{position:relative;height:4px;margin-top:16px;overflow:hidden;border-radius:0;background:var(--n-raised)}
-.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width var(--d-state) var(--ease)}
+.bar i{display:block;height:100%;width:0;background:var(--key);transition:width var(--d-state) var(--ease)}
 .thinking{display:flex;align-items:center;gap:8px;margin-top:14px;font:500 12px/1.4 var(--mono);color:var(--t-2);flex-wrap:wrap}
-.thinking i{width:5px;height:5px;background:var(--accent)}
+.thinking i{width:5px;height:5px;background:var(--key)}
 .thinking i:nth-child(2){opacity:.6}.thinking i:nth-child(3){opacity:.3}
 .thinking em{font-style:normal;color:var(--t-3)}
-.terminal{height:180px;overflow:auto;margin-top:14px;padding:14px 16px;background:var(--sit-bg);
-  border:1px solid var(--sit-line);border-radius:var(--r-in);font:12px/1.8 var(--mono);color:var(--sit-txt)}
+.terminal{height:180px;overflow:auto;margin-top:14px;padding:14px 16px;background:var(--surface-2);
+  border:1px solid var(--line);border-radius:var(--r-in);font:12px/1.8 var(--mono);color:var(--ink)}
 .terminal .line{white-space:pre-wrap;word-break:break-word;animation:lineIn var(--d-inst) var(--ease) both}
 .terminal .line.accent{color:var(--sit-atk)} .terminal .line.ok{color:var(--sit-hit)}
 .terminal .line.warn{color:var(--sit-deg)}
@@ -450,9 +481,9 @@ input[type=text]::placeholder{color:var(--t-3)}
 .tbl th{color:var(--t-2);font-weight:500;white-space:nowrap;background:var(--n-sunken);border-bottom:1px solid var(--n-line-2)}
 .tbl tr:last-child td{border-bottom:0}
 .tbl tbody tr:hover td{background:var(--n-raised)}
-.tbl tbody tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent);color:var(--t-1)}
+.tbl tbody tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--key);color:var(--t-1)}
 .tag{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border:1px solid var(--n-line-2);
-  border-radius:var(--r-in);font:500 11px/1 var(--mono)}
+  border-radius:var(--r-in);font:500 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}
 .tag::before{content:"";width:7px;height:7px;background:currentColor;display:block;flex:none}
 .tag.normal::before{width:8px;height:2px}
 .tag.blocked{color:var(--sig-err);border-color:var(--sig-err);background:var(--sig-err-soft)}
@@ -462,7 +493,7 @@ input[type=text]::placeholder{color:var(--t-3)}
 .tag.deg{color:var(--sig-deg);border-color:var(--sig-deg);background:var(--sig-deg-soft)}
 .tag.deg::before{transform:rotate(45deg);background:transparent;border:1.5px solid currentColor}
 .tbl tbody tr.is-key td{background:var(--accent-soft);color:var(--t-1)}
-.tbl tbody tr.is-key td:first-child{box-shadow:inset 2px 0 0 var(--accent);color:var(--accent-ink)}
+.tbl tbody tr.is-key td:first-child{box-shadow:inset 2px 0 0 var(--key);color:var(--accent-ink)}
 #evidenceState{padding:4px 10px;border:1px solid currentColor;border-radius:var(--r-in);font-weight:500}
 #evidenceState[data-state="hit"],#evidenceState[data-state="degraded"]{color:var(--st-hit)}
 #evidenceState[data-state="degraded"]{border-style:dashed}
@@ -480,7 +511,7 @@ input[type=text]::placeholder{color:var(--t-3)}
 .result-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:20px 0}
 .kv{background:var(--n-raised);border:1px solid var(--n-line);border-radius:var(--r-in);padding:14px}
 .kv .lbl{display:block;margin-bottom:8px}.kv b{font-size:14px;font-weight:500}
-.evidence{position:relative;padding:16px 18px;border-left:2px solid var(--accent);border-radius:0 var(--r-in) var(--r-in) 0;
+.evidence{position:relative;padding:16px 18px;border-left:2px solid var(--key);border-radius:0 var(--r-in) var(--r-in) 0;
   background:var(--accent-soft);font-size:13px;line-height:1.85;color:var(--t-1)}
 .empty{padding:28px;text-align:center;color:var(--t-2)}
 .empty b{display:block;font:500 16px/1.3 var(--body);color:var(--t-1);margin-bottom:8px}
@@ -489,23 +520,24 @@ input[type=text]::placeholder{color:var(--t-3)}
 
 /* ---------- 12. 报告（5 附录 + 打印） ---------- */
 .report-sec{margin-bottom:26px}
-.report-sec h3{font:500 15px/1.3 var(--body);color:var(--t-1);margin:0 0 12px;padding-left:12px;border-left:2px solid var(--accent)}
+.report-sec h3{font:500 15px/1.3 var(--body);color:var(--t-1);margin:0 0 12px;padding-left:12px;border-left:2px solid var(--key)}
 .cover{display:grid;grid-template-columns:repeat(2,1fr);gap:0;border:1px solid var(--n-line);border-radius:var(--r);overflow:hidden}
 .cover>div{padding:12px 16px;border-bottom:1px solid var(--n-line);font-size:13px}
 .cover>div:nth-child(odd){background:var(--n-sunken)}
-.cover span{display:block;color:var(--t-2);font:500 11px/1 var(--mono);margin-bottom:6px}
+.cover span{display:block;color:var(--ink-3);font:500 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px}
 details.raw summary{cursor:pointer;font:500 13px/1.4 var(--mono);color:var(--accent-ink);min-height:44px;display:flex;align-items:center}
-details.raw pre{white-space:pre-wrap;word-break:break-word;background:var(--sit-bg);color:var(--sit-txt);padding:16px;
-  border-radius:var(--r-in);font:12px/1.7 var(--mono);overflow:auto}
-.watermark{margin-top:24px;padding-top:14px;border-top:1px dashed var(--n-line-2);font:500 11px/1.6 var(--mono);color:var(--t-3);text-align:center}
+details.raw pre{white-space:pre-wrap;word-break:break-word;background:var(--surface-2);color:var(--ink);padding:16px;
+  border:1px solid var(--line);border-radius:var(--r-in);font:12px/1.7 var(--mono);overflow:auto}
+.watermark{margin-top:24px;padding-top:14px;border-top:1px dashed var(--n-line-2);font:500 11px/1.6 var(--mono);
+  letter-spacing:.12em;text-transform:uppercase;color:var(--t-3);text-align:center}
 .no-print{display:inline-flex}
 
 /* ---------- 13. 配置快照 / 历史 / 说明 ---------- */
 .config-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:0;border:1px solid var(--n-line);border-radius:var(--r);overflow:hidden}
 .config-grid>div{padding:14px 18px;border-bottom:1px solid var(--n-line);font-size:14px}
 .config-grid>div:nth-child(odd){background:var(--n-sunken)}
-.config-grid span{display:block;font:500 11px/1 var(--mono);color:var(--t-2);margin-bottom:6px}
-.about-sec{margin-bottom:22px}.about-sec h3{font:500 15px/1.3 var(--body);color:var(--t-1);margin:0 0 10px}
+.config-grid span{display:block;font:500 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+.about-sec{margin-bottom:22px}.about-sec h3{font:500 15px/1.3 var(--display-cn);color:var(--t-1);margin:0 0 10px}
 .about-sec p,.about-sec li{font-size:14px;color:var(--t-2);line-height:1.8}
 .about-sec ul{padding-left:20px}
 
@@ -514,16 +546,16 @@ footer{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;
   border-top:1px solid var(--n-line-2)}
 .foot-links{display:flex;gap:6px;flex-wrap:wrap}
 .foot-links a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;padding:0 12px;
-  font:500 12px/1 var(--mono);color:var(--t-2);border:1px solid var(--n-line);border-radius:var(--r-in);
+  font:500 12px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--t-2);border:1px solid var(--n-line);border-radius:var(--r-sm);
   transition:color var(--d-inst),border-color var(--d-inst),background var(--d-inst)}
 .foot-links a:hover{color:var(--t-1);border-color:var(--n-line-3);background:var(--n-raised)}
 .boundary{margin-top:14px;font-size:12px;color:var(--t-3);line-height:1.7;max-width:80ch}
 .foot-end{display:flex;align-items:center;gap:12px}
-.sound-off{min-height:44px;padding:0 14px;border:1px solid var(--n-line-2);border-radius:var(--r-in);background:var(--n-surface);
-  font:500 11px/1 var(--mono);color:var(--t-2);transition:color var(--d-inst),border-color var(--d-inst)}
+.sound-off{min-height:44px;padding:0 14px;border:1px solid var(--n-line-2);border-radius:var(--r-sm);background:var(--n-surface);
+  font:500 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--t-2);transition:color var(--d-inst),border-color var(--d-inst)}
 .sound-off[aria-checked="true"]{color:var(--sig-ok);border-color:var(--sig-ok)}
 
-/* ---------- 15. 入场：仅一次短淡入上浮，不做卡片交错 ---------- */
+/* ---------- 15. 入场：仅一次短淡入上浮，不做卡片交错（零改动） ---------- */
 @media(prefers-reduced-motion:no-preference){
   .page-head__main{animation:rise var(--d-state) var(--ease) both}
   @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -535,6 +567,10 @@ footer{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;
   .result-grid{grid-template-columns:repeat(3,1fr)}
   .grid-2{grid-template-columns:1fr}
   .dash__body{grid-template-columns:1fr}
+  /* 768 专项（落在 1100 内、700 外）：图例不再为流读数留白，隐藏其呈现（DOM 节点一个不删） */
+  .sit__legend{padding-right:0;gap:10px}
+  .sit__flowmeta{display:none}
+  .btn-solid,.btn-ghost,.btn-grad{padding:0 24px}
 }
 @media(max-width:700px){
   .wrap{padding:0 16px}
@@ -558,6 +594,9 @@ footer{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;
   .sit__legend{gap:10px;font-size:11px;padding-right:0}
   .sit__legend-item:nth-child(n+4){display:none}
   .sit__flowmeta{display:none}
+  /* pill 按钮窄屏收敛：不溢出、不低于 44px */
+  .btn-solid,.btn-ghost,.btn-grad{padding:0 20px;min-height:52px;max-width:100%;font-size:15px}
+  .actions{gap:10px}
   footer{flex-direction:column;align-items:flex-start}
 }
 
