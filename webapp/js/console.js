@@ -69,12 +69,19 @@ const SCRIPTS = {
    报告 / 证据 / 历史 / 配置快照页各自从 Store 恢复，实现「动画随任务逻辑跨页同步」。 */
 const _memStore = {};
 const Store = {
-  K:{cfg:'probe.cfg', report:'probe.report', history:'probe.history', pendingRun:'probe.pendingRun'},
+  K:{cfg:'probe.cfg', report:'probe.report', history:'probe.history', pendingRun:'probe.pendingRun',
+     defaults:'probe.defaults'},   /* v0.20 配置中心：任务台表单默认值，与 cfg 快照 / pendingRun 完全独立 */
   _raw:{ get(k){ try{ return sessionStorage.getItem(k); }catch(e){ return k in _memStore ? _memStore[k] : null; } },
          set(k,v){ try{ sessionStorage.setItem(k,v); }catch(e){ _memStore[k]=v; } },
          remove(k){ try{ sessionStorage.removeItem(k); }catch(e){ delete _memStore[k]; } } },
   getCfg(){ const s=this._raw.get(this.K.cfg); if(!s)return null; try{return JSON.parse(s);}catch(e){return null;} },
   setCfg(c){ this._raw.set(this.K.cfg,JSON.stringify(c)); },
+  /* 任务台默认值（v0.20）：仅预填表单，不置位 pendingRun、不参与 runTask 判定。
+     读失败 / 结构异常一律返回 null，调用方回落到出厂值。 */
+  getDefaults(){ const s=this._raw.get(this.K.defaults); if(!s)return null;
+    try{ const d=JSON.parse(s); return (d&&typeof d==='object'&&!Array.isArray(d))?d:null; }catch(e){ return null; } },
+  setDefaults(d){ this._raw.set(this.K.defaults,JSON.stringify(d||{})); },
+  clearDefaults(){ this._raw.remove(this.K.defaults); },
   /* 一次性执行意图：仅任务台点击「开始分析」置位；监控页读取后立即清除并消费。
      与 cfg 解耦——cfg 残留只作只读快照展示，绝不代表"该执行一次任务"。 */
   getPendingRun(){ return this._raw.get(this.K.pendingRun)==='1'; },
@@ -595,7 +602,7 @@ syncStart();
 
 /* ---------- 跨页接口：供 app.js 编排 7 个页面 ---------- */
 window.Probe={
-  CONFIG, RUNTIME, SCRIPTS, Store,
+  CONFIG, RUNTIME, SCRIPTS, Store, SCOPE, TICKS,
   runTask, start, cancelRun,
   setDashState, applyTerminalState, resolveTerminalState,
   paintRail, paintBars, buildRail,

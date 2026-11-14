@@ -229,13 +229,169 @@
     }).join('');
   }
 
-  /* ③d 配置快照页 */
+  /* ③d 配置中心（v0.20）：把配置拆成两层 ——
+     「下一次任务默认值」可改，写 Store.defaults，仅预填任务台表单，绝不置位 pendingRun；
+     「边界与契约 / 剧本库 / 终态判定 / 最近任务」全部实时取自引擎导出（CONFIG / SCRIPTS /
+     SCOPE / Store），页面不写死参数值。用户输入一律以 textContent 写入，避免注入。 */
+  var SCN_NAME={CONVERGE_3:'三轮收敛命中',NO_CONVERGE:'八轮未收敛',DEGRADED:'模型降级'};
+  var TYPE_NAME={sqli:'SQL 注入',xss:'XSS',upload:'文件上传'};
+  var FACTORY={url:'http://127.0.0.1/lab/sqli_01.php',vulnType:'sqli',script:'CONVERGE_3'};
+  var LETTER=['A','B','C','D','E'];
+
+  function mk(tag,cls,text){
+    var n=document.createElement(tag);
+    if(cls)n.className=cls;
+    if(text!==undefined&&text!==null)n.textContent=String(text);
+    return n;
+  }
+
   function bootSettings(){
-    var c=P.CONFIG;
+    var c=P.CONFIG||{};
+    var scripts=P.SCRIPTS||{};
     var put=function(sel,v){var e=$(sel);if(e)e.textContent=String(v);};
-    put('#cfgMax',c.MAX_ROUNDS); put('#cfgMode',c.ENGINE_MODE);
-    put('#cfgTick',c.TICK_SPEED); put('#cfgAdapter','MOCK');
-    put('#cfgRuleset','LAB-RULESET-01'); put('#cfgContract','1.0');
+    put('#cfgMode',c.ENGINE_MODE); put('#cfgMax',c.MAX_ROUNDS); put('#cfgTick',c.TICK_SPEED);
+    put('#cfgAdapter','MOCK'); put('#cfgRuleset','LAB-RULESET-01'); put('#cfgContract','1.0');
+    put('#cfgApi',c.API_BASE_URL||'—');
+    put('#cfgScnCount',Object.keys(scripts).length);
+
+    /* 授权白名单：真值来自引擎 SCOPE；两条通配规则与 scopeOK() 的判定一致 */
+    var chips=$('#cfgChips');
+    if(chips&&P.SCOPE){
+      P.SCOPE.forEach(function(h){ chips.appendChild(mk('span','cfg-chip',h)); });
+      ['*.lab','lab-*'].forEach(function(h){ chips.appendChild(mk('span','cfg-chip cfg-chip--wild',h)); });
+    }
+
+    /* 剧本库：逐轮格子由 SCRIPTS 的 cls / degradeFrom 渲染，一个值都不写死 */
+    var scnWrap=$('#cfgScn');
+    if(scnWrap){
+      Object.keys(scripts).forEach(function(key,i){
+        var sc=scripts[key]||{}, rounds=sc.rounds||[];
+        var card=mk('article','cfg-scn__card'); card.setAttribute('data-script',key);
+        var top=mk('div','cfg-scn__top');
+        top.appendChild(mk('span','cfg-scn__tag',LETTER[i]||String(i+1)));
+        top.appendChild(mk('h3','cfg-scn__name',SCN_NAME[key]||key));
+        top.appendChild(mk('span','cfg-scn__en',key));
+        card.appendChild(top);
+        var degN=rounds.filter(function(r,idx){ return sc.degradeFrom&&(idx+1)>=sc.degradeFrom; }).length;
+        var cap=(c.MAX_ROUNDS||rounds.length);
+        card.appendChild(mk('p','cfg-scn__meta',
+          '轮数 '+rounds.length+' / 上限 '+cap+' · 终止 '+sc.terminate_reason+' · 降级轮 '+degN));
+        var rail=mk('div','cfg-rail'); rail.setAttribute('aria-hidden','true');
+        rounds.forEach(function(r,idx){
+          var cell=mk('i',null,idx+1);
+          cell.setAttribute('data-cls',r.cls);
+          if(sc.degradeFrom&&(idx+1)>=sc.degradeFrom)cell.classList.add('is-deg');
+          rail.appendChild(cell);
+        });
+        /* 未使用的轮次预算画成空槽：三张卡永远是同一把 8 格刻度，早停与否一眼可读 */
+        for(var e=rounds.length;e<cap;e++)rail.appendChild(mk('i','is-empty',''));
+        card.appendChild(rail);
+        var btn=mk('button','cfg-load','载入到 01');
+        btn.type='button'; btn.setAttribute('data-load',key);
+        card.appendChild(btn);
+        scnWrap.appendChild(card);
+      });
+    }
+
+    /* 默认值表单 */
+    var urlEl=$('#cfgUrl'), typeEl=$('#cfgType'), scriptEl=$('#cfgScript'), msg=$('#cfgMsg');
+    function say(t,k){ if(!msg)return; msg.textContent=t||''; msg.className='cfg-msg'+(k?' '+k:''); }
+    function read(){
+      return {url:urlEl?urlEl.value.trim():FACTORY.url,
+              vulnType:typeEl?typeEl.value:FACTORY.vulnType,
+              script:scriptEl?scriptEl.value:FACTORY.script};
+    }
+    function fill(d){
+      if(!d)return;
+      if(urlEl&&d.url)urlEl.value=d.url;
+      if(typeEl&&d.vulnType)typeEl.value=d.vulnType;
+      if(scriptEl&&d.script)scriptEl.value=d.script;
+    }
+    /* 待改标记：当前值与已保存默认值（无则出厂值）不一致的行点亮方块 */
+    function mark(){
+      var base=(P.Store.getDefaults&&P.Store.getDefaults())||FACTORY;
+      var cur=read();
+      ['url','vulnType','script'].forEach(function(k){
+        var row=$('.cfg-row[data-row="'+k+'"]');
+        if(row)row.classList.toggle('is-dirty',String(cur[k])!==String(base[k]));
+      });
+      $$('.cfg-scn__card').forEach(function(card){
+        card.classList.toggle('is-loaded',card.getAttribute('data-script')===cur.script);
+      });
+    }
+    fill(P.Store.getDefaults?P.Store.getDefaults():null);
+    mark();
+
+    function save(){
+      var d=read();
+      if(!/^https?:\/\/[^\s]+$/i.test(d.url)){
+        say('目标地址需以 http:// 或 https:// 开头','err');
+        if(urlEl)urlEl.focus();
+        return false;
+      }
+      if(!scripts[d.script])d.script=FACTORY.script;
+      if(P.Store.setDefaults)P.Store.setDefaults(d);
+      mark(); say('已保存 · 任务台将按此预填，不会自动执行','ok');
+      return true;
+    }
+    var saveBtn=$('#cfgSave'); if(saveBtn)saveBtn.addEventListener('click',save);
+    var resetBtn=$('#cfgReset');
+    if(resetBtn)resetBtn.addEventListener('click',function(){
+      if(P.Store.clearDefaults)P.Store.clearDefaults();
+      fill(FACTORY); mark(); say('已恢复出厂默认值','warn');
+    });
+    function go(href){
+      var a=$('#cfgNav');
+      if(a){ a.setAttribute('href',href); a.click(); }   // data-nav 圆形揭幕
+      else location.href=href;
+    }
+    var toBtn=$('#cfgToConsole');
+    if(toBtn)toBtn.addEventListener('click',function(){ if(save())go('console.html'); });
+    [urlEl,typeEl,scriptEl].forEach(function(e){
+      if(e)e.addEventListener(e.tagName==='INPUT'?'input':'change',mark);
+    });
+    if(scnWrap)scnWrap.addEventListener('click',function(e){
+      var b=e.target&&e.target.closest?e.target.closest('.cfg-load'):null;
+      if(!b)return;
+      var key=b.getAttribute('data-load');
+      if(scriptEl&&scripts[key])scriptEl.value=key;
+      mark(); say('已载入「'+(SCN_NAME[key]||key)+'」到 01，保存后生效','ok');
+    });
+
+    /* 最近一次任务：只读回显 cfg 快照与报告终态，不写任何 Store */
+    var rows=$('#cfgLastRows'), empty=$('#cfgLastEmpty'), repBtn=$('#cfgGoReport');
+    var cfgP=P.Store.getCfg?P.Store.getCfg():null;
+    var repP=P.Store.getReport?P.Store.getReport():null;
+    function kv(label,value){
+      var d=mk('div','cfg-last__row');
+      d.appendChild(mk('span',null,label));
+      d.appendChild(mk('b',null,value));
+      return d;
+    }
+    if(rows&&(cfgP||repP)){
+      rows.innerHTML='';
+      if(cfgP){
+        rows.appendChild(kv('目标 / Target',cfgP.url||'—'));
+        rows.appendChild(kv('漏洞类型 / Type',TYPE_NAME[cfgP.vulnType]||cfgP.vulnType||'—'));
+        rows.appendChild(kv('剧本 / Scenario',SCN_NAME[cfgP.script]||cfgP.script||'—'));
+      }
+      if(repP){
+        var st=P.resolveTerminalState(repP);
+        var stRow=mk('div','cfg-last__row');
+        stRow.appendChild(mk('span',null,'终态 / State'));
+        var stCell=mk('b');
+        stCell.appendChild(mk('span','cfg-last__badge',st.label));
+        stRow.appendChild(stCell);
+        rows.appendChild(stRow);
+        rows.appendChild(kv('轮次 / Rounds',repP.rounds?repP.rounds.length:0));
+        if(repP.task)rows.appendChild(kv('任务 ID / Task',repP.task.task_id));
+        if(repBtn)repBtn.classList.remove('hidden');
+      }
+      rows.classList.remove('hidden');
+      if(empty)empty.classList.add('hidden');
+    }
+    var goCon=$('#cfgGoConsole'); if(goCon)goCon.addEventListener('click',function(){ go('console.html'); });
+    var goRepBtn=$('#cfgGoReport'); if(goRepBtn)goRepBtn.addEventListener('click',function(){ go('report.html'); });
   }
 
   /* ④ 任务台：校验通过后写配置快照 + 一次性 pendingRun 意图，拦截引擎本地执行，
@@ -243,6 +399,14 @@
      捕获阶段 + stopImmediatePropagation，确保 console.js 的 startBtn→runTask 不在本页重复执行。
      测试不经 app.js，故 101 项不受影响。 */
   function bootConsole(){
+    /* 配置中心保存的默认值：只预填表单初始值，不置位执行意图、不触发任何任务 */
+    var d=P.Store.getDefaults?P.Store.getDefaults():null;
+    if(d){
+      var uEl=$('#urlInput'), tEl=$('#typeSel'), sEl=$('#scriptSel');
+      if(uEl&&d.url)uEl.value=d.url;
+      if(tEl&&d.vulnType)tEl.value=d.vulnType;
+      if(sEl&&d.script)sEl.value=d.script;
+    }
     var btn=$('#startBtn');
     if(btn){
       btn.addEventListener('click',function(e){

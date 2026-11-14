@@ -541,6 +541,175 @@ details.raw pre{white-space:pre-wrap;word-break:break-word;background:var(--surf
 .about-sec p,.about-sec li{font-size:14px;color:var(--t-2);line-height:1.8}
 .about-sec ul{padding-left:20px}
 
+/* ---------- 13b. 配置中心（settings）----------
+   仅 settings 页使用，全部 .cfg-* 前缀；不新增 token，只消费已有 --key / --sit-* / --dot-*。
+   结构：读数带 → 01 默认值 + 02 边界契约 → 03 剧本库 → 04 终态板 + 05 最近任务。
+   签名细节：每行左端的 8px 方块——焦点态描边、与已保存值不一致时点亮（可读的“待改”信号）。 */
+
+/* 读数带：4 格等宽，顶边 2px 逐页主色（与 .metrics 同源，但数值更大、附一行注解） */
+.cfg-read{display:grid;grid-template-columns:repeat(4,1fr);margin:24px 0 20px;background:var(--n-surface);
+  border:1px solid var(--n-line);border-radius:var(--r);overflow:hidden}
+.cfg-read__cell{position:relative;min-width:0;padding:16px 20px;border-right:1px solid var(--n-line)}
+.cfg-read__cell:last-child{border-right:0}
+.cfg-read__cell::before{content:"";position:absolute;left:0;top:0;right:0;height:2px;background:var(--key);opacity:.55}
+.cfg-read__cell .lbl{display:block;color:var(--t-3)}
+.cfg-read__cell b{display:block;margin:10px 0 6px;font:500 26px/1 var(--display);color:var(--t-1);
+  font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cfg-read__cell small{display:block;font:500 11px/1.5 var(--mono);color:var(--t-3)}
+
+/* 模块头：编号徽标 + 中文标题 + 英文小注，右端可挂一条说明 */
+.cfg-head{display:flex;align-items:center;gap:10px;margin:0 0 4px;padding-bottom:14px;border-bottom:1px solid var(--n-line)}
+.cfg-no{flex:none;display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:22px;
+  padding:0 8px;border-radius:var(--r-pill);background:var(--key);color:var(--key-ink);font:500 11px/1 var(--mono)}
+.cfg-title{margin:0;min-width:0;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+  font:500 16px/1.3 var(--display-cn);color:var(--t-1)}
+.cfg-title em{font:500 11px/1 var(--mono);font-style:normal;letter-spacing:.12em;text-transform:uppercase;color:var(--t-3)}
+.cfg-head__note{margin-left:auto;font:500 11px/1.6 var(--mono);color:var(--t-3);text-align:right}
+
+/* 栅格：01 宽左栏 + 02 窄右栏；04 / 05 近等宽 */
+.cfg-grid{display:grid;grid-template-columns:1.55fr 1fr;gap:20px;align-items:start;margin-top:20px}
+.cfg-grid--even{grid-template-columns:1.45fr 1fr;margin-top:32px}
+.cfg-side{display:grid;gap:20px;min-width:0}
+.cfg-block{margin-top:32px}
+
+/* 01 参数行：方块 / 标签 / 控件三列对齐，行间 hairline，不留浮空内边距 */
+.cfg-form{margin:4px 0 0}
+.cfg-row{display:grid;grid-template-columns:10px 140px minmax(0,1fr);gap:14px;align-items:start;
+  padding:16px 0;border-bottom:1px solid var(--n-line)}
+.cfg-row__mark{width:2px;height:14px;margin-top:15px;background:var(--n-line-3);
+  transition:background var(--d-inst)}
+.cfg-row.is-dirty .cfg-row__mark{background:var(--key)}
+.cfg-row:focus-within .cfg-row__mark{background:var(--t-1)}
+.cfg-row__label{padding-top:11px;font:500 13px/1.4 var(--body);color:var(--t-1);cursor:pointer}
+.cfg-row__label span{display:block;margin-top:3px;font:500 11px/1.4 var(--mono);letter-spacing:.1em;
+  text-transform:uppercase;color:var(--t-3)}
+.cfg-row__ctl{min-width:0}
+.cfg-row__note{margin:8px 0 0;font-size:12px;line-height:1.6;color:var(--t-3)}
+
+/* 02 白名单 chips：实心点=精确主机，虚线圈=通配规则 */
+.cfg-group{margin-top:18px}
+.cfg-group:first-of-type{margin-top:16px}
+.cfg-group__title{margin:0 0 10px;font:500 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--t-3)}
+.cfg-chips{display:flex;flex-wrap:wrap;gap:6px}
+.cfg-chip{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 9px;border:1px solid var(--n-line-2);
+  border-radius:var(--r-sm);background:var(--n-raised);font:500 11px/1 var(--mono);color:var(--t-2)}
+.cfg-chip::before{content:"";flex:none;width:5px;height:5px;background:var(--sig-ok)}
+.cfg-chip--wild{background:transparent;border-style:dashed;color:var(--t-3)}
+.cfg-chip--wild::before{border:1px solid var(--t-3);border-radius:50%;background:transparent}
+
+/* 02 冻结常量：dt 左、dd 右对齐，长地址允许断行 */
+.cfg-def{margin:0}
+.cfg-def__row{display:flex;align-items:baseline;gap:12px;padding:10px 0;border-bottom:1px solid var(--n-line)}
+.cfg-def__row:last-child{border-bottom:0;padding-bottom:0}
+.cfg-def__row dt{flex:none;font:500 11px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--t-3)}
+.cfg-def__row dd{margin:0 0 0 auto;min-width:0;text-align:right;overflow-wrap:anywhere;
+  font:500 12px/1.5 var(--mono);color:var(--t-1)}
+
+/* 03 剧本卡：一轮一格，线型即语义（横杠 / 实心 / 虚线框） */
+.cfg-scn{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:16px}
+.cfg-scn__card{display:flex;flex-direction:column;gap:12px;padding:20px;background:var(--n-surface);
+  border:1px solid var(--n-line);border-radius:var(--r);
+  transition:border-color var(--d-step) var(--ease),box-shadow var(--d-step) var(--ease)}
+.cfg-scn__card.is-loaded{border-color:var(--key);box-shadow:inset 0 0 0 1px var(--key)}
+.cfg-scn__top{display:flex;align-items:center;gap:10px;min-width:0}
+.cfg-scn__tag{flex:none;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;
+  border-radius:var(--r-sm);background:var(--key);color:var(--key-ink);font:500 12px/1 var(--mono)}
+.cfg-scn__name{margin:0;min-width:0;font:500 15px/1.3 var(--body);color:var(--t-1);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cfg-scn__en{flex:none;margin-left:auto;font:500 11px/1 var(--mono);color:var(--t-3)}
+.cfg-scn__meta{margin:0;font:500 11px/1.6 var(--mono);color:var(--t-3)}
+.cfg-rail{display:flex;gap:3px}
+.cfg-rail i{position:relative;flex:1 1 0;min-width:0;height:30px;display:flex;align-items:center;justify-content:center;
+  font:500 11px/1 var(--mono);font-style:normal;color:var(--t-2);background:var(--n-raised);
+  border:1px solid var(--n-line-2);transition:background var(--d-step),border-color var(--d-step)}
+.cfg-rail i::after{content:"";position:absolute;left:5px;right:5px;bottom:5px;height:2px;background:var(--sit-def)}
+.cfg-rail i.is-deg{border-style:dashed;border-color:var(--sit-deg);color:var(--sit-deg)}
+.cfg-rail i[data-cls="ANOMALY"]{background:var(--dot-hit);border-color:var(--dot-hit);color:var(--accent-ink)}
+.cfg-rail i[data-cls="ANOMALY"]::after{background:var(--accent-ink)}
+.cfg-rail i[data-cls="ANOMALY"].is-deg{border-color:var(--sit-deg);color:var(--accent-ink)}
+.cfg-rail i.is-empty{border-style:dashed;border-color:var(--n-line-2);background:transparent;opacity:.75}
+.cfg-rail i.is-empty::after{display:none}
+.cfg-load{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;
+  min-height:44px;padding:0 14px;background:transparent;border:1px solid var(--n-line-2);border-radius:var(--r-sm);
+  font:500 12px/1 var(--mono);letter-spacing:.06em;color:var(--t-2);
+  transition:background var(--d-inst),border-color var(--d-inst),color var(--d-inst)}
+.cfg-load::after{content:"→";font-family:var(--body);color:var(--t-3);
+  transition:transform var(--d-inst),color var(--d-inst)}
+.cfg-load:hover{border-color:var(--key);background:var(--key-dim);color:var(--t-1)}
+.cfg-load:hover::after{transform:translateX(3px);color:var(--t-1)}
+
+/* 04 终态板：1px 间隙造 hairline，2×4 网格；形状 + 代码 + 中文 + 触发条件 */
+.cfg-prio{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:16px 0 0;padding:10px 12px;
+  border:1px dashed var(--n-line-2);border-radius:var(--r-sm);font:500 11px/1.6 var(--mono);color:var(--t-3)}
+.cfg-prio b{font-weight:500;color:var(--t-1)}
+.cfg-prio i{font-style:normal;color:var(--t-3)}
+.cfg-states{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin-top:16px;background:var(--n-line);
+  border:1px solid var(--n-line);border-radius:var(--r);overflow:hidden}
+.cfg-state{display:grid;grid-template-columns:32px minmax(0,1fr);gap:12px;align-items:start;
+  padding:14px 16px;background:var(--n-surface)}
+.cfg-state__g{position:relative;width:24px;height:24px;margin-top:2px;overflow:hidden;
+  border:2px solid var(--sit-cut);background:transparent}
+.cfg-state__g[data-g="run"]{background:var(--dot-run)}
+.cfg-state__g[data-g="hit"]{background:var(--dot-hit)}
+.cfg-state__g[data-g="hit"]::after{content:"";position:absolute;left:2px;right:2px;top:7px;height:2px;background:var(--sit-cut)}
+.cfg-state__g[data-g="nofind"]::after{content:"";position:absolute;left:-2px;top:9px;width:22px;height:2px;
+  background:var(--sit-cut);transform:rotate(-45deg)}
+.cfg-state__g[data-g="degraded"]{background:var(--dot-deg);transform:rotate(45deg)}
+.cfg-state__g[data-g="oos"]{outline:1px solid var(--sit-cut);outline-offset:3px}
+.cfg-state__g[data-g="cancel"]{background:var(--dot-cancel)}
+.cfg-state__g[data-g="cancel"]::after,
+.cfg-state__g[data-g="error"]::after{content:"";position:absolute;left:9px;top:-3px;width:2px;height:30px;
+  background:var(--sit-cut);transform:rotate(45deg)}
+.cfg-state__g[data-g="error"]{background:var(--dot-error)}
+.cfg-state__body{display:block;min-width:0}
+.cfg-state__code{display:block;font:500 11px/1.4 var(--mono);letter-spacing:.1em;color:var(--t-2)}
+.cfg-state__zh{display:block;margin-top:2px;font:500 13px/1.4 var(--body);color:var(--t-1)}
+.cfg-state__cond{display:block;margin-top:3px;font-size:12px;line-height:1.55;color:var(--t-3)}
+
+/* 05 最近任务：键值行 + 终态徽标；空态用虚线框，不占主视觉 */
+.cfg-empty{padding:18px;border:1px dashed var(--n-line-2);border-radius:var(--r-sm);margin-top:16px}
+.cfg-empty b{display:block;font:500 14px/1.4 var(--body);color:var(--t-1)}
+.cfg-empty p{margin:6px 0 0;font-size:12px;line-height:1.6;color:var(--t-3)}
+.cfg-last{margin-top:8px}
+.cfg-last__row{display:flex;align-items:baseline;gap:12px;padding:11px 0;border-bottom:1px solid var(--n-line)}
+.cfg-last__row:last-child{border-bottom:0}
+.cfg-last__row span{flex:none;font:500 11px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--t-3)}
+.cfg-last__row b{margin-left:auto;min-width:0;text-align:right;overflow-wrap:anywhere;
+  font:500 13px/1.5 var(--mono);color:var(--t-1)}
+.cfg-last__badge{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid currentColor;
+  border-radius:var(--r-sm);font:500 11px/1 var(--mono);color:var(--sig-ok)}
+.cfg-last__act{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:16px}
+.cfg-last__act .btn-ghost{min-height:44px;padding:0 16px;border-radius:var(--r-sm);font:500 13px/1 var(--body)}
+.cfg-msg{font:500 12px/1.5 var(--mono);color:var(--t-3)}
+.cfg-msg.ok{color:var(--sig-ok)}.cfg-msg.err{color:var(--sig-err)}.cfg-msg.warn{color:var(--sig-deg)}
+.cfg-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:20px}
+.cfg-actions .btn-solid{min-width:150px}
+
+@media(max-width:1100px){
+  .cfg-read{grid-template-columns:repeat(2,1fr)}
+  .cfg-read__cell:nth-child(2){border-right:0}
+  .cfg-read__cell:nth-child(-n+2){border-bottom:1px solid var(--n-line)}
+  .cfg-grid,.cfg-grid--even{grid-template-columns:1fr}
+  .cfg-scn{grid-template-columns:1fr}
+  .cfg-grid--even{margin-top:20px}
+}
+@media(max-width:700px){
+  .cfg-read{grid-template-columns:1fr}
+  .cfg-read__cell{border-right:0;border-bottom:1px solid var(--n-line)}
+  .cfg-read__cell:last-child{border-bottom:0}
+  .cfg-row{grid-template-columns:10px minmax(0,1fr);row-gap:4px}
+  .cfg-row__mark{grid-column:1;grid-row:1}
+  .cfg-row__label{grid-column:2;grid-row:1;padding-top:10px}
+  .cfg-row__ctl{grid-column:2;grid-row:2}
+  .cfg-states{grid-template-columns:1fr}
+  .cfg-state{padding:12px 14px}
+  .cfg-head{flex-wrap:wrap}
+  .cfg-head__note{margin-left:0;width:100%;text-align:left}
+  .cfg-def__row{flex-wrap:wrap;gap:4px}
+  .cfg-def__row dd{margin-left:0;text-align:left;width:100%}
+  .cfg-actions .btn-solid{width:100%}
+}
+
 /* ---------- 14. 页脚 ---------- */
 footer{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-top:48px;padding:24px 0 40px;
   border-top:1px solid var(--n-line-2)}
