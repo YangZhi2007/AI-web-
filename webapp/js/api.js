@@ -134,6 +134,19 @@ const ApiClient = {
    *     model_decision_raw 模型决策原文（JSON 字符串）
    *     adapter_name       适配器名（MOCK / 真实 adapter）
    *     mock_flag          演示/契约桩标记（true 表示非实时数据）
+   *   v0.22 只增字段（T01 冻结契约：只增不改语义）——独立裁决通道：
+   *     ai_claim           AI 是否声称「存在漏洞」（待检对象，布尔）
+   *     gt_ref             实验前点位标注的引用键（script/round）
+   *     gt_note            标注说明（该轮点位是否出现可复现状态变化）
+   *     oracle_verdict     独立裁决：CONFIRMED | REFUTED | MISSED | UNCONFIRMED
+   *                       | TRUE_NEGATIVE | NOT_APPLICABLE
+   *     oracle_cn          裁决中文名
+   *     oracle_source      标注集 ID（演示期 LAB-GT-01）
+   *   报告对象新增 credibility 汇总（claims / confirmed / refuted / missed /
+   *   unconfirmed / disagreement / signalRounds / cap / used / rows）。
+   *   注意：裁决判据来自标注集，不读取 verdict 字符串、confidence 或
+   *   model_decision_raw 里模型自证的 validation:PASSED；演示计数不构成实测误报率。
+   *   真实接入时 oracle_verdict 应由靶场服务端状态断言给出，而非模型侧回填。
    * ------------------------------------------------------------------------- */
   getTaskRounds(taskId) {
     /* 真实对接骨架（演示期不执行）：

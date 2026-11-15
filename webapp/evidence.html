@@ -30,7 +30,7 @@
   <div class="page-head__main">
     <p class="eyebrow">STEP 03 / ROUND EVIDENCE</p>
     <h1 class="page-title">逐轮证据链<span class="dash" aria-hidden="true"></span></h1>
-    <p class="page-sub">每轮记录响应分类、变形策略、模型决策与降级标记；下一轮策略依据上一轮响应改写，这是「以响应为反馈」而非预定义变换列表。</p>
+    <p class="page-sub">每轮记录响应分类、变形策略、模型决策与降级标记；下一轮策略依据上一轮响应改写。独立裁决轨把「模型声称」与「点位标注」并排核对——绕过 WAF 不等于漏洞成立。</p>
   </div>
   <span class="page-no" aria-hidden="true">03</span>
 </div>
@@ -56,8 +56,27 @@
     <p class="hint empty empty--inline" id="roundEmpty"><b>暂无轮次记录</b><span>完成一次分析后可逐轮查验。</span></p>
   </div>
 
+  <!-- v0.22 独立裁决双轨：上轨=模型声称，下轨=实验前点位标注的裁决。
+       错位的格子即「绕过 WAF 但点位未触发」的误报样本，全部数据由 app.js 从 report.credibility 渲染。 -->
+  <section class="card orc" id="oracleCard" aria-labelledby="orcTitle">
+    <div class="orc-head">
+      <div class="orc-head__txt">
+        <p class="eyebrow">ORACLE / INDEPENDENT VERDICT</p>
+        <h2 class="orc-title" id="orcTitle">绕过 WAF ≠ 漏洞成立</h2>
+        <p class="orc-lead">上轨是模型声称，下轨是实验前点位标注给出的独立裁决；两轨对不上的轮次，就是需要人工复核的分歧。</p>
+      </div>
+      <span class="orc-set mono" id="orcSet">—</span>
+    </div>
+    <div class="orc-tracks" id="orcTracks"></div>
+    <div class="orc-stats" id="orcStats"></div>
+    <div class="orc-detail" id="orcDetail"></div>
+    <p class="orc-note" id="orcNote"></p>
+  </section>
+
   <div class="card card--key" id="resultCard" style="margin-top:20px">
     <div class="verdict">探测结论 <em id="verdictWord">—</em></div>
+    <!-- 结论优先级：上方 verdict 是模型侧判定，本条给出独立裁决的复核结果，避免两处结论打架 -->
+    <div class="orc-verdict" id="orcVerdict" role="note"></div>
     <div class="oos-notice hidden" id="oosResult"></div>
     <div class="result-grid">
       <div class="kv"><span class="lbl">漏洞类型</span><b id="rType"></b></div>

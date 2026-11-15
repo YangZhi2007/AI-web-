@@ -187,6 +187,127 @@
   }
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
     return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  /* ③a-2 v0.22 独立裁决双轨：数据只来自 report.credibility（旧缓存按同一规则现算）。
+     形状 + 中文短标签 + 明细表三重编码，不依赖颜色；两轨错位的格子即待复核样本。 */
+  var ORC_SHORT={CONFIRMED:'确认',REFUTED:'证伪',MISSED:'漏报',
+    UNCONFIRMED:'不确认',TRUE_NEGATIVE:'未触发',NOT_APPLICABLE:'不适用',EMPTY:'未使用'};
+  var ORC_CLASH={REFUTED:1,MISSED:1,UNCONFIRMED:1};
+  function orcCell(row,kind){
+    var v=row?row.oracle:'EMPTY';
+    var el=document.createElement('i');
+    el.className='orc-cell'+(ORC_CLASH[v]?' is-clash':'')+(v==='EMPTY'?' is-empty':'');
+    el.setAttribute('data-track',kind);
+    el.setAttribute('data-v',v);
+    if(row){
+      el.setAttribute('data-round',String(row.round_no));
+      el.setAttribute('aria-label','第 '+row.round_no+' 轮，模型声称'+(row.ai_claim?'存在漏洞':'未发现')+
+        '，独立裁决'+(P.ORACLE_CN[v]||v));
+      el.setAttribute('title','第 '+row.round_no+' 轮 · '+row.gt_note);
+    }else{
+      el.setAttribute('aria-label','未使用的轮次预算');
+    }
+    var no=document.createElement('span'); no.className='orc-cell__no mono';
+    no.textContent=row?('0'+row.round_no).slice(-2):'—'; el.appendChild(no);
+    var g=document.createElement('span'); g.className='orc-cell__g';
+    g.setAttribute('aria-hidden','true'); el.appendChild(g);
+    var t=document.createElement('span'); t.className='orc-cell__t'; el.appendChild(t);
+    return el;
+  }
+  function renderOracle(r){
+    var card=$('#oracleCard'); if(!card)return;
+    var cr=r.credibility||P.buildCredibility(r);
+    var cap=cr.cap||8, rows=cr.rows||[];
+    var set=$('#orcSet'); if(set)set.textContent=cr.label_set+' / '+cr.version;
+
+    var tracks=$('#orcTracks'); if(tracks)tracks.innerHTML='';
+    [['claim','AI 声称','MODEL CLAIM'],['oracle','独立裁决','ORACLE VERDICT']].forEach(function(t){
+      var line=document.createElement('div'); line.className='orc-track orc-track--'+t[0];
+      var lab=document.createElement('div'); lab.className='orc-track__label';
+      var b=document.createElement('b'); b.textContent=t[1]; lab.appendChild(b);
+      var s=document.createElement('span'); s.className='mono'; s.textContent=t[2]; lab.appendChild(s);
+      line.appendChild(lab);
+      var cells=document.createElement('div'); cells.className='orc-track__cells';
+      for(var n=1;n<=cap;n++){
+        var row=null;
+        for(var k=0;k<rows.length;k++){ if(rows[k].round_no===n){ row=rows[k]; break; } }
+        var c=orcCell(row,t[0]);
+        if(t[0]==='claim'){
+          c.setAttribute('data-claim',row?(row.ai_claim?'pos':'neg'):'empty');
+          c.querySelector('.orc-cell__t').textContent=row?(row.ai_claim?'声称阳性':'未发现'):'';
+        }else{
+          c.querySelector('.orc-cell__t').textContent=ORC_SHORT[row?row.oracle:'EMPTY']||'';
+        }
+        cells.appendChild(c);
+      }
+      line.appendChild(cells);
+      if(tracks)tracks.appendChild(line);
+    });
+
+    var stats=$('#orcStats'); if(stats)stats.innerHTML='';
+    var sig=cr.signalRounds.map(function(n){ return 'R'+('0'+n).slice(-2); }).join(' / ')||'无';
+    [['AI 声称阳性',String(cr.claims)],['验证器确认',String(cr.confirmed)],
+     ['待复核轮次',String(cr.disagreement)],['信息增益轮',sig]].forEach(function(p){
+      var d=document.createElement('div'); d.className='orc-stat';
+      var l=document.createElement('span'); l.className='lbl'; l.textContent=p[0]; d.appendChild(l);
+      var v=document.createElement('b'); v.textContent=p[1]; d.appendChild(v);
+      if(stats)stats.appendChild(d);
+    });
+
+    var detail=$('#orcDetail'); if(detail)detail.innerHTML='';
+    var clashes=rows.filter(function(x){ return !!ORC_CLASH[x.oracle]; });
+    var h=document.createElement('h3'); h.className='orc-detail__h';
+    h.textContent=clashes.length?'待复核轮次 · 逐轮核对':'本次两轨一致';
+    if(detail)detail.appendChild(h);
+    if(!clashes.length){
+      var p0=document.createElement('p'); p0.className='orc-detail__none';
+      p0.textContent='没有出现证伪、漏报或降级不确认的轮次；这不代表系统不会误报，只代表本次剧本未触发分歧。';
+      if(detail)detail.appendChild(p0);
+    }else{
+      var tbl=document.createElement('div'); tbl.className='tbl-scroll';
+      var table=document.createElement('table'); table.className='tbl';
+      var thead=document.createElement('thead'); thead.innerHTML=
+        '<tr><th>轮次</th><th>模型声称</th><th>点位标注</th><th>独立裁决</th><th>标注说明</th></tr>';
+      table.appendChild(thead);
+      var tbody=document.createElement('tbody');
+      clashes.forEach(function(x){
+        var tr=document.createElement('tr'); tr.className='is-key';
+        [[('0'+x.round_no).slice(-2),'mono'],[x.ai_claim?'存在漏洞':'未发现',''],
+         [x.gt_ref?(x.gt_triggered?'点位已触发':'点位未触发'):'—',''],
+         [P.ORACLE_CN[x.oracle]||x.oracle,''],[x.gt_note||'—','']].forEach(function(c){
+          var td=document.createElement('td'); if(c[1])td.className=c[1];
+          td.textContent=c[0]; tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody); tbl.appendChild(table);
+      if(detail)detail.appendChild(tbl);
+    }
+    /* 结论优先级：下方结果卡的 verdict 是「模型侧判定」，此处给出独立裁决的复核结果。
+       两者并列而不互相覆盖，出现分歧时明确以裁决为准，避免页面上出现两个打架的结论。 */
+    var vn=$('#orcVerdict');
+    if(vn){
+      var word=($('#verdictWord')?$('#verdictWord').textContent:'—').trim();
+      var tone='ok',txt;
+      if(cr.na===cr.used){
+        tone='na';
+        txt='独立裁决优先 · 本次 '+cr.used+' 轮全部为「不适用（纯模拟）」；模型侧「'+word+'」不构成对任何真实目标的结论。';
+      }else if(cr.disagreement){
+        tone='warn';
+        txt='独立裁决优先 · 模型侧判定「'+word+'」，独立裁决确认 '+cr.confirmed+
+          ' / 证伪 '+cr.refuted+' / 降级不确认 '+cr.unconfirmed+'；共 '+cr.disagreement+
+          ' 轮待复核，模型侧结论不作为最终判定。';
+      }else{
+        txt='独立裁决优先 · 模型侧判定「'+word+'」获 '+cr.confirmed+' 条确认，无待复核轮次；两轨一致。';
+      }
+      vn.setAttribute('data-tone',tone);
+      vn.textContent=txt;
+    }
+    var note=$('#orcNote');
+    if(note)note.textContent='判据：'+cr.label_set+' 实验前点位标注（'+cr.version+
+      '） · 不读取模型置信度，也不采信模型原文自证的 validation:PASSED · '+
+      '演示计数，不构成实测误报率 · 零外部请求 · 真实系统需接入靶场服务端状态断言';
+  }
+
   function bootEvidence(){
     var r=P.Store.getReport();
     if(!r){
@@ -196,7 +317,7 @@
     }
     var e=$('#evidenceEmpty'); if(e)e.classList.add('hidden');
     var wrap=$('#evidenceWrap'); if(wrap)wrap.classList.remove('hidden');
-    P.renderResult(r); restoreRounds(r);
+    P.renderResult(r); restoreRounds(r); renderOracle(r);
     var st=P.resolveTerminalState(r);
     var badge=$('#evidenceState'); if(badge){badge.textContent=st.label;badge.setAttribute('data-state',st.state);}
   }
@@ -280,6 +401,18 @@
         var cap=(c.MAX_ROUNDS||rounds.length);
         card.appendChild(mk('p','cfg-scn__meta',
           '轮数 '+rounds.length+' / 上限 '+cap+' · 终止 '+sc.terminate_reason+' · 降级轮 '+degN));
+        /* v0.22：用与运行时完全相同的裁决规则预告每套剧本会产生几轮分歧，
+           让「失败样本」在演示动线的起点（剧本库）就能被指出来，而不是只在报告里出现 */
+        var vd=rounds.map(function(r,idx){
+          var no=idx+1, gt=P.groundTruthOf(key,no);
+          return P.oracleVerdict(!!r.hit,gt,{outOfScope:false,
+            degraded:!!(sc.degradeFrom&&no>=sc.degradeFrom)});
+        });
+        var vConf=vd.filter(function(v){return v==='CONFIRMED';}).length;
+        var vRef=vd.filter(function(v){return v==='REFUTED';}).length;
+        var vClash=vd.filter(function(v){return v==='REFUTED'||v==='MISSED'||v==='UNCONFIRMED';}).length;
+        card.appendChild(mk('p','cfg-scn__audit'+(vClash?' is-warn':''),
+          '裁决 '+P.GROUND_TRUTH.label_set+' · 确认 '+vConf+' · 证伪 '+vRef+' · 待复核 '+vClash));
         var rail=mk('div','cfg-rail'); rail.setAttribute('aria-hidden','true');
         rounds.forEach(function(r,idx){
           var cell=mk('i',null,idx+1);

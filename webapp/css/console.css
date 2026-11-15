@@ -741,6 +741,8 @@ details.raw pre{white-space:pre-wrap;word-break:break-word;background:var(--surf
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cfg-scn__en{flex:none;margin-left:auto;font:500 11px/1 var(--mono);color:var(--t-3)}
 .cfg-scn__meta{margin:0;font:500 11px/1.6 var(--mono);color:var(--t-3)}
+.cfg-scn__audit{margin:0;font:500 11px/1.6 var(--mono);color:var(--t-2)}
+.cfg-scn__audit.is-warn{color:var(--sig-alert)}
 .cfg-rail{display:flex;gap:3px}
 .cfg-rail i{position:relative;flex:1 1 0;min-width:0;height:30px;display:flex;align-items:center;justify-content:center;
   font:500 11px/1 var(--mono);font-style:normal;color:var(--t-2);background:var(--n-raised);
@@ -909,6 +911,101 @@ footer{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;
   .cell.is-updated::after{animation:none;opacity:0}
 }
 
+/* ---------- 17b. v0.22 独立裁决双轨（证据链页）+ 报告裁决读数 ----------
+   记忆点：上下两把 8 格刻度，下轨错位格用 2px 框 + 叉形 + 中文短标签 + 一条向上刻痕，
+   不靠颜色也能读出「模型声称 / 点位裁决」对不上。读数与明细同源于 report.credibility。 */
+.orc{margin-top:20px}
+.orc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;
+  padding-bottom:16px;border-bottom:1px solid var(--n-line)}
+.orc-head__txt{min-width:0}
+.orc-head .eyebrow{margin:0 0 8px}
+.orc-title{font:500 22px/1.25 var(--display-cn);color:var(--t-1);margin:0 0 8px}
+.orc-lead{margin:0;font-size:13px;line-height:1.7;color:var(--t-2);max-width:720px}
+.orc-set{flex:none;font-size:11px;letter-spacing:.08em;color:var(--t-2);
+  border:1px solid var(--n-line-2);border-radius:var(--r-in);padding:8px 12px;background:var(--n-raised)}
+.orc-tracks{margin-top:20px;display:grid;gap:16px}
+.orc-track{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;align-items:center}
+.orc-track__label{display:flex;flex-direction:column;gap:2px}
+.orc-track__label b{font:500 13px/1.3 var(--body);color:var(--t-1)}
+.orc-track__label span{font-size:11px;letter-spacing:.08em;color:var(--t-3)}
+.orc-track__cells{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px}
+.orc-cell{position:relative;height:60px;border:1px solid var(--n-line-2);border-radius:var(--r-in);
+  background:var(--n-surface);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:3px;font-style:normal}
+.orc-cell__no{font-size:11px;color:var(--t-3)}
+.orc-cell__g{position:relative;width:14px;height:14px;display:block;flex:none}
+.orc-cell__t{font:500 11px/1.2 var(--body);color:var(--t-2);text-align:center}
+.orc-cell.is-empty{background:var(--n-raised);border-style:dashed;border-color:var(--n-line)}
+/* 形状编码：横杠=阴性/未触发，实心=阳性/确认，叉=证伪，虚线框=降级不确认，
+   菱形=漏报，斜杠=不适用；与 8 态形状板、8 格轮次预算同一套语言 */
+.orc-track--claim .orc-cell[data-claim="neg"] .orc-cell__g::after,
+.orc-track--oracle .orc-cell[data-v="TRUE_NEGATIVE"] .orc-cell__g::after{
+  content:"";position:absolute;left:0;top:6px;width:14px;height:2px;background:var(--t-2)}
+.orc-track--claim .orc-cell[data-claim="pos"] .orc-cell__g::after,
+.orc-track--oracle .orc-cell[data-v="CONFIRMED"] .orc-cell__g::after{
+  content:"";position:absolute;inset:1px;background:var(--st-hit)}
+.orc-track--oracle .orc-cell[data-v="REFUTED"] .orc-cell__g::before,
+.orc-track--oracle .orc-cell[data-v="REFUTED"] .orc-cell__g::after{
+  content:"";position:absolute;left:0;top:6px;width:14px;height:2px;background:var(--sig-alert)}
+.orc-track--oracle .orc-cell[data-v="REFUTED"] .orc-cell__g::before{transform:rotate(45deg)}
+.orc-track--oracle .orc-cell[data-v="REFUTED"] .orc-cell__g::after{transform:rotate(-45deg)}
+.orc-track--oracle .orc-cell[data-v="UNCONFIRMED"] .orc-cell__g{
+  border:1.5px dashed var(--sig-deg)}
+.orc-track--oracle .orc-cell[data-v="MISSED"] .orc-cell__g::after{
+  content:"";position:absolute;inset:2px;background:var(--sig-block);transform:rotate(45deg)}
+.orc-track--oracle .orc-cell[data-v="NOT_APPLICABLE"] .orc-cell__g::after{
+  content:"";position:absolute;left:0;top:6px;width:14px;height:2px;
+  background:var(--t-3);transform:rotate(45deg)}
+/* 错位刻痕：下轨待复核格向上伸出一条短竖线，与上一轨形成可见的「对不上」 */
+.orc-track--oracle .orc-cell.is-clash{border:2px solid var(--sig-alert);background:var(--sig-alert-soft)}
+.orc-track--oracle .orc-cell.is-clash .orc-cell__t{color:var(--sig-alert)}
+.orc-track--oracle .orc-cell.is-clash::before{
+  content:"";position:absolute;left:50%;top:-18px;width:2px;height:14px;
+  background:var(--sig-alert);transform:translateX(-50%)}
+.orc-stats{display:grid;grid-template-columns:repeat(4,1fr);margin-top:20px;
+  border:1px solid var(--n-line);border-radius:var(--r-in);overflow:hidden;background:var(--n-surface)}
+.orc-stat{padding:14px 16px;border-right:1px solid var(--n-line)}
+.orc-stat:last-child{border-right:0}
+.orc-stat .lbl{display:block;font:500 11px/1.3 var(--mono);letter-spacing:.08em;color:var(--t-3);margin-bottom:6px}
+.orc-stat b{font:500 22px/1.2 var(--display-cn);color:var(--t-1);font-variant-numeric:tabular-nums}
+.orc-verdict{margin:10px 0 14px;padding:10px 12px;border-left:2px solid var(--sig-ok);
+  background:var(--sig-ok-soft);border-radius:0 var(--r-in) var(--r-in) 0;
+  font-size:12px;line-height:1.7;color:var(--t-1)}
+.orc-verdict[data-tone="warn"]{border-left-color:var(--sig-alert);background:var(--sig-alert-soft)}
+.orc-verdict[data-tone="na"]{border-left-color:var(--t-3);background:var(--n-raised)}
+.orc-detail{margin-top:20px}
+.orc-detail__h{font:500 14px/1.3 var(--display-cn);color:var(--t-1);margin:0 0 10px;
+  padding-left:12px;border-left:2px solid var(--key)}
+.orc-detail__none{margin:0;font-size:13px;color:var(--t-2);line-height:1.7}
+.orc-detail .tbl{font-size:12px}
+.orc-note{margin:16px 0 0;padding-top:12px;border-top:1px dashed var(--n-line-2);
+  font:500 11px/1.7 var(--mono);color:var(--t-3)}
+/* 报告 02 裁决读数：与卷宗事实格同一套表面，数字不配彩色底 */
+.rpt-audit{margin:16px 0;padding:16px;border:1px solid var(--n-line-2);
+  border-radius:var(--r-in);background:var(--n-surface)}
+.rpt-audit__head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.rpt-audit__head .lbl{font:500 11px/1.3 var(--mono);letter-spacing:.1em;color:var(--t-2)}
+.rpt-audit__head b{font-size:11px;color:var(--t-3)}
+.rpt-audit__cells{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+  border:1px solid var(--n-line);background:var(--n-line)}
+.rpt-audit__cells>div{padding:10px 12px;background:var(--n-surface)}
+.rpt-audit__cells span{display:block;font-size:11px;color:var(--t-3);margin-bottom:4px}
+.rpt-audit__cells b{font:500 18px/1.2 var(--display-cn);color:var(--t-1);font-variant-numeric:tabular-nums}
+.rpt-audit__cells b.is-warn{color:var(--sig-alert)}
+.rpt-audit .rpt-note{margin:12px 0 0;font-size:12px;line-height:1.7;color:var(--t-2)}
+@media(max-width:1100px){ .orc-track{grid-template-columns:80px minmax(0,1fr)} }
+@media(max-width:700px){
+  .orc-head{flex-direction:column}
+  .orc-title{font-size:20px}
+  .orc-track{grid-template-columns:1fr;gap:6px}
+  .orc-track__label{flex-direction:row;align-items:baseline;gap:8px}
+  .orc-track__cells{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .orc-track--oracle .orc-cell.is-clash::before{display:none}
+  .orc-stats,.rpt-audit__cells{grid-template-columns:repeat(2,1fr)}
+  .orc-stat:nth-child(2),.rpt-audit__cells>div:nth-child(2){border-right:0}
+  .orc-stat:nth-child(-n+2),.rpt-audit__cells>div:nth-child(-n+2){border-bottom:1px solid var(--n-line)}
+}
+
 /* ---------- 18. 打印：仍仅输出 #report，5 附录齐全 ---------- */
 @media print{
   body{background:#fff;background-image:none;color:#111}
@@ -944,4 +1041,10 @@ footer{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;
   .rpt-facts>div b,.rpt-rail-head b{color:#111}
   .rpt-sec__no{background:#fff;color:#111;border:1px solid #666}
   .rpt-sec::before{background:#666}
+  /* v0.22 裁决读数：打印同样白底黑字，不留下浅色格底或彩色告警字 */
+  .rpt-audit,.rpt-audit__cells,.rpt-audit__cells>div,.rpt-audit__head{
+    background:#fff;border-color:#666;color:#111}
+  .rpt-audit__head .lbl,.rpt-audit__head b,.rpt-audit__cells span,
+  .rpt-audit__cells b,.rpt-audit__cells b.is-warn,.rpt-audit .rpt-note{color:#111}
+  .orc{display:none !important}
 }

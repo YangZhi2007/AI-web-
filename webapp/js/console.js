@@ -62,6 +62,63 @@ const SCRIPTS = {
     {cls:'ANOMALY',sig:'',             tag:'OP_FALLBACK_3', op:['OP_FALLBACK_3'], cost:1240,hit:true}
   ]}
 };
+/* ---------- v0.22 独立裁决通道：演示标注集（Oracle） ----------
+   与 AI 判定解耦的关键：GROUND_TRUTH 是「实验前」由靶场点位清单人工标注的事实——
+   该轮算子序列是否在标注点位产生可复现的状态变化。它运行时只读，不参与 AI 的策略选择与判定。
+   裁决只接收三个输入：AI 的「声称」(待检对象)、标注事实、降级/越界上下文；
+   绝不读取 verdict 字符串、confidence 或 model_decision_raw 里的模型自证。
+   因此能抓出安全领域最典型的一类误报：WAF 没拦住（响应异常）≠ 漏洞点位真的被触发。
+   真实系统里这一路由靶场服务端状态断言提供；演示期是预置标注，不构成实测误报率。 */
+const GROUND_TRUTH = Object.freeze({
+  label_set:'LAB-GT-01', version:'1.0',
+  points:Object.freeze({
+    'CONVERGE_3/3':{triggered:true, note:'分段编码算子在标注点位触发可复现状态变化'},
+    'DEGRADED/4':{triggered:false,note:'兜底算子仅绕过 WAF 规则，标注点位未出现状态变化'}
+  }),
+  fallback:Object.freeze({triggered:false,note:'WAF 拦截或算子未命中标注点位，无状态变化'})
+});
+const ORACLE_CN = Object.freeze({
+  CONFIRMED:'确认命中', REFUTED:'证伪 · 绕过未成立', MISSED:'漏报 · 点位触发未声称',
+  UNCONFIRMED:'降级不确认', TRUE_NEGATIVE:'拦截未触发', NOT_APPLICABLE:'不适用 · 纯模拟'
+});
+function groundTruthOf(script,no){
+  const p=GROUND_TRUTH.points[script+'/'+no];
+  return p ? {ref:script+'/'+no,triggered:p.triggered,note:p.note}
+           : {ref:script+'/*',triggered:GROUND_TRUTH.fallback.triggered,note:GROUND_TRUTH.fallback.note};
+}
+/* 判定优先级：越界 → 点位触发与否 → 降级证据不足 → 常规拦截。
+   REFUTED 优先于 UNCONFIRMED：标注已明确「未触发」，就不能用「降级」把误报含糊过去。 */
+function oracleVerdict(aiClaim,gt,ctx){
+  if(ctx.outOfScope)   return 'NOT_APPLICABLE';
+  if(gt.triggered)     return aiClaim?'CONFIRMED':'MISSED';
+  if(aiClaim)          return 'REFUTED';
+  if(ctx.degraded)     return 'UNCONFIRMED';
+  return 'TRUE_NEGATIVE';
+}
+/* 聚合口径：只计数，不外推。「precision」是本次演示里声称被确认的比例，
+   不是对真实目标的误报率结论；界面与文档必须同时给出这条诚信标注。 */
+function buildCredibility(report){
+  const cap=Number(report.task&&report.task.max_rounds)||CONFIG.MAX_ROUNDS||8;
+  const rows=(report.rounds||[]).map(x=>({
+    round_no:x.round_no,round_id:x.round_id,
+    ai_claim:!!x.ai_claim,oracle:x.oracle_verdict||'TRUE_NEGATIVE',
+    gt_ref:x.gt_ref||'',gt_note:x.gt_note||'',gt_triggered:!!x.gt_triggered,
+    degraded:!!x.degraded_flag
+  }));
+  const n=code=>rows.filter(r=>r.oracle===code).length;
+  const c={label_set:GROUND_TRUTH.label_set,version:GROUND_TRUTH.version,
+    cap,used:rows.length,rows,
+    claims:rows.filter(r=>r.ai_claim).length,
+    confirmed:n('CONFIRMED'),refuted:n('REFUTED'),missed:n('MISSED'),
+    unconfirmed:n('UNCONFIRMED'),negative:n('TRUE_NEGATIVE'),na:n('NOT_APPLICABLE')};
+  c.disagreement=c.refuted+c.missed+c.unconfirmed;
+  c.precision=c.claims?+(c.confirmed/c.claims).toFixed(2):null;
+  /* 信息增益：确认 / 证伪 / 漏报出现的轮号。用于回答「固定预算花在哪一轮」，
+     而不是把 8 轮包装成算法的收敛判据。 */
+  c.signalRounds=rows.filter(r=>['CONFIRMED','REFUTED','MISSED'].indexOf(r.oracle)>-1)
+                     .map(r=>r.round_no);
+  return c;
+}
 /* ---------- 跨页状态桥（sessionStorage；file:// 下 try/catch 降级内存） ----------
    v0.17 翻页式架构：任务在「任务台」点击「开始分析」→ 写一次性 pendingRun 意图 + cfg 只读快照
    → 监控页读取 pendingRun（读即清除）后才执行 runTask。cfg 仅为配置快照，与"是否执行"解耦：
@@ -136,6 +193,11 @@ const MockEngine = {
       if(options.isCancelled?.()) throw new Error('用户取消');
       const no=i+1, prev=i===0?null:report.rounds[i-1].round_id;
       const degraded=!!(sc.degradeFrom && no>=sc.degradeFrom);
+      /* 独立裁决：标注事实来自实验前点位清单，待检对象只有「AI 是否声称存在漏洞」。
+         模型原文里的 validation:'PASSED' 属于模型自证，保留原样但绝不作为判定依据。 */
+      const gt=groundTruthOf(scriptName,no);
+      const aiClaim=!!s.hit;
+      const oracle=oracleVerdict(aiClaim,gt,{outOfScope,degraded});
       const rec={
         round_id:`${taskId}-R${pad(no)}`,round_no:no,prev_round_id:prev,
         param_ref:paramRefOf(url,options.vulnType),strategy_tag:s.tag,operator_chain:s.op,
@@ -146,7 +208,11 @@ const MockEngine = {
         degraded_flag:degraded,fallback_used:degraded,adapter_name:'MOCK',
         validation_result:'PASSED',cost_ms:s.cost,mock_flag:true,
         ai_summary:aiSummary(no,prevSig,s),
-        model_decision_raw:modelRaw(no,prev,prevSig,s,degraded)
+        model_decision_raw:modelRaw(no,prev,prevSig,s,degraded),
+        /* v0.22 双通道字段（T01 冻结契约：只增字段，不改既有字段语义） */
+        ai_claim:aiClaim,gt_ref:gt.ref,gt_note:gt.note,gt_triggered:gt.triggered,
+        oracle_verdict:oracle,oracle_cn:ORACLE_CN[oracle]||oracle,
+        oracle_source:GROUND_TRUTH.label_set
       };
       report.rounds.push(rec);
       if(degraded) report.degraded_rounds.push(no);
@@ -165,6 +231,7 @@ const MockEngine = {
     const hasHit=report.rounds.some(r=>r.hit_signal);
     report.terminate_reason=hasHit?'HIT':(scriptRounds.length>=CONFIG.MAX_ROUNDS?'MAX_ROUNDS':sc.terminate_reason);
     report.elapsed_ms=report.rounds.reduce((a,r)=>a+r.cost_ms,0);
+    report.credibility=buildCredibility(report);
     const hit=report.rounds.find(r=>r.hit_signal);
     if(hit) report.findings.push({finding_id:taskId+'-F01',vuln_type:options.vulnType,
       param_ref:hit.param_ref,risk_level:'HIGH',verdict:'VULNERABLE',
@@ -445,6 +512,9 @@ function renderReport(r){
   }[r.terminate_reason]||r.terminate_reason;
   const hit=r.rounds.find(x=>x.hit_signal);
   const degList=r.degraded_rounds.length?r.degraded_rounds.join('、'):'无';
+  /* 兼容旧会话里缓存的报告：没有 credibility 时按同一套规则现算，不写死数字 */
+  const cr=r.credibility||buildCredibility(r);
+  const sigTxt=cr.signalRounds.length?cr.signalRounds.map(n=>'R'+String(n).padStart(2,'0')).join(' / '):'无';
   const rows=r.rounds.map(x=>{
     const t=CLS_TAG[x.response_class]||['normal',x.response_class];
     return `<tr${x.hit_signal?' class="is-key"':''}>
@@ -508,15 +578,27 @@ function renderReport(r){
       <div class="rpt-rail-wrap">
         <div class="rpt-rail-head"><span class="lbl">轮次预算 / ROUND BUDGET</span><b class="mono">${r.rounds.length} / ${cap}</b></div>
         <div class="rpt-rail" aria-hidden="true">${rail}</div>
-        <p class="rpt-note">横杠=拦截　实心=异常命中　虚线框=降级轮　空槽=未使用轮次；配置页展示剧本预算，本页展示本次实际用量。</p>
+        <p class="rpt-note">横杠=拦截　实心=异常命中　虚线框=降级轮　空槽=未使用轮次；配置页展示剧本预算，本页展示本次实际用量。预算是实验控制变量，不是收敛判据。</p>
+      </div>
+      <div class="rpt-audit">
+        <div class="rpt-audit__head"><span class="lbl">独立裁决 / ORACLE VERDICT</span>
+          <b class="mono">${esc(cr.label_set)} · 演示标注集</b></div>
+        <div class="rpt-audit__cells">
+          <div><span>AI 声称阳性</span><b>${cr.claims}</b></div>
+          <div><span>验证器确认</span><b>${cr.confirmed}</b></div>
+          <div><span>分歧轮次</span><b${cr.disagreement?' class="is-warn"':''}>${cr.disagreement}</b></div>
+          <div><span>信息增益轮</span><b class="mono">${esc(sigTxt)}</b></div>
+        </div>
+        <p class="rpt-note">卷首的「已检出 / 降级命中」是任务终态（引擎状态机），不是独立裁决结论；两者并列呈现，出现分歧时以裁决为准并标记待复核。判据来自实验前的点位标注，不读取模型置信度，也不采信模型原文里自证的 validation:PASSED；WAF 未拦截不等于漏洞点位被触发。逐轮双轨对照见「03 证据链」页。以上为演示计数，不构成实测误报率。</p>
       </div>
       <ul class="rpt-points">
+        <li>独立裁决：${cr.disagreement?`有 ${cr.disagreement} 轮与 AI 声称不一致（证伪 ${cr.refuted} / 漏报 ${cr.missed} / 降级不确认 ${cr.unconfirmed}），已如实计入分歧，不改写判定`:'未出现与 AI 声称不一致的轮次'}。</li>
         <li>降级轮次：${degN?`第 ${degList} 轮（degraded_flag=true，已单列，不计入主指标统计）`:'本次无降级轮次'}。</li>
         <li>${oos?'本报告为纯模拟演示，不构成对任何真实目标的安全结论。':`本报告结论仅适用于授权范围内的 ${esc(r.task.target_alias)}。`}每条结论可回溯到 round_id。</li>
       </ul>
     </div>
     <div class="report-sec rpt-sec" data-sec="03"><h3><span class="rpt-sec__no">03</span>附录 A · 逐轮执行记录<em>Rounds</em></h3>
-      <p class="rpt-sec__lead">共 ${r.rounds.length} 轮 · 命中轮 ${hit?'R'+String(hit.round_no).padStart(2,'0'):'无'} · 降级轮 ${degList}</p>
+      <p class="rpt-sec__lead">共 ${r.rounds.length} 轮 · 命中轮 ${hit?'R'+String(hit.round_no).padStart(2,'0'):'无'} · 降级轮 ${degList}；本附录记录模型侧判定，独立裁决见 02 与「03 证据链」页。</p>
       <div class="tbl-scroll"><table class="tbl"><thead><tr><th>轮次</th><th>round_id</th><th>依据上轮</th>
       <th>变形策略</th><th>响应分类</th><th>判定</th><th>耗时</th><th>降级</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
@@ -664,6 +746,7 @@ syncStart();
 /* ---------- 跨页接口：供 app.js 编排 7 个页面 ---------- */
 window.Probe={
   CONFIG, RUNTIME, SCRIPTS, Store, SCOPE, TICKS,
+  GROUND_TRUTH, ORACLE_CN, buildCredibility, oracleVerdict, groundTruthOf,
   runTask, start, cancelRun,
   setDashState, applyTerminalState, resolveTerminalState,
   paintRail, paintBars, buildRail,
