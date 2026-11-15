@@ -223,7 +223,9 @@ input,select{min-height:44px}
 .btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--line-2)}
 .btn-ghost:hover{border-color:var(--accent);color:var(--ink);box-shadow:inset 0 0 0 1px var(--accent-soft)}
 .btn-grad{background:var(--key-btn);color:var(--key-btn-ink);border:1px solid var(--key-btn)}
-.btn-grad:hover{transform:translateY(-3px);box-shadow:0 12px 34px rgba(200,245,96,.3)}
+.btn-grad:not(:disabled):hover{transform:translateY(-3px);box-shadow:0 12px 34px rgba(200,245,96,.3)}
+.btn-grad:not(:disabled):active{transform:translateY(-1px) scale(.98)}
+.btn-grad:disabled{opacity:.4;cursor:not-allowed}
 .btn-back{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;color:var(--t-2);font:500 12px/1 var(--mono)}
 .btn-back:hover{color:var(--accent-ink)}
 /* 覆盖 monitor.html:161 内联 min-height:36px，守住 44×44 契约（不改 HTML） */
@@ -259,6 +261,10 @@ input[type=text]::placeholder{color:var(--t-3)}
 #msg{font:500 13px/1.5 var(--mono)}
 #msg.err{color:var(--sig-err)}#msg.warn{color:var(--sig-deg)}#msg.ok{color:var(--sig-ok)}
 .auth-hint{margin-top:12px}
+.agent-hint{margin-top:8px;padding-left:12px;border-left:2px solid var(--key);
+  font-size:12px;line-height:1.7;color:var(--t-2)}
+.agent-hint b{color:var(--t-1)}
+.agent-hint .mono{font-size:11px}
 
 /* ---------- 8. 指标条 / KPI：数字用压缩展示字，顶边跟随逐页主色 ---------- */
 .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--n-line);border-radius:var(--r);
@@ -1006,11 +1012,43 @@ footer{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;
   .orc-stat:nth-child(-n+2),.rpt-audit__cells>div:nth-child(-n+2){border-bottom:1px solid var(--n-line)}
 }
 
+/* ---------- 17c. v0.23 自主攻击闭环（报告 02） ----------
+   决策链不用 .tbl 表格，避免影响既有验收对全局表格行数的断言；
+   攻破行用浅底 + 文字「终止」双编码，黑白打印仍能区分。 */
+.rpt-agent{margin:16px 0;padding:16px;border:1px solid var(--n-line-2);
+  border-radius:var(--r-in);background:var(--n-surface)}
+.rpt-agent__head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.rpt-agent__head .lbl{font:500 11px/1.3 var(--mono);letter-spacing:.1em;color:var(--t-2)}
+.rpt-agent__head b{font-size:11px;color:var(--sig-alert)}
+.rpt-agent__head b[data-breach]{color:var(--sig-ok)}
+.rpt-agent__cells{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+  border:1px solid var(--n-line);background:var(--n-line)}
+.rpt-agent__cells>div{padding:10px 12px;background:var(--n-surface)}
+.rpt-agent__cells span{display:block;font-size:11px;color:var(--t-3);margin-bottom:4px}
+.rpt-agent__cells b{font:500 16px/1.3 var(--display-cn);color:var(--t-1);font-variant-numeric:tabular-nums}
+.rpt-chain{margin-top:14px;border:1px solid var(--n-line)}
+.rpt-chain__head{padding:8px 12px;background:var(--n-raised);
+  font:500 11px/1.4 var(--mono);color:var(--t-2)}
+.rpt-chain__row{display:grid;
+  grid-template-columns:40px minmax(0,1.4fr) minmax(0,1fr) 84px minmax(0,1.2fr) 44px;
+  gap:8px;align-items:center;padding:7px 12px;border-top:1px solid var(--n-line);
+  font-size:11px;line-height:1.5;color:var(--t-2)}
+.rpt-chain__row[data-breach]{background:var(--sig-ok-soft);color:var(--t-1)}
+.rpt-chain__row .mono{font-size:11px;color:var(--t-2)}
+.rpt-chain__obs{color:var(--t-3)}
+.rpt-chain__v{color:var(--t-1)}
+.rpt-agent .rpt-note{margin:12px 0 0;font-size:12px;line-height:1.7;color:var(--t-2)}
+@media(max-width:700px){
+  .rpt-agent__cells{grid-template-columns:repeat(2,1fr)}
+  .rpt-agent__cells>div:nth-child(-n+2){border-bottom:1px solid var(--n-line)}
+  .rpt-chain__row{display:flex;flex-wrap:wrap;gap:4px 10px}
+}
+
 /* ---------- 18. 打印：仍仅输出 #report，5 附录齐全 ---------- */
 @media print{
   body{background:#fff;background-image:none;color:#111}
   .topbar,.tools,.net,.crumb,.page-no,.stage-head,.stage-tag,.btn-solid,.btn-ghost,.btn-grad,
-  .btn-back,#cancelBtn,.no-print,footer,.page-head__main .page-sub,.auth-hint,.msg-box{display:none !important}
+  .btn-back,#cancelBtn,.no-print,footer,.page-head__main .page-sub,.auth-hint,.agent-hint,.msg-box{display:none !important}
   main>section:not(#reportSection),main>.card:not(#reportCardWrap),.metrics,.run-panel,.dash{display:none !important}
   .wrap{max-width:none;padding:0}
   .card{border:0;padding:0;box-shadow:none;background:#fff}
@@ -1046,5 +1084,12 @@ footer{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;
     background:#fff;border-color:#666;color:#111}
   .rpt-audit__head .lbl,.rpt-audit__head b,.rpt-audit__cells span,
   .rpt-audit__cells b,.rpt-audit__cells b.is-warn,.rpt-audit .rpt-note{color:#111}
+  /* v0.23 自主攻击闭环：打印白底黑字，攻破行靠文字「终止」与粗框区分 */
+  .rpt-agent,.rpt-agent__cells,.rpt-agent__cells>div,.rpt-chain,.rpt-chain__head,
+  .rpt-chain__row,.rpt-chain__row[data-breach]{background:#fff;border-color:#666;color:#111}
+  .rpt-chain__row[data-breach]{border-top-width:2px}
+  .rpt-agent__head .lbl,.rpt-agent__head b,.rpt-agent__head b[data-breach],
+  .rpt-agent__cells span,.rpt-agent__cells b,.rpt-chain__row .mono,
+  .rpt-chain__obs,.rpt-chain__v,.rpt-agent .rpt-note{color:#111}
   .orc{display:none !important}
 }

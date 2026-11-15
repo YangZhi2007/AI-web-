@@ -45,7 +45,7 @@
   <div class="page-head__main">
     <p class="eyebrow">STEP 01 / TASK CONSOLE</p>
     <h1 class="page-title">探测任务台<span class="dash" aria-hidden="true"></span></h1>
-    <p class="page-sub">在授权范围内提交目标，由本地契约桩驱动逐轮自适应探测。全过程为演示数据，不向目标地址发起任何真实请求。</p>
+    <p class="page-sub">把目标地址交给智能体，在授权靶场内逐轮自适应探测、攻破即停，并自动生成报告。全过程为演示数据，不向目标地址发起任何真实请求。</p>
   </div>
   <span class="page-no" aria-hidden="true">01</span>
 </div>
@@ -76,12 +76,14 @@
       <span class="lbl">授权范围仅限 localhost / 127.0.0.1 / lab 靶场别名；越界仅作纯模拟演示</span>
     </div>
     <div class="actions">
+      <button id="agentBtn" class="btn-grad" type="button" disabled data-ripple>自主攻击 · 打到攻破 →</button>
       <button id="startBtn" class="btn-solid" type="button" disabled data-ripple>开始分析 →</button>
       <a id="runLink" class="nav-trigger" href="monitor.html" data-nav aria-hidden="true" tabindex="-1">进入监控</a>
       <button id="cancelBtn" class="btn-ghost hidden" type="button" data-ripple>取消</button>
       <span class="msg-box"><span id="msg" role="status"></span></span>
     </div>
     <p class="hint auth-hint" id="authHint">请先勾选授权确认，否则无法开始分析。</p>
+    <p class="hint agent-hint" id="agentHint">自主攻击：智能体依据每轮 WAF 拦截特征自选算子，<b>攻破（标注点位被独立确认）即停</b>；未攻破在 8 轮预算内如实终止，不无限重试。换靶场路径可演示不同结局：<span class="mono">/lab/hard.php</span> 打不穿、<span class="mono">/lab/trap.php</span> 模型误判后继续迭代。</p>
   </section>
 
   <aside class="boundary-card" aria-label="合规与边界声明">

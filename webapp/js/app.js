@@ -45,7 +45,8 @@
     if(cfg){
       var put=function(sel,v){var e=$(sel);if(e)e.textContent=v;};
       put('#mTarget',cfg.url); put('#mType',({sqli:'SQL 注入',xss:'XSS',upload:'文件上传'})[cfg.vulnType]||cfg.vulnType);
-      put('#mScript',cfg.script); put('#mScope',/lab|localhost|127\.0\.0\.1|::1/.test(cfg.url)?'授权靶场':'越界 · 纯模拟');
+      put('#mScript',cfg.agent?'自主攻击 / AGENT LOOP':cfg.script);
+      put('#mScope',/lab|localhost|127\.0\.0\.1|::1/.test(cfg.url)?'授权靶场':'越界 · 纯模拟');
     }
 
     /* 一次性消费用户意图：读即清除，保证刷新/后退/跨页不重复执行（跨文档 runTask 的
@@ -57,7 +58,10 @@
       if(hint) hint.classList.add('hidden');
       if(goBtn) goBtn.classList.add('hidden');
       /* 授权视为已在任务台勾选确认；仅此处、仅此刻执行一次 */
-      P.runTask({url:cfg.url, vulnType:cfg.vulnType, script:cfg.script, authed:true});
+      /* v0.23：cfg.agent 决定走状态驱动的自主攻击闭环，默认仍是三剧本演示；
+         执行开关始终是这一次性 pendingRun，cfg 残留不会触发任何任务。 */
+      P.runTask({url:cfg.url, vulnType:cfg.vulnType, script:cfg.script,
+        authed:true, agent:!!cfg.agent});
       return;
     }
 
@@ -567,7 +571,29 @@
         else location.href='monitor.html';
       },true);
     }
-    /* 授权勾选变化时同步 startBtn 可用态（引擎已绑 change，这里仅兜底可见性） */
+    /* v0.23 自主攻击入口：与「开始分析」共用授权闸门、URL 校验和一次性 pendingRun 意图，
+       差别只在 cfg.agent 标记——监控页据此选择状态驱动的 Agent Loop 而非固定剧本。 */
+    var agentBtn=$('#agentBtn');
+    if(agentBtn){
+      agentBtn.addEventListener('click',function(e){
+        var urlEl=$('#urlInput'); if(!urlEl)return;
+        var url=urlEl.value.trim();
+        var chk=$('#authChk'); var msg=$('#msg');
+        if(chk&&!chk.checked){ P.syncStart(); return; }
+        if(!/^https?:\/\/[^\s]+$/i.test(url)){
+          if(msg){msg.textContent='请输入以 http:// 或 https:// 开头的合法地址';msg.className='err';}
+          return;
+        }
+        e.stopImmediatePropagation();
+        P.Store.setCfg({url:url, vulnType:$('#typeSel')?$('#typeSel').value:'sqli',
+          script:'AGENT_LOOP', agent:true});
+        if(P.Store.setPendingRun) P.Store.setPendingRun();
+        var link=$('#runLink');
+        if(link) link.click();
+        else location.href='monitor.html';
+      },true);
+    }
+    /* 授权勾选变化时同步两个入口的可用态（引擎已绑 change，这里仅兜底可见性） */
     var chk=$('#authChk');
     if(chk) chk.addEventListener('change',function(){ P.syncStart(); });
   }
