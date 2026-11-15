@@ -1044,6 +1044,41 @@ footer{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;
   .rpt-chain__row{display:flex;flex-wrap:wrap;gap:4px 10px}
 }
 
+/* ---------- 17d. v0.23.1 智能体决策流（运行监控页） ----------
+   与报告 02 决策链同源同形，但这里是实时逐行追加；攻破/待复核行用浅底 + 文字双编码。 */
+.agent-live{margin-top:20px}
+.agent-live__head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;
+  padding-bottom:16px;border-bottom:1px solid var(--n-line)}
+.agent-live__txt{min-width:0}
+.agent-live__head .eyebrow{margin:0 0 8px}
+.agent-live__title{font:500 20px/1.25 var(--display-cn);color:var(--t-1);margin:0 0 6px}
+.agent-live__sub{margin:0;font-size:13px;line-height:1.7;color:var(--t-2)}
+.agent-live__state{flex:none;font-size:11px;letter-spacing:.06em;padding:8px 12px;
+  border:1px solid var(--n-line-2);border-radius:var(--r-in);
+  background:var(--n-raised);color:var(--t-2)}
+.agent-live__state[data-tone="run"]{border-color:var(--st-run);color:var(--st-run)}
+.agent-live__state[data-tone="hit"]{border-color:var(--sig-ok);color:var(--sig-ok)}
+.agent-live__state[data-tone="nofind"]{border-color:var(--sig-block);color:var(--sig-block)}
+.agent-live__state[data-tone="oos"]{border-color:var(--sig-alert);color:var(--sig-alert)}
+.agent-live__rows{margin-top:12px;border:1px solid var(--n-line);border-radius:var(--r-in);overflow:hidden}
+.agent-live__row{display:grid;
+  grid-template-columns:48px minmax(0,1.6fr) minmax(0,1.2fr) 96px minmax(0,1.2fr) 96px;
+  gap:10px;align-items:center;padding:9px 14px;border-top:1px solid var(--n-line);
+  font-size:12px;line-height:1.5;color:var(--t-2)}
+.agent-live__row:first-child{border-top:0}
+.agent-live__row .mono{font-size:11px;color:var(--t-2)}
+.agent-live__go{color:var(--t-2)}
+.agent-live__row[data-breach]{background:var(--sig-ok-soft)}
+.agent-live__row[data-breach] .agent-live__go{color:var(--sig-ok)}
+.agent-live__row[data-clash]{background:var(--sig-alert-soft)}
+.agent-live__row[data-clash] .agent-live__go{color:var(--sig-alert)}
+.agent-live__empty{margin:0;padding:18px 14px;font-size:13px;color:var(--t-3)}
+.agent-live__note{margin:12px 0 0;font:500 11px/1.7 var(--mono);color:var(--t-3)}
+@media(max-width:700px){
+  .agent-live__head{flex-direction:column}
+  .agent-live__row{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:11px}
+}
+
 /* ---------- 18. 打印：仍仅输出 #report，5 附录齐全 ---------- */
 @media print{
   body{background:#fff;background-image:none;color:#111}
@@ -1091,5 +1126,5 @@ footer{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;
   .rpt-agent__head .lbl,.rpt-agent__head b,.rpt-agent__head b[data-breach],
   .rpt-agent__cells span,.rpt-agent__cells b,.rpt-chain__row .mono,
   .rpt-chain__obs,.rpt-chain__v,.rpt-agent .rpt-note{color:#111}
-  .orc{display:none !important}
+  .orc,.agent-live{display:none !important}
 }

@@ -40,7 +40,7 @@
   <div class="config-grid" style="border:0">
     <div><span>目标 / TARGET</span><b id="mTarget" class="mono" style="font-size:13px">—</b></div>
     <div><span>漏洞类型 / TYPE</span><b id="mType" style="font-size:13px">—</b></div>
-    <div><span>剧本 / SCENARIO</span><b id="mScript" class="mono" style="font-size:13px">—</b></div>
+    <div><span>模式 / MODE</span><b id="mScript" class="mono" style="font-size:13px">—</b></div>
     <div><span>范围 / SCOPE</span><b id="mScope" style="font-size:13px">—</b></div>
   </div>
 </div>
@@ -56,7 +56,7 @@
     <span class="stage-no">02</span>
     <div class="stage-meta">
       <h2 class="stage-title">攻防态势 <span class="stage-kicker">SITUATION / NEURAL LOOP</span></h2>
-      <p class="stage-desc">左=攻击链按轮推进，中=反馈闭环与神经突触随轮点亮，右=WAF 防线；命中时关键路径贯穿。</p>
+      <p class="stage-desc">左=攻击链按轮推进，中=反馈闭环随轮点亮，右=WAF 防线；下方决策流逐轮记录算子选择依据与独立裁决。</p>
     </div>
     <span class="stage-tag stage-tag--key">P0 · 实时过程</span>
   </div>
@@ -153,6 +153,24 @@
       </div>
     </div>
   </div>
+
+  <!-- v0.23.1 智能体决策流：把「智能体这一轮为什么选这个算子」做成实时可读的逐轮记录。
+       数据只来自报告对象的逐轮字段（agent_observed / strategy_tag / response_class / oracle_verdict），
+       不新增数据源；非自主模式显示固定剧本演示说明。 -->
+  <section class="card agent-live" id="agentLive" aria-labelledby="agentLiveTitle">
+    <div class="agent-live__head">
+      <div class="agent-live__txt">
+        <p class="eyebrow">AGENT DECISION STREAM</p>
+        <h2 class="agent-live__title" id="agentLiveTitle">智能体决策流</h2>
+        <p class="agent-live__sub">每轮算子由上一轮 WAF 拦截特征实时选出；标注点位被独立确认即攻破停机。</p>
+      </div>
+      <span class="agent-live__state mono" id="agentLiveState" data-tone="idle">待命 · 无迭代</span>
+    </div>
+    <div class="agent-live__rows" id="agentLiveRows" aria-live="polite">
+      <p class="agent-live__empty" id="agentLiveEmpty">提交自主攻击任务后，逐轮决策在此实时展开。</p>
+    </div>
+    <p class="agent-live__note">演示数据 · 算子编号白名单 · 零外部请求 · 攻破判据为点位独立确认</p>
+  </section>
 
   <div class="run-panel">
     <div class="run-head">

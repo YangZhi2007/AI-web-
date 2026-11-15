@@ -134,6 +134,22 @@ const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run
       ok(cs.k + ' 逐轮决策依据齐全且算子来自白名单',
         r.rounds.every(x => x.agent_decision && x.agent_observed && x.gt_ref.indexOf('AGENT/') === 0) &&
         r.agent.decisions.length === r.rounds.length);
+      if(cs.k==='EASY'){
+        const live=await c.eval(`(()=>({rows:document.querySelectorAll('#agentLiveRows .agent-live__row').length,
+          breach:document.querySelectorAll('.agent-live__row[data-breach]').length,
+          state:document.querySelector('#agentLiveState').textContent,
+          tone:document.querySelector('#agentLiveState').getAttribute('data-tone'),
+          first:document.querySelector('.agent-live__row')?document.querySelector('.agent-live__row').textContent:''}))()`);
+        ok('监控页决策流实时展开 3 行并标出攻破停机',
+          live.rows===3 && live.breach===1 && /已攻破/.test(live.state) && live.tone==='hit' &&
+          /OP_BASE/.test(live.first), JSON.stringify(live));
+        const snap=JSON.parse(await c.eval(`sessionStorage.getItem('probe.cfg')`)||'{}');
+        await c.goto(fileUrl('monitor.html'));   // 刷新后按收尾快照回填，不得回退成固定剧本
+        const mode=await c.eval(`document.querySelector('#mScript').textContent`);
+        ok('收尾快照保留自主攻击模式，刷新后不回退成固定剧本',
+          snap.agent===true && snap.script==='AGENT_EASY' && /自主攻击/.test(mode),
+          JSON.stringify(snap)+' mode='+mode);
+      }
     }
     const easy = reports.EASY, hard = reports.HARD, trap = reports.TRAP, oos = reports.OOS;
     ok('反馈驱动决策：R1 基线 → R2 避开规则 A → R3 避开规则 B 攻破',
@@ -177,6 +193,12 @@ const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run
     ok('cfg 无 agent 标记时仍走固定剧本（零回归）',
       !legacy.agent && legacy.task.script_tag === 'CONVERGE_3' && legacy.rounds.length === 3 && st2 === 'hit',
       'state=' + st2 + ' script=' + legacy.task.script_tag);
+    const liveLegacy=await c.eval(`(()=>({rows:document.querySelectorAll('#agentLiveRows .agent-live__row').length,
+      state:document.querySelector('#agentLiveState').textContent,
+      empty:document.querySelector('#agentLiveEmpty')?document.querySelector('#agentLiveEmpty').textContent:''}))()`);
+    ok('固定剧本模式不伪造决策流，显示非自主迭代说明',
+      liveLegacy.rows===0 && /固定剧本演示/.test(liveLegacy.state) && /非自主迭代/.test(liveLegacy.empty),
+      JSON.stringify(liveLegacy));
 
     /* ===== §4 报告页：5 附录 + 闭环摘要 + 打印黑白 ===== */
     const putReport = async r => {
@@ -201,6 +223,13 @@ const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run
       JSON.stringify(rp.figures) === JSON.stringify(['攻破即停', 'R03', '3 / 8', '8 个编号']), JSON.stringify(rp.figures));
     ok('逐轮决策链行数 = 实际迭代轮次，攻破行标记唯一',
       rp.chain === 3 && rp.breachRow === 1 && rp.audit === 1);
+    /* v0.23.1：纯浏览监控页只读回填决策流，不产生执行意图 */
+    await c.goto(fileUrl('monitor.html'));
+    const replay=await c.eval(`(()=>({rows:document.querySelectorAll('#agentLiveRows .agent-live__row').length,
+      state:document.querySelector('#agentLiveState').textContent,
+      pending:sessionStorage.getItem('probe.pendingRun')}))()`);
+    ok('纯浏览监控页只读回填决策流且不置执行意图',
+      replay.rows===3 && /已攻破/.test(replay.state) && replay.pending===null, JSON.stringify(replay));
     await putReport(hard);
     const rp2 = await c.eval(`(()=>({seal:document.querySelector('.rpt-seal__txt b').textContent,
       figures:[...document.querySelectorAll('.rpt-agent__cells b')].map(e=>e.textContent),
@@ -217,6 +246,11 @@ const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run
     ok('打印态闭环盒白底黑字、5 附录齐全',
       pr.bg === 'rgb(255, 255, 255)' && pr.row === 'rgb(255, 255, 255)' &&
       pr.head === 'rgb(17, 17, 17)' && pr.secs === 5, JSON.stringify(pr));
+    await c.send('Emulation.setEmulatedMedia', { media: '' });
+    await c.goto(fileUrl('monitor.html'));
+    await c.send('Emulation.setEmulatedMedia', { media: 'print' });
+    const livePrint=await c.eval(`(()=>{const e=document.querySelector('#agentLive');return e?getComputedStyle(e).display:'missing'})()`);
+    ok('打印态隐藏监控页决策流（不进入 PDF）', livePrint==='none', livePrint);
     await c.send('Emulation.setEmulatedMedia', { media: '' });
 
     /* ===== §5 证据链页双轨仍工作 ===== */

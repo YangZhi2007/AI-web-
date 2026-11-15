@@ -579,10 +579,73 @@ function finishRoundRow(no,evt){
   if(evt.degraded_flag) setMsg('本轮模型降级，已使用兜底策略集（DEGRADED）','warn');
 }
 /* ---------- 事件驱动：轻事件 → 详情从报告对象取 ---------- */
+/* ---------- v0.23.1 智能体决策流（仅监控页存在 #agentLive 时生效） ----------
+   只读报告对象的逐轮字段，不新增数据源、不改引擎行为；形状/文字双编码，不靠颜色区分裁决。 */
+function agentLiveOn(){
+  const r=ReportStore.draft;
+  return !!(r&&r.task&&r.task.ai_mode==='AUTONOMOUS');
+}
+function resetAgentLive(){
+  const wrap=$('#agentLiveRows'); if(!wrap)return;
+  wrap.innerHTML='<p class="agent-live__empty" id="agentLiveEmpty">提交自主攻击任务后，逐轮决策在此实时展开。</p>';
+  const st=$('#agentLiveState');
+  if(st){st.textContent='待命 · 无迭代';st.setAttribute('data-tone','idle');}
+}
+function agentLiveStart(){
+  const st=$('#agentLiveState'),empty=$('#agentLiveEmpty');
+  if(agentLiveOn()){
+    if(st){st.textContent='迭代中 · 等待首轮';st.setAttribute('data-tone','run');}
+  }else{
+    if(st){st.textContent='固定剧本演示';st.setAttribute('data-tone','idle');}
+    if(empty)empty.textContent='当前为固定剧本演示，非自主迭代；在任务台点「自主攻击」可查看逐轮决策依据。';
+  }
+}
+function agentLiveRow(d){
+  const row=document.createElement('div');
+  row.className='agent-live__row';row.setAttribute('data-r',String(d.round_no));
+  const oracle=d.oracle_verdict||'—';
+  const vals=[('0'+d.round_no).slice(-2),d.agent_observed||'—',d.strategy_tag||'—',
+    d.response_class||'—',ORACLE_CN[oracle]||oracle,oracle==='CONFIRMED'?'攻破 · 终止':'继续'];
+  vals.forEach((v,i)=>{
+    const s=document.createElement('span');s.textContent=String(v);
+    if(i===0||i===2)s.className='mono';
+    if(i===5)s.className='agent-live__go';
+    row.appendChild(s);
+  });
+  if(oracle==='CONFIRMED')row.setAttribute('data-breach','1');
+  if(['REFUTED','UNCONFIRMED','MISSED'].indexOf(oracle)>-1)row.setAttribute('data-clash','1');
+  return row;
+}
+function paintAgentDecision(no){
+  const wrap=$('#agentLiveRows');if(!wrap||!agentLiveOn())return;
+  const d=takeDetail(no);if(!d)return;
+  const empty=$('#agentLiveEmpty');if(empty)empty.classList.add('hidden');
+  const old=wrap.querySelector('[data-r="'+no+'"]'),row=agentLiveRow(d);
+  if(old)wrap.replaceChild(row,old);else wrap.appendChild(row);
+}
+function paintAgentLiveAll(r){
+  const wrap=$('#agentLiveRows'),st=$('#agentLiveState');if(!wrap)return;
+  wrap.innerHTML='';
+  if(!r||!r.agent){
+    const p=document.createElement('p');p.className='agent-live__empty';p.id='agentLiveEmpty';
+    p.textContent='最近一次为固定剧本演示，非自主迭代；在任务台点「自主攻击」可查看逐轮决策依据。';
+    wrap.appendChild(p);
+    if(st){st.textContent='固定剧本演示';st.setAttribute('data-tone','idle');}
+    return;
+  }
+  (r.rounds||[]).forEach(x=>wrap.appendChild(agentLiveRow(x)));
+  if(st){
+    const oos=!!(r.task&&r.task.out_of_scope);
+    st.textContent=oos?'越界 · 纯模拟':(r.agent.breached
+      ?'已攻破 · 停机 R'+('0'+r.agent.breachRound).slice(-2):'未攻破 · 预算终止');
+    st.setAttribute('data-tone',oos?'oos':(r.agent.breached?'hit':'nofind'));
+  }
+}
 function onEvent(e){
   const no=e.round_no, maxR=maxRounds();
   switch(e.event){
     case 'task.started':
+      resetAgentLive();agentLiveStart();   // draft 已由引擎设置，此时可正确区分自主/剧本模式
       log('任务已创建 · 引擎 MockEngine（演示数据，非实时推理）','accent');
       setRunState('RUNNING');setDashState('run','RUNNING');break;
     case 'round.started':
@@ -603,11 +666,13 @@ function onEvent(e){
       if(e.response_class==='BLOCKED'){statBlocked++;setStat('#dBlocked',statBlocked);}
       if(e.degraded_flag){dashDeg.add(no);paintRail(no,[...dashDeg]);}
       paintBars({sent:no,blocked:statBlocked});
+      paintAgentDecision(no);                           // 决策流：本轮观测/算子/响应/裁决/继续
       log(`第 ${no} 轮 响应分类 ${e.response_class}${e.degraded_flag?' · DEGRADED':''}`,
           e.response_class==='BLOCKED'?'warn':'ok');break;
     case 'task.terminated':{
       setProgress(100);setThinking(false);
       const r=ReportStore.draft;                        // 事件期字段已填充（见 MockEngine.analyze）
+      paintAgentLiveAll(r);                              // 收尾用最终 report 覆盖，写入停机状态
       applyTerminalState(r);                             // 唯一语义入口，取代硬编码 'done'
       paintRail(Math.min(no||maxR,maxR),(r&&r.degraded_rounds)||[...dashDeg]);
       log(`任务终止 · 原因 ${e.terminate_reason}`);break;
@@ -810,6 +875,7 @@ function resetUI(){
   const cb=$('#cancelBtn');if(cb)cb.classList.remove('hidden');
   setProgress(0);setThinking(true);setRunState('RUNNING');
   ['#dRound','#dSent','#dBlocked','#dHit'].forEach(s=>{const e=$(s);if(e)e.textContent='0';});statBlocked=0;
+  resetAgentLive();
   /* 仪表台复位：刻度轨清空、比例条归零、降级轮集合清空 */
   dashDeg.clear();
   paintRail(0);paintBars({});
@@ -852,7 +918,10 @@ async function runTask(opts){
        cfg 仅作只读快照（回填监控页配置条），不再作为执行开关；执行只由任务台置位的
        一次性 pendingRun 驱动，故此处回写 cfg 不会导致监控页刷新/导航重跑。 */
     Store.setReport(report);Store.pushHistory(entry);
-    Store.setCfg({url,vulnType:options.vulnType,script:RUNTIME.script});
+    /* v0.23.1：快照回写真实模式，不能用 RUNTIME.script 覆盖掉 Agent 标记，
+       否则任务结束后刷新监控页会把「自主攻击」错显示成固定剧本。 */
+    Store.setCfg({url,vulnType:options.vulnType,
+      script:report.task.script_tag,agent:!!report.agent});
     pulse($('#mTasks'),String(taskCount));
     pulse($('#dTasks'),String(taskCount));
     pulse($('#mFindings'),String(report.findings.length));
@@ -924,6 +993,7 @@ window.Probe={
   CONFIG, RUNTIME, SCRIPTS, Store, SCOPE, TICKS,
   GROUND_TRUTH, ORACLE_CN, buildCredibility, oracleVerdict, groundTruthOf,
   AttackAgent, AGENT_OPS, AGENT_PROFILES, agentProfileOf, planNextRound,
+  paintAgentLiveAll, paintAgentDecision, resetAgentLive,
   runTask, start, cancelRun,
   setDashState, applyTerminalState, resolveTerminalState,
   paintRail, paintBars, buildRail,

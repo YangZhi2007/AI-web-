@@ -71,11 +71,13 @@
       if(hint) hint.classList.add('hidden');
       if(goBtn) goBtn.classList.add('hidden');
       if(P.applyTerminalState) P.applyTerminalState(report);  // 仅渲染终态，绝无副作用写
+      if(P.paintAgentLiveAll) P.paintAgentLiveAll(report);      // v0.23.1 只读回填决策流，不触发任务
       return;
     }
 
     /* 无报告：保持 idle；无配置快照时给引导空态 */
     if(dash){ dash.dataset.state='idle'; var t=$('#dashState'); if(t)t.textContent='IDLE'; }
+    if(P.paintAgentLiveAll) P.paintAgentLiveAll(null);
     if(!cfg){
       if(hint) hint.classList.remove('hidden');
       if(goBtn) goBtn.classList.remove('hidden');

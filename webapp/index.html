@@ -15,16 +15,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="SmartWAF-Breaker 智能自适应绕过系统演示主页：面向授权目标的已知漏洞类型探测辅助工具，WAF 环境下的闭环反馈、逐轮自适应与过程可解释。全部为演示数据，仅用于本地隔离靶场，不发起任何真实请求。"
+      content="SmartWAF-Breaker 演示主页：授权靶场内的自主攻击智能体闭环——输入目标后逐轮自适应迭代、攻破即停，并自动生成含决策链的留痕报告。全部为演示数据，零外部请求，不用于未授权目标。"
     />
     <meta name="theme-color" content="#0a0c0f" />
-    <meta
-      property="og:title"
-      content="SmartWAF-Breaker · 智能自适应绕过系统"
-    />
+    <meta property="og:title" content="SmartWAF-Breaker · 智能自适应绕过系统" />
     <meta
       property="og:description"
-      content="授权自测演示主页：逐轮自适应探测、证据链留痕、过程可解释。演示数据，零外部请求。"
+      content="授权靶场内的自主迭代探测智能体 · 攻破即停 · 自动生成留痕报告。演示数据，零外部请求。"
     />
     <!-- 目标页首帧覆盖，避免跳转闪烁 -->
     <script>
@@ -54,7 +51,13 @@
           </div>
           <div class="telemetry__cell telemetry__cell--ok">
             <dt>EGRESS</dt>
-            <dd><i class="telemetry__dot" aria-hidden="true"></i>0 EXTERNAL<span class="telemetry__dim"> REQ</span></dd>
+            <dd>
+              <i class="telemetry__dot" aria-hidden="true"></i>0 EXTERNAL<span
+                class="telemetry__dim"
+              >
+                REQ</span
+              >
+            </dd>
           </div>
         </dl>
       </header>
@@ -96,7 +99,7 @@
           <div class="hero-right" id="heroRight">
             <div class="halo" id="halo" aria-hidden="true"></div>
             <div class="halo-core" aria-hidden="true">
-              <b>03</b><span>SCENARIOS / 演示剧本</span>
+              <b>03</b><span>SCENARIOS / 演示数据</span>
             </div>
             <div class="stages" id="motion" aria-hidden="true">
               <span class="stage" style="--i: 0"
