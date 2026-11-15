@@ -425,56 +425,117 @@ function renderResult(r){
     : ' 本次无降级轮次。';
   put('#evidenceText',(oos?'【纯模拟演示，不对应任何真实目标】':'')+ev+deg);
 }
+/* renderReport：结构化报告 v0.21「卷宗 / 刻度」
+   5 个 .report-sec 的编号与顺序、字段来源、esc 防注入、mock_flag 诚信标注、exportBtn 动态注入、
+   details.raw 结构、打印前展开全部保持；只重排版面层级：
+   卷首签发带把结论 / 终态形状 / 3 个读数提到第一屏，02 用与配置页同源的 8 格轮次预算刻度
+   回答「这次实际花掉多少轮」，附录 A 用形状标签与命中行标记让逐轮记录可读。 */
+const VERDICT_CN={hit:'已检出',nofind:'未检出',degraded:'降级命中',oos:'纯模拟',
+  cancel:'已取消',error:'异常',idle:'待机',run:'执行中'};
+const CLS_TAG={BLOCKED:['blocked','BLOCKED'],ANOMALY:['anomaly','ANOMALY'],
+  NORMAL:['normal','NORMAL'],TIMEOUT:['deg','TIMEOUT']};
 function renderReport(r){
   const card=$('#reportCard');if(!card||!r||!r.task)return;
   const oos=r.task.out_of_scope, degN=r.degraded_rounds.length;
+  const st=resolveTerminalState(r);
+  const cap=Number(r.task.max_rounds)||CONFIG.MAX_ROUNDS||8;
   const termText={
     HIT:degN?`命中目标特征（含 ${degN} 轮降级，降级轮次不计入主指标）`:'命中目标特征，正常终止（HIT）',
     MAX_ROUNDS:'达到轮次上限，未收敛（MAX_ROUNDS）；结论如实记为未检出，不计为成功'
   }[r.terminate_reason]||r.terminate_reason;
-  const rows=r.rounds.map(x=>`<tr>
-    <td>${x.round_no}</td><td class="mono">${esc(x.round_id)}</td>
-    <td>${x.prev_round_id?esc(x.prev_round_id.split('-').pop()):'—'}</td>
-    <td>${esc(x.strategy_tag)}</td><td>${esc(x.response_class)}</td>
-    <td>${esc(x.verdict)}</td><td>${x.cost_ms} ms</td>
-    <td>${x.degraded_flag?'DEGRADED':'—'}</td></tr>`).join('');
+  const hit=r.rounds.find(x=>x.hit_signal);
+  const degList=r.degraded_rounds.length?r.degraded_rounds.join('、'):'无';
+  const rows=r.rounds.map(x=>{
+    const t=CLS_TAG[x.response_class]||['normal',x.response_class];
+    return `<tr${x.hit_signal?' class="is-key"':''}>
+      <td>${x.round_no}</td><td class="mono">${esc(x.round_id)}</td>
+      <td>${x.prev_round_id?esc(x.prev_round_id.split('-').pop()):'—'}</td>
+      <td>${esc(x.strategy_tag)}</td>
+      <td><span class="tag ${t[0]}">${t[1]}</span></td>
+      <td>${esc(x.verdict)}</td><td>${x.cost_ms} ms</td>
+      <td>${x.degraded_flag?'<span class="tag deg">DEGRADED</span>':'—'}</td></tr>`;
+  }).join('');
+  /* 8 格轮次预算：已跑轮按响应分类上刻度，降级轮虚线框，剩余预算空槽（与配置页剧本库同源） */
+  const rail=r.rounds.slice(0,cap).map(x=>
+    `<i data-cls="${esc(x.response_class)}"${x.degraded_flag?' class="is-deg"':''}>${x.round_no}</i>`).join('')
+    +Array.from({length:Math.max(0,cap-r.rounds.length)},()=>'<i class="is-empty"></i>').join('');
   const raw=r.rounds.map(x=>`<b class="mono" style="font-size:11px">第 ${x.round_no} 轮 · ${esc(x.round_id)}</b>
     <pre>${esc(x.model_decision_raw)}</pre>`).join('');
+  const termLine=r.terminate_reason===st.label
+    ? `终止原因 ${esc(r.terminate_reason)}` : `${esc(r.terminate_reason||'—')} · ${st.label}`;
+  const fact=(label,value)=>`<div><span>${label}</span><b class="mono">${value}</b></div>`;
   card.innerHTML=`
-    <div class="card-title">SECURITY ASSESSMENT REPORT / 探测报告</div>
-    <div class="report-sec"><h3>01 封面信息</h3>
-      ${oos?`<div class="oos-notice">${esc(OOS_NOTICE)}</div>`:''}
-      <div class="cover">
-        <div><span>任务 ID</span><b class="mono" style="font-size:11px">${esc(r.task.task_id)}</b></div>
-        <div><span>目标别名</span>${esc(r.task.target_alias)}</div>
-        <div><span>目标 URL</span><span class="mono" style="font-size:10px">${esc(r.task.target_url)}${oos?'（纯模拟输入 · 仅展示 · 已剥离凭据）':'（仅展示，已剥离凭据）'}</span></div>
-        <div><span>生成时间</span><span class="mono" style="font-size:11px">${fmt(r.task.started_at)}</span></div>
-        <div><span>授权 ID</span>${esc(r.task.authorization_id)}</div>
-        <div><span>数据来源</span>MockEngine 契约桩（演示数据，非实时推理）</div>
+    <div class="rpt-tools no-print">
+      <span class="mono">REPORT / ${esc(r.task.task_id)} · 打印输出 5 个附录</span>
+      <button id="exportBtn" class="btn-grad" type="button" data-ripple>导出 PDF（打印）</button>
+    </div>
+    <div class="rpt-cover">
+      <div class="rpt-cover__top">
+        <div class="rpt-cover__id">
+          <p class="rpt-kicker">SECURITY ASSESSMENT REPORT</p>
+          <h2>探测报告 <em>/ ${esc(r.task.task_id)}</em></h2>
+          <p class="rpt-cover__sub">本地契约桩生成 · 演示数据 · 非实时推理 · 零外部请求</p>
+        </div>
+        <div class="rpt-seal" data-s="${st.state}">
+          <span class="rpt-seal__g" data-g="${st.state}" aria-hidden="true"></span>
+          <span class="rpt-seal__txt"><b>${VERDICT_CN[st.state]||st.label}</b>
+            <small class="mono">${termLine}</small></span>
+        </div>
       </div>
-      <p class="hint">${oos?'纯模拟演示 · 未对应任何真实站点 · 未发起任何请求 · 未使用任何授权凭据':'仅限授权范围内使用 · 演示环境为本地隔离靶场 · 不含任何真实请求与原始凭据'}</p>
+      <div class="rpt-stats">
+        <div><span class="lbl">执行轮次 / ROUNDS</span><b>${r.rounds.length}<i>/ ${cap}</i></b>
+          <small>未使用 ${Math.max(0,cap-r.rounds.length)} 轮预算</small></div>
+        <div><span class="lbl">累计耗时 / ELAPSED</span><b>${r.elapsed_ms}<i>ms</i></b>
+          <small>逐轮 cost_ms 之和</small></div>
+        <div><span class="lbl">降级轮次 / DEGRADED</span><b>${degN}<i>轮</i></b>
+          <small>已单列，不计入主指标</small></div>
+      </div>
     </div>
-    <div class="report-sec"><h3>02 执行摘要</h3>
-      <p style="margin:0;line-height:1.8">共执行 <b>${r.rounds.length}</b> 轮，累计耗时 <b class="mono">${r.elapsed_ms} ms</b>；终止原因：<b>${termText}</b>。
-      ${degN?`降级轮次：第 ${r.degraded_rounds.join('、')} 轮（degraded_flag=true，已单列，不计入主指标统计）。`:'本次无降级轮次。'}
-      ${oos?'本报告为纯模拟演示，不构成对任何真实目标的安全结论。':`本报告结论仅适用于授权范围内的 ${esc(r.task.target_alias)}。`}</p>
+    <div class="report-sec rpt-sec" data-sec="01"><h3><span class="rpt-sec__no">01</span>封面信息<em>Case file</em></h3>
+      ${oos?`<div class="oos-notice">${esc(OOS_NOTICE)}</div>`:''}
+      <div class="rpt-facts">
+        ${fact('任务 ID / TASK',esc(r.task.task_id))}
+        ${fact('目标别名 / ALIAS',esc(r.task.target_alias))}
+        ${fact('生成时间 / ISSUED',esc(fmt(r.task.started_at)))}
+        ${fact('目标 URL / TARGET',esc(r.task.target_url))}
+        ${fact('授权 ID / AUTH',esc(r.task.authorization_id))}
+        ${fact('数据来源 / SOURCE','MockEngine 契约桩（演示数据）')}
+      </div>
+      <p class="rpt-note">${oos?'纯模拟演示 · 未对应任何真实站点 · 未发起任何请求 · 未使用任何授权凭据':'仅限授权范围内使用 · 演示环境为本地隔离靶场 · 不含任何真实请求与原始凭据'}；目标 URL 仅作展示，已剥离凭据。</p>
     </div>
-    <div class="report-sec"><h3>03 附录 A · 逐轮执行记录</h3>
+    <div class="report-sec rpt-sec" data-sec="02"><h3><span class="rpt-sec__no">02</span>执行摘要<em>Summary</em></h3>
+      <p class="rpt-lede">共执行 <b>${r.rounds.length}</b> 轮，累计耗时 <b class="mono">${r.elapsed_ms} ms</b>；终止原因：<b>${termText}</b>。</p>
+      <div class="rpt-rail-wrap">
+        <div class="rpt-rail-head"><span class="lbl">轮次预算 / ROUND BUDGET</span><b class="mono">${r.rounds.length} / ${cap}</b></div>
+        <div class="rpt-rail" aria-hidden="true">${rail}</div>
+        <p class="rpt-note">横杠=拦截　实心=异常命中　虚线框=降级轮　空槽=未使用轮次；配置页展示剧本预算，本页展示本次实际用量。</p>
+      </div>
+      <ul class="rpt-points">
+        <li>降级轮次：${degN?`第 ${degList} 轮（degraded_flag=true，已单列，不计入主指标统计）`:'本次无降级轮次'}。</li>
+        <li>${oos?'本报告为纯模拟演示，不构成对任何真实目标的安全结论。':`本报告结论仅适用于授权范围内的 ${esc(r.task.target_alias)}。`}每条结论可回溯到 round_id。</li>
+      </ul>
+    </div>
+    <div class="report-sec rpt-sec" data-sec="03"><h3><span class="rpt-sec__no">03</span>附录 A · 逐轮执行记录<em>Rounds</em></h3>
+      <p class="rpt-sec__lead">共 ${r.rounds.length} 轮 · 命中轮 ${hit?'R'+String(hit.round_no).padStart(2,'0'):'无'} · 降级轮 ${degList}</p>
       <div class="tbl-scroll"><table class="tbl"><thead><tr><th>轮次</th><th>round_id</th><th>依据上轮</th>
       <th>变形策略</th><th>响应分类</th><th>判定</th><th>耗时</th><th>降级</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
     </div>
-    <div class="report-sec"><h3>04 附录 B · 模型决策原文</h3>
+    <div class="report-sec rpt-sec" data-sec="04"><h3><span class="rpt-sec__no">04</span>附录 B · 模型决策原文<em>Model raw</em></h3>
+      <p class="rpt-sec__lead">共 ${r.rounds.length} 条逐轮 JSON 原文 · 导出 PDF 时自动展开，避免折叠内容丢失。</p>
       <details class="raw"><summary>展开查看逐轮模型决策原文（JSON，演示数据）</summary>${raw}</details></div>
-    <div class="report-sec"><h3>05 附录 C · 配置快照</h3>
-      <div class="tbl-scroll"><table class="tbl"><tbody>
-        <tr><th>实验分组</th><td>${esc(r.task.group_tag)}</td><th>适配器</th><td>${esc(r.task.adapter_name)}</td></tr>
-        <tr><th>轮次上限</th><td>${r.task.max_rounds}</td><th>规则集版本</th><td>${esc(r.task.ruleset_version)}</td></tr>
-        <tr><th>运行模式</th><td>${esc(r.task.ai_mode)}</td><th>契约版本</th><td>${esc(r.contract_version)}</td></tr>
-        <tr><th>剧本</th><td>${esc(r.task.script_tag)}</td><th>数据标记</th><td>mock_flag=true</td></tr>
-      </tbody></table></div></div>
-    <div class="watermark">${esc(r.task.task_id)} · ${oos?'纯模拟演示 · 不对应真实目标':'仅限授权范围内使用'} · 第 1 / 1 页</div>
-    <button id="exportBtn" class="btn-grad no-print" type="button" style="margin-top:14px" data-ripple>导出 PDF（打印）</button>`;
+    <div class="report-sec rpt-sec" data-sec="05"><h3><span class="rpt-sec__no">05</span>附录 C · 配置快照<em>Snapshot</em></h3>
+      <div class="rpt-facts rpt-facts--compact">
+        ${fact('实验分组 / GROUP',esc(r.task.group_tag))}
+        ${fact('适配器 / ADAPTER',esc(r.task.adapter_name))}
+        ${fact('轮次上限 / MAX',esc(r.task.max_rounds))}
+        ${fact('规则集 / RULESET',esc(r.task.ruleset_version))}
+        ${fact('运行模式 / MODE',esc(r.task.ai_mode))}
+        ${fact('契约版本 / CONTRACT',esc(r.contract_version))}
+        ${fact('剧本 / SCENARIO',esc(r.task.script_tag))}
+        ${fact('数据标记 / FLAG','mock_flag=true')}
+      </div></div>
+    <div class="watermark">${esc(r.task.task_id)} · 演示数据 · 非实时推理 · 零外部请求 · 本地契约桩生成</div>`;
   const eb=$('#exportBtn');if(eb)eb.onclick=()=>{
     $$('details.raw').forEach(d=>{d.open=true;});   // 打印前展开，避免 Chromium 折叠内容丢失
     window.print();

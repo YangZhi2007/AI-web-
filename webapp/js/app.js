@@ -213,6 +213,10 @@
     if(empty)empty.classList.add('hidden');
     if(wrap)wrap.classList.remove('hidden');
     P.renderReport(r);
+    /* Ctrl+P 与浏览器菜单打印同样展开 JSON 附录，避免折叠内容在 PDF 里丢失 */
+    window.addEventListener('beforeprint',function(){
+      $$('details.raw').forEach(function(d){ d.open=true; });
+    });
   }
 
   /* ③c 历史页 */
