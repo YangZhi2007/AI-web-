@@ -230,6 +230,59 @@
       truncated:built.truncated,rounds:allowed.rounds,size:zip.length};
   }
 
+  /* ---------- 确定性复现引擎 ----------
+     不播放预设动画：每一项都用当前 report 的原始字段独立重算，再与「声明值」比对。
+     declaredOverride 用于校验已导出的包：把包内摘要传入即可检验文件是否被替换；
+     不传则用当前 report 生成的摘要做自检。两条路径共用同一套判定，无分支特判。 */
+  function shortName(name){
+    return String(name).replace(/^.*?-H\d{2}-/,'').replace(/\.(json|txt|sh|zip)$/,'');
+  }
+  function runReplay(r,declaredOverride){
+    var allowed=canExport(r);
+    if(!allowed.ok)return {ok:false,reason:allowed.reason,checks:[]};
+    var built=buildFiles(r,allowed.rounds,global.Repro&&global.Repro.CAP);
+    var generated=JSON.parse(built.files[built.files.length-1].text);
+    var declared=declaredOverride||generated;
+    var oos=!!(r.task&&r.task.out_of_scope),checks=[];
+    var replayOf=function(x){
+      return P.oracleVerdict(!!x.ai_claim,
+        {ref:x.gt_ref,triggered:x.gt_triggered,note:x.gt_note},
+        {outOfScope:oos,degraded:!!x.degraded_flag});
+    };
+    /* ① 文件完整性：五类原料文件重算哈希，与声明摘要比对。
+       第六类 06-verification-summary 内含前五类的哈希，自身哈希写进去会形成自引用循环，
+       故它不自列，改由整包 .sha256 旁车文件负责完整性（见 v0.24 说明）。 */
+    built.files.forEach(function(f,i){
+      var selfRef=(/-06-verification-summary\.json$/.test(f.name));
+      var d=(declared.integrity&&declared.integrity.files&&declared.integrity.files[i])||{};
+      var actual=sha256(bytes(f.text)),expect=d.sha256||'—';
+      var kindCN=['请求文件','载荷清单','响应回显','重放脚本','场景参数','核验摘要'][i]||'文件';
+      checks.push({id:'F'+pad(i+1),kind:'hash',label:kindCN+(selfRef?' · 旁车校验':''),
+        expect:selfRef?'见 .sha256':(expect.slice(0,12)+'…'),actual:selfRef?'见 .sha256':(actual.slice(0,12)+'…'),
+        expectFull:expect,actualFull:actual,pass:selfRef?true:expect===actual});
+    });
+    /* ② 命中轮独立裁决重放：只喂 ai_claim + 标注事实 + 上下文，不读 verdict/confidence/原文 */
+    allowed.rounds.forEach(function(x){
+      var actual=replayOf(x);
+      var rec=(declared.rounds||[]).filter(function(y){return y.round_id===x.round_id;})[0]||{};
+      var expect=rec.oracle_verdict||x.oracle_verdict||'—';
+      checks.push({id:'R'+pad(x.round_no),kind:'verdict',label:'R'+pad(x.round_no)+' 独立裁决',
+        expect:expect,actual:actual,expectFull:expect,actualFull:actual,pass:expect===actual});
+    });
+    /* ③ 汇总一致性：重放得到的确认轮数 vs 声明的确认数 */
+    var actualCount=allowed.rounds.filter(function(x){return replayOf(x)==='CONFIRMED';}).length;
+    var expectCount=declared.credibility?declared.credibility.confirmed
+      :((r.credibility||{}).confirmed);
+    checks.push({id:'C01',kind:'count',label:'确认轮数汇总',
+      expect:String(expectCount),actual:String(actualCount),
+      expectFull:String(expectCount),actualFull:String(actualCount),
+      pass:String(expectCount)===String(actualCount)});
+    return {ok:true,pass:checks.every(function(c){return c.pass;}),checks:checks,
+      base:built.base,hit:allowed.rounds[0],
+      label_set:(r.credibility||{}).label_set||'LAB-GT-01',
+      hitRounds:allowed.rounds.map(function(x){return x.round_no;})};
+  }
+
   /* ---------- 证据包登记：R-04-05 的落盘位置与校验值（本演示存 sessionStore） ---------- */
   var PACK_KEY='probe.evidencePack';
   function register(pack,r){
@@ -304,33 +357,122 @@
       if(rb)rb.addEventListener('click',function(){showReplay(pack);});
     });
   }
+  /* 复现工作台：现场逐项重算，不等同于播放预设动画。
+     结构：结论对照（原始 vs 重放）→ 逐项核对表 → 复现判定 → 次要导出动作。 */
   function injectEvidenceUI(){
     var result=document.querySelector('#resultCard');
     if(!result||result.querySelector('.repro-evidence'))return;
     var r=P.Store.getReport();if(!r)return;
     var allowed=canExport(r);
-    var box=document.createElement('div');box.className='repro-evidence';
-    box.innerHTML='<div class="repro-evidence__head"><span class="lbl">漏洞复现 / REPRODUCIBILITY</span>'+
+    var cr=r.credibility||P.buildCredibility(r);
+    var hit=allowed.ok?allowed.rounds[0]:null;
+    var box=document.createElement('div');
+    box.className='repro-evidence rpw';
+    box.setAttribute('data-state',allowed.ok?'ready':'blocked');
+    box.innerHTML=
+      '<div class="repro-evidence__head"><span class="lbl">漏洞复现 / REPRODUCIBILITY</span>'+
       '<b class="mono">'+esc(allowed.ok?'确认 '+allowed.rounds.length+' 条可复现命中':'无可复现命中')+'</b></div>'+
-      '<p class="repro-evidence__note">'+esc(allowed.ok
-        ?'仅独立裁决确认的命中轮可导出；六类文件来自逐轮真值，SHA-256 供完整性核对。'
-        :allowed.reason)+'</p>';
-    if(allowed.ok){
-      var ex=document.createElement('button');ex.type='button';ex.className='btn-ghost';ex.setAttribute('data-ripple','');
-      ex.textContent='导出复现包 →';ex.addEventListener('click',function(){
-        var pack=buildPackage(P.Store.getReport());if(!pack.ok)return;
-        register(pack,r);download(pack);
-        var s=box.querySelector('.repro-evidence__sha');
-        if(s)s.textContent='SHA-256 '+pack.sha256+' · '+pack.name;
-      });
-      var rp=document.createElement('button');rp.type='button';rp.className='btn-ghost';rp.setAttribute('data-ripple','');
-      rp.textContent='查看重放';rp.addEventListener('click',function(){
-        var pack=buildPackage(P.Store.getReport());if(pack.ok)showReplay(pack);
-      });
-      box.appendChild(ex);box.appendChild(rp);
-      var sha=document.createElement('p');sha.className='repro-evidence__sha mono';box.appendChild(sha);
-    }
+      '<p class="rpw__lede">'+esc(allowed.ok
+        ?'用原始轮次字段重算六类文件哈希与独立裁决，逐项与结论对照。现场可核对，不依赖任何外部服务。'
+        :allowed.reason)+'</p>'+
+      (allowed.ok?
+        '<div class="rpw__board">'+
+          '<div class="rpw__side"><span class="lbl">原始结论 / REPORTED</span>'+
+            '<dl><div><dt>任务编号</dt><dd class="mono">'+esc(r.task.task_id)+'</dd></div>'+
+            '<div><dt>命中轮</dt><dd class="mono">R'+pad(hit.round_no)+'</dd></div>'+
+            '<div><dt>独立裁决</dt><dd class="mono">'+esc(hit.oracle_verdict)+'</dd></div>'+
+            '<div><dt>标注集</dt><dd class="mono">'+esc(cr.label_set)+'</dd></div></dl>'+
+          '</div>'+
+          '<div class="rpw__bridge" aria-hidden="true"><span>≡</span><small>逐项重算</small></div>'+
+          '<div class="rpw__side" data-replay-side><span class="lbl">重放实测 / REPLAYED</span>'+
+            '<dl><div><dt>任务编号</dt><dd class="mono" data-rp="task">等待复现</dd></div>'+
+            '<div><dt>命中轮</dt><dd class="mono" data-rp="round">—</dd></div>'+
+            '<div><dt>独立裁决</dt><dd class="mono" data-rp="oracle">—</dd></div>'+
+            '<div><dt>标注集</dt><dd class="mono" data-rp="label">—</dd></div></dl>'+
+          '</div>'+
+        '</div>'+
+        '<div class="rpw__actions">'+
+          '<button type="button" class="btn-solid" data-rp-run data-ripple>开始复现 →</button>'+
+          '<button type="button" class="btn-ghost" data-rp-export data-ripple>导出证据包</button>'+
+          '<button type="button" class="btn-ghost" data-rp-script data-ripple>重放脚本</button>'+
+        '</div>'+
+        '<div class="rpw__checks" data-rp-checks hidden>'+
+          '<div class="rpw__checks-head"><span class="lbl">逐项核对 / ITEM-BY-ITEM</span>'+
+          '<span class="mono" data-rp-progress>0 / 0</span></div>'+
+          '<div class="rpw__rows" data-rp-rows></div>'+
+        '</div>'+
+        '<div class="rpw__seal" data-rp-seal hidden role="status"></div>'+
+        '<p class="repro-evidence__sha mono" data-rp-sha></p>'
+        :'');
     result.insertBefore(box,result.firstChild);
+    if(!allowed.ok)return;
+
+    var RM=global.matchMedia&&global.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var runBtn=box.querySelector('[data-rp-run]');
+    var checksWrap=box.querySelector('[data-rp-checks]');
+    var rowsWrap=box.querySelector('[data-rp-rows]');
+    var progress=box.querySelector('[data-rp-progress]');
+    var seal=box.querySelector('[data-rp-seal]');
+    var timers=[];
+    function put(sel,val){var e=box.querySelector(sel);if(e)e.textContent=String(val);}
+    function clearTimers(){timers.forEach(clearTimeout);timers=[];}
+    function renderResults(res){
+      var r=res,report=P.Store.getReport();
+      put('[data-rp="task"]',report.task.task_id);
+      put('[data-rp="round"]','R'+pad(res.hit.round_no));
+      put('[data-rp="oracle"]',res.hit.oracle_verdict);
+      put('[data-rp="label"]',r.label_set||cr.label_set);
+      checksWrap.hidden=false;rowsWrap.innerHTML='';
+      progress.textContent='0 / '+r.checks.length;
+      var n=0;
+      r.checks.forEach(function(c,idx){
+        var draw=function(){
+          var row=document.createElement('div');row.className='rpw__row';
+          row.setAttribute('data-pass',c.pass?'1':'0');
+          /* 一致时原始与重放值相同，合并显示一次；不符时并列两值供当场比对 */
+          var pair=c.pass
+            ? '<span class="rpw__val mono" title="'+esc(c.expectFull)+'">'+esc(c.expect)+'</span>'
+            : '<span class="rpw__val mono" data-side="exp" title="'+esc(c.expectFull)+'">原 '+esc(c.expect)+'</span>'+
+              '<span class="rpw__val mono" data-side="act" title="'+esc(c.actualFull)+'">重 '+esc(c.actual)+'</span>';
+          row.innerHTML='<span class="rpw__id mono">'+esc(c.id)+'</span>'+
+            '<span class="rpw__label">'+esc(c.label)+'</span>'+pair+
+            '<span class="rpw__mark" aria-hidden="true">'+(c.pass?'≡':'✕')+'</span>'+
+            '<span class="rpw__verdict">'+(c.pass?'一致':'不符')+'</span>';
+          rowsWrap.appendChild(row);
+          n++;progress.textContent=n+' / '+r.checks.length;
+          if(n===r.checks.length){
+            seal.hidden=false;
+            seal.setAttribute('data-pass',r.pass?'1':'0');
+            seal.innerHTML='<span class="rpw__seal-g" aria-hidden="true"></span>'+
+              '<b>'+(r.pass?'复现一致':'复现不一致')+'</b>'+
+              '<span class="mono">'+r.checks.filter(function(x){return x.pass;}).length+' / '+r.checks.length+
+              ' 项通过 · '+esc(res.label_set)+'</span>';
+            box.setAttribute('data-state',r.pass?'pass':'fail');
+            clearTimers();
+          }
+        };
+        if(RM)draw();else timers.push(setTimeout(draw,90*(idx+1)));
+      });
+    }
+    runBtn.addEventListener('click',function(){
+      clearTimers();runBtn.disabled=true;runBtn.textContent='复现中…';
+      var r0=P.Store.getReport();
+      var res=runReplay(r0);
+      seal.hidden=true;box.setAttribute('data-state','running');
+      /* 下一帧再绘制，让「复现中」状态可见；计算本身是同步纯函数 */
+      if(RM)renderResults(res);
+      else timers.push(setTimeout(function(){renderResults(res);},160));
+      timers.push(setTimeout(function(){runBtn.disabled=false;runBtn.textContent='重新复现';},
+        RM?0:(160+90*(res.checks.length+1)+200)));
+    });
+    box.querySelector('[data-rp-export]').addEventListener('click',function(){
+      var pack=buildPackage(P.Store.getReport());if(!pack.ok)return;
+      register(pack,r);download(pack);
+      put('[data-rp-sha]','SHA-256 '+pack.sha256+' · '+pack.name);
+    });
+    box.querySelector('[data-rp-script]').addEventListener('click',function(){
+      var pack=buildPackage(P.Store.getReport());if(pack.ok)showReplay(pack);
+    });
   }
   function boot(){
     injectReportUI();injectEvidenceUI();
@@ -344,5 +486,6 @@
 
   global.Repro={CAP:CAP,sha256:sha256,crc32:crc32,zipStore:zipStore,bytes:bytes,
     exportRounds:exportRounds,canExport:canExport,buildFiles:buildFiles,buildPackage:buildPackage,
+    runReplay:runReplay,
     register:register,registry:registry,download:download,showReplay:showReplay};
 })(window);

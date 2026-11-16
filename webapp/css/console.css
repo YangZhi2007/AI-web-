@@ -1105,6 +1105,78 @@ footer{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;
   .repro-evidence .btn-ghost{display:flex;width:100%;margin:10px 0 0}
 }
 
+/* ---------- 17c. v0.25 复现工作台：校验台 / 逐项重算 ----------
+   一个亮元素（复现判定章），其余为安静的读数与核对行；形状+文字双编码，不靠颜色单独表意。 */
+.rpw[data-state="blocked"]{border-left-color:var(--n-line-3)}
+.rpw__lede{margin:10px 0 0;font-size:12px;line-height:1.7;color:var(--t-2)}
+.rpw__board{display:grid;grid-template-columns:1fr 80px 1fr;gap:0;margin-top:20px;
+  border:1px solid var(--n-line);border-radius:var(--r-in);overflow:hidden;background:var(--n-sunken)}
+.rpw__side{padding:16px 18px;background:var(--n-surface)}
+.rpw__side>.lbl{display:block;font:500 11px/1 var(--mono);letter-spacing:.1em;color:var(--t-3);margin-bottom:12px}
+.rpw__side dl{margin:0}
+.rpw__side dl>div{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  padding:8px 0;border-bottom:1px solid var(--n-line)}
+.rpw__side dl>div:last-child{border-bottom:0}
+.rpw__side dt{font-size:12px;color:var(--t-3);flex:none}
+.rpw__side dd{margin:0;font-size:12px;color:var(--t-1);text-align:right;word-break:break-all}
+.rpw__bridge{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  background:var(--n-sunken);border-left:1px solid var(--n-line);border-right:1px solid var(--n-line)}
+.rpw__bridge span{font:500 28px/1 var(--mono);color:var(--t-3)}
+.rpw__bridge small{font:500 10px/1.4 var(--mono);color:var(--t-3);text-align:center}
+.rpw[data-state="running"] .rpw__bridge span,
+.rpw[data-state="pass"] .rpw__bridge span,
+.rpw[data-state="fail"] .rpw__bridge span{color:var(--sig-ok)}
+.rpw__actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.rpw__actions .btn-solid,.rpw__actions .btn-ghost{min-height:44px;margin:0;padding:0 18px;font-size:13px}
+.rpw__checks{margin-top:20px;border-top:1px solid var(--n-line);padding-top:16px}
+.rpw__checks-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.rpw__checks-head .lbl{font:500 11px/1 var(--mono);letter-spacing:.1em;color:var(--t-3)}
+.rpw__checks-head .mono{font:500 11px/1 var(--mono);color:var(--t-2)}
+.rpw__rows{display:flex;flex-direction:column;gap:2px}
+.rpw__row{display:grid;grid-template-columns:36px minmax(0,1fr) 110px 110px 20px 40px;
+  align-items:center;gap:8px;padding:8px 10px;background:var(--n-surface);border:1px solid var(--n-line);
+  border-radius:var(--r-sm);font-size:12px;animation:rpw-in 200ms ease-out both}
+@keyframes rpw-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.rpw__id{font:500 11px/1 var(--mono);color:var(--t-3)}
+.rpw__label{color:var(--t-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rpw__val{font-size:11px;color:var(--t-2);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rpw__row[data-pass="1"] .rpw__val{grid-column:3 / span 2}
+.rpw__val[data-side="exp"]{color:var(--sig-alert)}
+.rpw__val[data-side="act"]{color:var(--sig-ok)}
+.rpw__mark{font:500 14px/1 var(--mono);text-align:center;color:var(--t-3)}
+.rpw__verdict{font:500 11px/1 var(--mono);color:var(--t-2);text-align:right}
+.rpw__row[data-pass="1"] .rpw__mark,.rpw__row[data-pass="1"] .rpw__verdict{color:var(--sig-ok)}
+.rpw__row[data-pass="0"]{background:var(--sig-alert-soft);border-color:var(--sig-alert)}
+.rpw__row[data-pass="0"] .rpw__mark,.rpw__row[data-pass="0"] .rpw__verdict{color:var(--sig-alert)}
+.rpw__seal{display:flex;align-items:center;gap:12px;margin-top:16px;padding:14px 16px;
+  border:1px solid var(--sig-ok);border-radius:var(--r-in);background:var(--sig-ok-soft)}
+.rpw__seal-g{position:relative;width:20px;height:20px;flex:none;border:2px solid var(--sig-ok);border-radius:3px}
+.rpw__seal-g::after{content:'';position:absolute;left:5px;top:2px;width:5px;height:10px;
+  border:solid var(--sig-ok);border-width:0 2px 2px 0;transform:rotate(45deg)}
+.rpw__seal b{font:500 15px/1.2 var(--display-cn);color:var(--sig-ok)}
+.rpw__seal .mono{font:500 11px/1.5 var(--mono);color:var(--sig-ok);margin-left:auto;text-align:right}
+.rpw__seal[data-pass="0"]{border-color:var(--sig-alert);background:var(--sig-alert-soft)}
+.rpw__seal[data-pass="0"] .rpw__seal-g{border-color:var(--sig-alert)}
+.rpw__seal[data-pass="0"] .rpw__seal-g::after{border-color:var(--sig-alert);
+  width:12px;height:2px;left:2px;top:7px;transform:none;border-width:2px 0 0}
+.rpw__seal[data-pass="0"] b,.rpw__seal[data-pass="0"] .mono{color:var(--sig-alert)}
+@media(max-width:1100px){
+  .rpw__row{grid-template-columns:32px minmax(0,1fr) 84px 84px 18px 36px}
+}
+@media(max-width:700px){
+  .rpw__board{grid-template-columns:1fr}
+  .rpw__bridge{flex-direction:row;padding:8px;border-left:0;border-right:0;
+    border-top:1px solid var(--n-line);border-bottom:1px solid var(--n-line)}
+  .rpw__bridge small{text-align:left}
+  .rpw__row{grid-template-columns:28px minmax(0,1fr) 20px 36px;row-gap:2px}
+  .rpw__val,.rpw__row[data-pass="1"] .rpw__val{grid-column:2;grid-row:2;text-align:left;max-width:100%}
+  .rpw__val[data-side="act"]{grid-row:3}
+  .rpw__mark{grid-column:3;grid-row:1}
+  .rpw__verdict{grid-column:4;grid-row:1}
+  .rpw__seal{flex-wrap:wrap}
+  .rpw__seal .mono{flex-basis:100%;margin-left:0;text-align:left}
+}
+
 /* ---------- 18. 打印：仍仅输出 #report，5 附录齐全 ---------- */
 @media print{
   body{background:#fff;background-image:none;color:#111}
