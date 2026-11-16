@@ -310,21 +310,28 @@
     return pack.name;
   }
 
-  /* ---------- 重放：新窗口展示脚本内容（被拦截则退化为同页模态） ---------- */
+  /* ---------- 重放：打开独立功能子页 replay.html（v0.26 起不再用 about:blank 贴脚本文本） ----------
+     只把精简文档写入 sessionStorage，不传 ZIP 字节；子页从 pack 真值渲染执行路径与脚本。
+     弹窗被拦截时同页跳转到真实子页，不再退回白底脚本文本模态。 */
+  var REPLAY_KEY='probe.replayDoc';
   function showReplay(pack){
+    if(!pack||!pack.ok)return false;
     var script=(pack.files.filter(function(f){return /-04-replay\.sh$/.test(f.name);})[0]||{}).text||'';
-    var html='<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>重放脚本 · '+esc(pack.name)+
-      '</title><style>body{font:14px/1.7 ui-monospace,Consolas,monospace;background:#F7FBE8;color:#16210E;margin:0;padding:32px}'+
-      'h1{font:600 18px/1.4 system-ui;margin:0 0 4px}p{color:#5A6647;margin:0 0 20px}'+
-      'pre{white-space:pre-wrap;word-break:break-word;background:#FFFDF4;border:1px solid #D7E3A8;border-radius:12px;padding:20px}'+
-      'small{color:#5A6647}</style></head><body><h1>复现包重放脚本</h1><p>'+esc(pack.name)+
-      ' · 演示数据 · 仅在授权隔离靶场内运行 · 本演示不发起任何请求</p><pre>'+esc(script)+
-      '</pre><small>SHA-256 '+esc(pack.sha256)+' · 文件与摘要在同一复现包内，可离线核对</small></body></html>';
-    var w=global.open('','_blank');
-    if(w){w.document.open();w.document.write(html);w.document.close();return true;}
-    var box=document.createElement('div');box.className='rpt-replay-fallback';
-    box.innerHTML='<b>重放脚本（新窗口被浏览器拦截）</b><pre>'+esc(script)+'</pre>';
-    document.body.appendChild(box);return false;
+    var r=P.Store.getReport()||{},cred=r.credibility||{};
+    var doc={name:pack.name,base:pack.base||'',sha256:pack.sha256,size:pack.size,
+      scriptName:(pack.base||'repro')+'-04-replay.sh',script:script,
+      files:pack.files.map(function(f){return {name:f.name,size:bytes(f.text).length};}),
+      taskId:(r.task||{}).task_id||'—',labelSet:cred.label_set||'—',
+      confirmed:cred.confirmed||0,refuted:cred.refuted||0,exportedAt:new Date().toISOString()};
+    try{sessionStorage.setItem(REPLAY_KEY,JSON.stringify(doc));}catch(e){}
+    var href='replay.html';try{href=new URL('replay.html',global.location.href).href;}catch(e){}
+    var w=global.open(href,'_blank');
+    if(w){try{w.focus();}catch(e){}return true;}
+    global.location.href=href;return false;
+  }
+  function readReplayDoc(){
+    try{var x=JSON.parse(sessionStorage.getItem(REPLAY_KEY)||'null');
+      return x&&x.script&&x.name?x:null;}catch(e){return null;}
   }
 
   /* ---------- UI 绑定：报告页 + 证据链页，动态注入按钮 ---------- */
@@ -474,7 +481,115 @@
       var pack=buildPackage(P.Store.getReport());if(pack.ok)showReplay(pack);
     });
   }
+  /* ---------- v0.26 重放脚本功能子页：执行路径 + 带行号着色 + 指纹封条 ---------- */
+  var KW=/^(?:set|if|then|fi|for|do|done|else|elif|exit|echo|test|cd|node|bash|command|cat|printf|while|case|esac|shift|local|return)$/;
+  function highlight(line){
+    var re=/(\s+)|("(?:[^"\\]|\\.)*")|('(?:[^'\\]|\\.)*')|(#.*)|(\$\{?[A-Za-z_][A-Za-z0-9_]*\}?)|([A-Za-z_][A-Za-z0-9_]*)|([0-9]+)|([^\s])/g;
+    var out='',m;
+    while((m=re.exec(line))!==null){
+      if(m[1]){out+=m[0];continue;}
+      var cls=(m[2]||m[3])?'str':m[4]?'cmt':m[5]?'var':m[6]?(KW.test(m[0])?'kw':'id'):m[7]?'num':'op';
+      out+='<span class="rpdoc-tk rpdoc-tk--'+cls+'">'+esc(m[0])+'</span>';
+    }
+    return out||'&nbsp;';
+  }
+  function fmtSize(n){return n>=1024?Math.round(n/1024)+' KB':n+' B';}
+  function copyText(t){
+    if(global.navigator&&navigator.clipboard&&navigator.clipboard.writeText)return navigator.clipboard.writeText(t);
+    return new Promise(function(res,rej){
+      var ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';
+      document.body.appendChild(ta);ta.select();var ok=false;
+      try{ok=document.execCommand('copy');}catch(e){}
+      ta.remove();ok?res():rej(new Error('copy unavailable'));
+    });
+  }
+  function bootReplayPage(){
+    var root=document.querySelector('#replayRoot');if(!root)return;
+    var doc=readReplayDoc();
+    if(!doc){
+      root.innerHTML='<section class="card rpdoc__empty"><b>没有待查看的重放脚本</b>'+
+        '<p>在证据链页的复现工作台点「查看脚本」，或从报告页导出复现包后进入本页。</p>'+
+        '<a class="btn-solid" href="evidence.html" data-nav data-ripple>返回证据链 →</a></section>';
+      return;
+    }
+    var lines=doc.script.replace(/\r/g,'').split('\n');
+    while(lines.length&&!lines[lines.length-1].trim())lines.pop();
+    var lineOf=function(needle){
+      for(var i=0;i<lines.length;i++)if(lines[i].indexOf(needle)>-1)return 'L'+pad(i+1);
+      return 'L—';
+    };
+    var steps=[
+      {t:'模式选择',d:'--dry-run 只打印声明；默认做离线核对',k:'--dry-run'},
+      {t:'文件就位',d:'场景参数、核验摘要与旁车须在同一目录',k:'SCENE='},
+      {t:'逐文件哈希',d:'六类文件 SHA-256 重算并与摘要比对',k:'createHash'},
+      {t:'裁决断言',d:'确认轮数与摘要声明一致，否则退出码 1',k:'exp=sum.credibility.confirmed'},
+      {t:'旁车校验',d:'整包 SHA-256 核对，输出一致或失败项',k:'sha256sum -c'}
+    ];
+    var code=lines.map(function(l,i){
+      return '<div class="rpdoc-code__line"><span class="rpdoc-code__no mono">'+pad(i+1)+
+        '</span><code class="rpdoc-code__txt">'+highlight(l)+'</code></div>';
+    }).join('');
+    root.innerHTML=
+      '<div class="rpdoc__grid">'+
+        '<section class="card rpdoc__meta" aria-label="复现包信息">'+
+          '<div class="card-title">PACKAGE / 复现包</div>'+
+          '<div class="rpdoc__id"><span class="rpdoc__id-lbl mono">TASK</span><b class="mono">'+esc(doc.taskId)+'</b></div>'+
+          '<div class="rpdoc__facts">'+
+            '<div><span>文件</span><b class="mono">'+pad((doc.files||[]).length)+'</b></div>'+
+            '<div><span>确认</span><b class="mono">'+esc(doc.confirmed)+'</b></div>'+
+            '<div><span>证伪</span><b class="mono">'+esc(doc.refuted)+'</b></div>'+
+            '<div><span>标注集</span><b class="mono">'+esc(doc.labelSet)+'</b></div>'+
+          '</div>'+
+          ((doc.files&&doc.files.length)?'<div class="rpdoc__files"><div class="rpdoc__files-t mono">包内文件 / '+pad(doc.files.length)+'</div><ul>'+
+            doc.files.map(function(f){
+              var short=String(f.name).replace(/^.*?-(\d\d-.*)$/,'$1').replace(/\.(json|txt|sh|zip)$/,'');
+              return '<li><span class="mono">'+esc(short)+'</span><b class="mono">'+esc(fmtSize(f.size))+'</b></li>';
+            }).join('')+'</ul></div>':'')+
+        '</section>'+
+        '<section class="card rpdoc__steps" aria-label="执行路径">'+
+          '<div class="card-title">FLOW / 执行路径</div>'+
+          '<ol class="rpdoc__flow">'+steps.map(function(s,i){
+            return '<li><span class="rpdoc__step-no mono">'+pad(i+1)+'</span>'+
+              '<span class="rpdoc__step-body"><b>'+esc(s.t)+'</b><small>'+esc(s.d)+'</small></span>'+
+              '<span class="rpdoc__step-line mono">'+lineOf(s.k)+'</span></li>';
+          }).join('')+'</ol>'+
+        '</section>'+
+      '</div>'+
+      '<section class="card rpdoc__script" aria-label="重放脚本">'+
+        '<div class="rpdoc__script-head"><div>'+
+          '<div class="card-title">SCRIPT / 重放脚本</div>'+
+          '<p class="rpdoc__script-name mono">'+esc(doc.scriptName)+' · '+esc(fmtSize(bytes(doc.script).length))+' · '+lines.length+' 行</p>'+
+        '</div><div class="rpdoc__actions">'+
+          '<button type="button" class="btn-ghost" data-rp-copy data-ripple>复制脚本</button>'+
+          '<button type="button" class="btn-ghost" data-rp-down data-ripple>下载 .sh</button>'+
+          '<button type="button" class="btn-ghost" data-rp-back data-ripple>返回证据链</button>'+
+        '</div></div>'+
+        '<div class="rpdoc__code" role="region" aria-label="脚本内容" tabindex="0">'+code+'</div>'+
+        '<p class="rpdoc__note">本页只展示脚本，不执行任何命令、不发起任何请求。请在授权隔离靶场内自行运行；脚本读取同目录的场景参数与核验摘要。</p>'+
+      '</section>'+
+      '<div class="rpdoc__seal"><span class="lbl mono">EVIDENCE / 档案封条</span>'+
+        '<b class="mono">'+esc(doc.name)+'</b>'+
+        '<code class="mono" title="完整校验值见同名 .sha256 旁车文件">SHA-256 '+esc(doc.sha256.slice(0,16))+'…'+esc(doc.sha256.slice(-6))+'</code>'+
+        '<span class="mono rpdoc__seal-size">'+esc(fmtSize(doc.size))+'</span></div>';
+    var btn;
+    btn=root.querySelector('[data-rp-copy]');
+    if(btn)btn.addEventListener('click',function(){
+      var self=this;
+      copyText(doc.script).then(function(){self.textContent='已复制';setTimeout(function(){self.textContent='复制脚本';},1600);},
+        function(){self.textContent='复制失败';setTimeout(function(){self.textContent='复制脚本';},1600);});
+    });
+    btn=root.querySelector('[data-rp-down]');
+    if(btn)btn.addEventListener('click',function(){
+      var url=URL.createObjectURL(new Blob([doc.script],{type:'text/x-shellscript;charset=utf-8'}));
+      var a=document.createElement('a');a.href=url;a.download=doc.scriptName;
+      document.body.appendChild(a);a.click();a.remove();
+      setTimeout(function(){URL.revokeObjectURL(url);},4000);
+    });
+    btn=root.querySelector('[data-rp-back]');
+    if(btn)btn.addEventListener('click',function(){global.location.href='evidence.html';});
+  }
   function boot(){
+    if(document.body&&document.body.getAttribute('data-page')==='replay'){bootReplayPage();return;}
     injectReportUI();injectEvidenceUI();
     var t=setInterval(function(){
       injectReportUI();injectEvidenceUI();
@@ -487,5 +602,6 @@
   global.Repro={CAP:CAP,sha256:sha256,crc32:crc32,zipStore:zipStore,bytes:bytes,
     exportRounds:exportRounds,canExport:canExport,buildFiles:buildFiles,buildPackage:buildPackage,
     runReplay:runReplay,
-    register:register,registry:registry,download:download,showReplay:showReplay};
+    register:register,registry:registry,download:download,showReplay:showReplay,
+    readReplayDoc:readReplayDoc,bootReplayPage:bootReplayPage};
 })(window);
