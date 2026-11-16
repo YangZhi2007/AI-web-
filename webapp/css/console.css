@@ -1079,11 +1079,38 @@ footer{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;
   .agent-live__row{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:11px}
 }
 
+/* ---------- 17b. v0.24 F-04 漏洞复现包：档案柜 / 封条 ----------
+   沿用报告的卷宗刻度语言；六格清单与哈希指纹是记忆点，按钮保持安静。 */
+.rpt-tools #reproBtn{margin:0}
+.repro-reason{font:500 11px/1.5 var(--mono);color:var(--t-3);margin-right:auto}
+.repro-row{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;margin:-4px 0 20px;
+  padding:12px 16px;background:var(--n-sunken);border:1px solid var(--n-line);border-radius:var(--r-in)}
+.repro-row .lbl{font:500 11px/1 var(--mono);letter-spacing:.1em;color:var(--t-3);flex:none}
+.repro-row b{font:500 12px/1.4 var(--mono);color:var(--t-1);flex:1;min-width:220px;word-break:break-all}
+.repro-row code{font:11px/1.4 var(--mono);color:var(--t-2);white-space:nowrap;flex:none}
+.repro-row .btn-ghost{min-height:44px;padding:0 16px;font-size:12px}
+.rpt-replay-fallback{margin:16px 0;padding:16px;border:1px solid var(--n-line);border-radius:var(--r-in);background:var(--n-surface)}
+.rpt-replay-fallback b{font:500 13px/1.4 var(--display-cn);color:var(--t-1)}
+.rpt-replay-fallback pre{white-space:pre-wrap;word-break:break-word;font:11px/1.7 var(--mono);color:var(--t-2);margin:10px 0 0}
+.repro-evidence{margin:0 0 20px;padding:16px 18px;border:1px solid var(--n-line);
+  border-left:2px solid var(--key);border-radius:var(--r-in);background:var(--n-surface)}
+.repro-evidence__head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.repro-evidence__head .lbl{font:500 11px/1 var(--mono);letter-spacing:.1em;color:var(--t-3)}
+.repro-evidence__head b{font-size:13px;font-weight:500;color:var(--t-1)}
+.repro-evidence__note{margin:10px 0 0;font-size:12px;line-height:1.7;color:var(--t-2)}
+.repro-evidence .btn-ghost{min-height:44px;padding:0 16px;margin:14px 8px 0 0;font-size:13px}
+.repro-evidence__sha{margin:12px 0 0;font-size:11px;line-height:1.6;color:var(--t-2);word-break:break-all}
+@media(max-width:700px){
+  .repro-row code{flex-basis:100%}
+  .repro-evidence .btn-ghost{display:flex;width:100%;margin:10px 0 0}
+}
+
 /* ---------- 18. 打印：仍仅输出 #report，5 附录齐全 ---------- */
 @media print{
   body{background:#fff;background-image:none;color:#111}
   .topbar,.tools,.net,.crumb,.page-no,.stage-head,.stage-tag,.btn-solid,.btn-ghost,.btn-grad,
-  .btn-back,#cancelBtn,.no-print,footer,.page-head__main .page-sub,.auth-hint,.agent-hint,.msg-box{display:none !important}
+  .btn-back,#cancelBtn,.no-print,footer,.page-head__main .page-sub,.auth-hint,.agent-hint,.msg-box,
+  .repro-evidence,.repro-row,.repro-reason,.rpt-replay-fallback{display:none !important}
   main>section:not(#reportSection),main>.card:not(#reportCardWrap),.metrics,.run-panel,.dash{display:none !important}
   .wrap{max-width:none;padding:0}
   .card{border:0;padding:0;box-shadow:none;background:#fff}
