@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>真值库 · 幻觉修复</title>
+<script>try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classList.add('pt-cover'); }catch(e){}</script>
+<link rel="stylesheet" href="css/core.css" />
+<link rel="stylesheet" href="css/console.css" />
+<link rel="stylesheet" href="css/refine.css" />
+<link rel="stylesheet" href="css/hf-app.css" />
+</head>
+<body data-page="hf" data-hf-page="truth">
+<div class="wrap">
+<header class="topbar">
+  <a class="brand" href="hf.html" data-nav data-ripple><i></i>HF / LAB</a>
+  <nav class="hfnav" aria-label="幻觉功能区导航">
+    <a href="hf.html" data-hf-page="overview"><span class="nav-no">00</span>总览</a>
+    <a href="hf_probe.html" data-hf-page="probe"><span class="nav-no">01</span>探测面板</a>
+    <a href="hf_sample.html" data-hf-page="sample"><span class="nav-no">02</span>样本溯源</a>
+    <a href="hf_truth.html" data-hf-page="truth"><span class="nav-no">03</span>真值库</a>
+    <a href="hf_eval.html" data-hf-page="eval"><span class="nav-no">07</span>评测对比</a>
+  </nav>
+</header>
+
+<p class="crumb">幻觉修复 <span></span> <b>真值库</b></p>
+<div class="page-head">
+  <div class="page-head__main">
+    <p class="eyebrow">Module B / Truth · 零训练路线</p>
+    <h1 class="page-title">真值库<span class="dash" aria-hidden="true"></span></h1>
+    <p class="page-sub">判定唯一依据。训练池与验证池物理隔离、编号空间独立、交集为空——验证集从未参与证据构建，保证前后对比可复核。</p>
+  </div>
+  <span class="page-no" aria-hidden="true">03</span>
+</div>
+
+<section class="metrics hf-stats" id="hfTruthStats" aria-label="双池自检"></section>
+
+<div class="grid-2">
+  <section class="card hf-pool" aria-label="训练池">
+    <div class="hf-pool__head"><h3>训练池 / Train</h3><span class="hf-pool__meta">T-xx · 12 题</span></div>
+    <div id="hfTruthTrain"></div>
+  </section>
+  <section class="card hf-pool" aria-label="验证池">
+    <div class="hf-pool__head"><h3>验证池 / Valid</h3><span class="hf-pool__meta">V-xx · 10 题</span></div>
+    <div id="hfTruthValid"></div>
+  </section>
+</div>
+
+<footer>
+  <div>
+    <div class="foot-links">
+      <a href="hf.html">总览</a><a href="hf_probe.html">探测面板</a>
+      <a href="hf_sample.html">样本溯源</a><a href="hf_truth.html">真值库</a>
+      <a href="hf_eval.html">评测对比</a><a href="index.html" data-nav>绕过系统</a>
+    </div>
+    <p class="boundary">幻觉修复功能区 · 无训练 RAG 路线 · 双池物理隔离 · 判定唯一依据 · 零外部请求。</p>
+  </div>
+  <div class="foot-end"><span class="lbl">HF / LAB · NO TRAINING</span></div>
+</footer>
+<div class="pt" id="pt" aria-hidden="true"><div class="pt__mark"><span class="pt__dot"></span>HF / LAB</div></div>
+</div>
+<script src="js/hf.js" defer></script>
+<script src="js/hf-app.js" defer></script>
+<script src="js/core.js" defer></script>
+</body>
+</html>

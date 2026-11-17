@@ -7,6 +7,7 @@
 <script>try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classList.add('pt-cover'); }catch(e){}</script>
 <link rel="stylesheet" href="css/core.css" />
 <link rel="stylesheet" href="css/console.css" />
+<link rel="stylesheet" href="css/refine.css" />
 </head>
 <body data-page="about">
 <div class="wrap">
@@ -28,7 +29,7 @@
 <p class="crumb">控制台 <span></span> 工具 <span></span> <b>合规与说明</b></p>
 <div class="page-head">
   <div class="page-head__main">
-    <p class="eyebrow">UTILITY / BOUNDARY &amp; ABOUT</p>
+    <p class="eyebrow">Utility / Boundary &amp; About</p>
     <h1 class="page-title">合规与说明<span class="dash" aria-hidden="true"></span></h1>
     <p class="page-sub">本工具为授权靶场内的自主攻击智能体闭环演示系统：输入目标 → 逐轮自适应迭代 → 攻破即停 → 自动生成报告。全部数据为 MockEngine 契约桩生成，非实时推理，不发起任何真实请求。</p>
   </div>
@@ -37,7 +38,7 @@
 
 <div class="grid-2">
   <section class="card card--key card--shadow" aria-label="使用边界">
-    <h2 class="card-title">BOUNDARY / 使用边界</h2>
+    <h2 class="card-title">使用边界 / Boundary</h2>
     <div class="about-sec">
       <h3>授权范围</h3>
       <p>仅限对 <span class="mono">localhost / 127.0.0.1 / ::1 / lab</span> 及 <span class="mono">*.lab</span> 靶场别名进行演示。提交前须勾选书面授权确认。</p>
@@ -53,6 +54,10 @@
     <div class="about-sec">
       <h3>自主攻击闭环与停止条件</h3>
       <p>「自主攻击」模式下，智能体依据每轮 WAF 拦截特征自选算子并持续迭代；只有标注点位被独立确认才算攻破并立即停机。未攻破则在 <span class="mono">8</span> 轮预算内如实终止，不无限重试；越界目标仅作纯模拟。真实靶场与真实判定路径均未接入。</p>
+    </div>
+    <div class="about-sec">
+      <h3>两个大功能区</h3>
+      <p>顶栏可在<b>自适应绕过</b>与<b>幻觉修复</b>两个功能区之间切换，两者并列、互不干扰。幻觉修复区当前为<strong>导航壳</strong>：规划了探测面板、样本溯源、真值库、训练集、训练监控、模型版本、评测对比、报告导出共 8 个页面入口，均未实现、不可点击；其目标形态为 FastAPI + Ollama + SQLite + LoRA 微调的双机 C/S 系统，本演示环境不接入任何模型、数据库或外部请求。切换控件只做页面导航。</p>
     </div>
   </section>
 
@@ -74,7 +79,7 @@
       <a href="console.html" data-page="console">任务台</a><a href="monitor.html" data-page="monitor">运行监控</a>
       <a href="evidence.html" data-page="evidence">证据链</a><a href="report.html" data-page="report">报告</a>
       <a href="settings.html" data-page="settings">配置</a><a href="history.html" data-page="history">历史</a>
-      <a href="about.html" data-page="about">说明</a>
+      <a href="about.html" data-page="about">说明</a><a href="hf.html">幻觉修复</a>
     </div>
     <p class="boundary">授权自测工具，仅用于本地隔离靶场，不用于未授权目标，不涉及未知漏洞挖掘；演示数据 · MockEngine 契约桩 · 非实时推理 · 零外部请求。</p>
   </div>

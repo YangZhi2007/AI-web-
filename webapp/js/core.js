@@ -1,5 +1,43 @@
 
       (function () {
+        /* 系统切换壳：在品牌之后注入「自适应绕过 / 幻觉修复」分段控件。
+           覆盖所有加载 core.js 的页面（功能页 .topbar、落地页 .site-head），
+           各页 HTML 零改动；注入早于下方 data-nav 绑定，故新链接同享跨页过渡。 */
+        (function injectSysSwitch() {
+          var host =
+            document.querySelector('.topbar') ||
+            document.querySelector('.site-head');
+          if (!host || host.querySelector('.sys-switch')) return;
+          var isHF =
+            document.body &&
+            document.body.getAttribute &&
+            document.body.getAttribute('data-page') === 'hf';
+          var nav = document.createElement('nav');
+          nav.className = 'sys-switch';
+          nav.setAttribute('aria-label', '功能区切换');
+          [
+            { sys: 'waf', href: 'index.html', label: '自适应绕过', on: !isHF },
+            { sys: 'hf', href: 'hf.html', label: '幻觉修复', on: isHF },
+          ].forEach(function (it) {
+            var a = document.createElement('a');
+            a.href = it.href;
+            a.setAttribute('data-sys', it.sys);
+            a.setAttribute('data-nav', '');
+            a.setAttribute('data-ripple', '');
+            if (it.on) a.setAttribute('aria-current', 'page');
+            var dot = document.createElement('span');
+            dot.className = 'sys-switch__dot';
+            dot.setAttribute('aria-hidden', 'true');
+            a.appendChild(dot);
+            a.appendChild(document.createTextNode(it.label));
+            nav.appendChild(a);
+          });
+          var brand = host.querySelector('.brand');
+          if (brand && brand.parentNode === host)
+            host.insertBefore(nav, brand.nextSibling);
+          else host.insertBefore(nav, host.firstChild);
+        })();
+
         const RM = window.matchMedia(
           "(prefers-reduced-motion: reduce)",
         ).matches;

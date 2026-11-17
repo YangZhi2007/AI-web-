@@ -7,6 +7,7 @@
 <script>try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classList.add('pt-cover'); }catch(e){}</script>
 <link rel="stylesheet" href="css/core.css" />
 <link rel="stylesheet" href="css/console.css" />
+<link rel="stylesheet" href="css/refine.css" />
 </head>
 <body data-page="monitor">
 <div class="wrap">
@@ -28,7 +29,7 @@
 <p class="crumb">控制台 <span></span> <b>运行监控</b></p>
 <div class="page-head">
   <div class="page-head__main">
-    <p class="eyebrow">STEP 02 / LIVE PROGRESS</p>
+    <p class="eyebrow">Step 02 / Live progress</p>
     <h1 class="page-title">运行监控<span class="dash" aria-hidden="true"></span></h1>
     <p class="page-sub">态势台按轮次点亮攻击链与神经突触，动画与任务执行同步。命中、未检出、越界、取消各有独立状态呈现。</p>
   </div>
@@ -55,16 +56,16 @@
   <div class="stage-head">
     <span class="stage-no">02</span>
     <div class="stage-meta">
-      <h2 class="stage-title">攻防态势 <span class="stage-kicker">SITUATION / NEURAL LOOP</span></h2>
+      <h2 class="stage-title">攻防态势 <span class="stage-kicker">Situation / Neural loop</span></h2>
       <p class="stage-desc">左=攻击链按轮推进，中=反馈闭环随轮点亮，右=WAF 防线；下方决策流逐轮记录算子选择依据与独立裁决。</p>
     </div>
     <span class="stage-tag stage-tag--key">P0 · 实时过程</span>
   </div>
 
   <div class="dash" id="dash" data-state="idle">
-    <div class="fx-intrusion" aria-hidden="true"><i></i><i></i><i></i><span>INTRUSION FLAG / 越界或中断 · 纯模拟告警</span></div>
+    <div class="fx-intrusion" aria-hidden="true"><i></i><i></i><i></i><span>Intrusion flag / 越界或中断 · 纯模拟告警</span></div>
     <div class="dash__head">
-      <span class="lbl">DASHBOARD / 运行指标</span>
+      <span class="lbl">运行指标 / Dashboard</span>
       <span class="dash__state" id="dashStateWrap" aria-live="polite"><i aria-hidden="true"></i><span id="dashState">IDLE</span></span>
     </div>
 
@@ -160,7 +161,7 @@
   <section class="card agent-live" id="agentLive" aria-labelledby="agentLiveTitle">
     <div class="agent-live__head">
       <div class="agent-live__txt">
-        <p class="eyebrow">AGENT DECISION STREAM</p>
+        <p class="eyebrow">Agent decision stream</p>
         <h2 class="agent-live__title" id="agentLiveTitle">智能体决策流</h2>
         <p class="agent-live__sub">每轮算子由上一轮 WAF 拦截特征实时选出；标注点位被独立确认即攻破停机。</p>
       </div>

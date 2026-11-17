@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!--
+  PROBE / LAB · 幻觉修复功能区（MODULE B）· 无训练 RAG 版
+  因团队无 GPU 训练条件，把 HallucinationFix V1.1 的第 6 环 LoRA 微调
+  替换为 RAG 真值证据注入：判定层仍为独立确定性算法（文档主线，本就零训练），
+  修复层用证据注入替代改权重，评测层在隔离验证集上真实计算 base vs RAG 幻觉率下降。
+  默认 mock 模式零外部请求；用户显式切换后可接本地 Ollama 做真实推理，仍不训练。
+-->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>幻觉溯源与自动自愈系统 · PROBE / LAB</title>
+<script>try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classList.add('pt-cover'); }catch(e){}</script>
+<link rel="stylesheet" href="css/core.css" />
+<link rel="stylesheet" href="css/console.css" />
+<link rel="stylesheet" href="css/refine.css" />
+<link rel="stylesheet" href="css/hf.css" />
+<link rel="stylesheet" href="css/hf-app.css" />
+</head>
+<body data-page="hf" data-hf-page="overview">
+<div class="wrap">
+<header class="topbar">
+  <a class="brand" href="hf.html" data-nav data-ripple><i></i>HF / LAB</a>
+  <nav class="hfnav" aria-label="幻觉功能区导航">
+    <a class="is-current" href="hf.html" data-hf-page="overview" aria-current="page"><span class="nav-no">00</span>总览</a>
+    <a href="hf_probe.html" data-hf-page="probe"><span class="nav-no">01</span>探测面板</a>
+    <a href="hf_sample.html" data-hf-page="sample"><span class="nav-no">02</span>样本溯源</a>
+    <a href="hf_truth.html" data-hf-page="truth"><span class="nav-no">03</span>真值库</a>
+    <a href="hf_eval.html" data-hf-page="eval"><span class="nav-no">07</span>评测对比</a>
+  </nav>
+</header>
+
+<p class="crumb">功能区 <span></span> <b>幻觉溯源与自动自愈</b></p>
+<div class="page-head">
+  <div class="page-head__main">
+    <p class="eyebrow">Module B / Overview · 无训练 RAG 路线</p>
+    <h1 class="page-title">幻觉溯源与自动自愈系统<span class="dash" aria-hidden="true"></span></h1>
+    <p class="page-sub">模型只负责回答，判定由独立真值库完成，修复用 RAG 真值证据注入替代微调，评测只用与证据隔离的验证集。全程不训练模型、不改权重。</p>
+  </div>
+  <span class="page-no" aria-hidden="true">B</span>
+</div>
+
+<section class="metrics hf-metrics" aria-label="方案与当前阶段">
+  <div><span class="lbl">修复路线 / FIX</span><b>RAG 注入</b><small>替代 LoRA 微调</small></div>
+  <div><span class="lbl">训练 / TRAIN</span><b>无</b><small>模型权重零改动</small></div>
+  <div><span class="lbl">推理 / INFER</span><b>Mock / Ollama</b><small>本地可插拔</small></div>
+  <div><span class="lbl">外联 / EGRESS</span><b>0</b><small>mock 模式零请求</small></div>
+</section>
+
+<div class="hf-notice" role="status">
+  <span class="hf-notice__tag">NO TRAINING</span>
+  <p>没有 GPU 训练条件也能跑通完整闭环：判定算法与 RAG 证据注入都不需要训练。默认 <b>Mock 模式</b>用预置输出演示、零外部请求；如需真实效果，可在探测面板切换到本地 Ollama，仍不训练。</p>
+</div>
+
+<section class="hf-sec" aria-label="功能页面">
+  <div class="hf-sec__head">
+    <h2>功能页面 / 4 已上线 · 4 规划</h2>
+    <span class="lbl">前 4 项与第 7 项可用 · 其余待接入</span>
+  </div>
+  <div class="grid-3 hf-grid" id="hfGrid">
+    <div class="hf-sec__label hf-grid__label">可使用 <span>4 PAGES · 点击进入</span></div>
+    <a class="hf-page hf-page--link" href="hf_probe.html" data-nav data-hf-page="probe">
+      <span class="hf-page__no">01</span><span class="hf-page__title">探测面板</span>
+      <span class="hf-page__desc">选池与推理模式，逐题双条件作答与判定</span>
+      <span class="hf-page__state hf-page__state--ok">已上线</span>
+    </a>
+    <a class="hf-page hf-page--link" href="hf_sample.html" data-nav data-hf-page="sample">
+      <span class="hf-page__no">02</span><span class="hf-page__title">样本溯源</span>
+      <span class="hf-page__desc">幻觉样本、原始输出、成因标签与理由</span>
+      <span class="hf-page__state hf-page__state--ok">已上线</span>
+    </a>
+    <a class="hf-page hf-page--link" href="hf_truth.html" data-nav data-hf-page="truth">
+      <span class="hf-page__no">03</span><span class="hf-page__title">真值库</span>
+      <span class="hf-page__desc">训练池与验证池、双池隔离与交集校验</span>
+      <span class="hf-page__state hf-page__state--ok">已上线</span>
+    </a>
+    <a class="hf-page hf-page--link" href="hf_eval.html" data-nav data-hf-page="eval">
+      <span class="hf-page__no">07</span><span class="hf-page__title">评测对比</span>
+      <span class="hf-page__desc">base vs RAG 幻觉率、四类分组与题目级差异</span>
+      <span class="hf-page__state hf-page__state--ok">已上线</span>
+    </a>
+    <div class="hf-sec__label hf-grid__label">规划中 <span>4 PAGES · 待接入</span></div>
+    <button class="hf-page" type="button" disabled aria-disabled="true">
+      <span class="hf-page__no">04</span><span class="hf-page__title">证据库管理</span>
+      <span class="hf-page__desc">RAG 证据条目版本、来源与预览（无训练替代训练集）</span>
+      <span class="hf-page__state">待实现</span>
+    </button>
+    <button class="hf-page" type="button" disabled aria-disabled="true">
+      <span class="hf-page__no">05</span><span class="hf-page__title">修复记录</span>
+      <span class="hf-page__desc">推理日志、证据命中与显存/耗时读数</span>
+      <span class="hf-page__state">待实现</span>
+    </button>
+    <button class="hf-page" type="button" disabled aria-disabled="true">
+      <span class="hf-page__no">06</span><span class="hf-page__title">版本对比</span>
+      <span class="hf-page__desc">base / RAG 配置版本与启用回滚（无权重版本）</span>
+      <span class="hf-page__state">待实现</span>
+    </button>
+    <button class="hf-page" type="button" disabled aria-disabled="true">
+      <span class="hf-page__no">08</span><span class="hf-page__title">报告导出</span>
+      <span class="hf-page__desc">幻觉分析报告与评测报告预览</span>
+      <span class="hf-page__state">待实现</span>
+    </button>
+  </div>
+</section>
+
+<div class="grid-2 hf-bottom">
+  <section class="card" aria-label="修复主线">
+    <h2 class="card-title">修复主线 / 无训练替代</h2>
+    <ol class="hf-flow">
+      <li><b>题目加载</b>训练池 12 + 验证池 10，交集为空、编号独立</li>
+      <li><b>双条件推理</b>同一模型，无证据 / 注入真值证据各答一次</li>
+      <li><b>幻觉判定</b>独立真值库、确定性计算，结论锚点 + 事实覆盖率</li>
+      <li><b>成因归因</b>规则匹配四类标签 + 带原文片段理由</li>
+      <li><b>RAG 修复</b>标准结论与关键事实注入提示词，权重零改动</li>
+      <li><b>对比评测</b>验证集上真实算 base vs RAG 幻觉率下降</li>
+    </ol>
+  </section>
+  <section class="card" aria-label="诚实口径">
+    <h2 class="card-title">诚实口径 / HONEST SCOPE</h2>
+    <ul class="hf-scope">
+      <li><strong>无训练</strong>：判定、归因、RAG 注入均为确定性规则，不涉及模型权重更新。</li>
+      <li>RAG 只治<strong>知识盲区</strong>；对推理逻辑、提示词、上下文偏差三类无效——这正是分类归因的意义。</li>
+      <li>mock 模式的输出是契约桩预置，<strong>判定与下降计算为真实算法</strong>，零外部请求。</li>
+      <li>切到 Ollama 才会调用你填写的本地地址，需自行启动服务并设置跨域。</li>
+    </ul>
+    <p class="hf-scope__foot">基线：HallucinationFix 开发文档 V1.1 · 本功能区改为无训练 RAG 路线</p>
+  </section>
+</div>
+
+<footer>
+  <div>
+    <div class="foot-links">
+      <a href="hf.html">总览</a><a href="hf_probe.html">探测面板</a>
+      <a href="hf_sample.html">样本溯源</a><a href="hf_truth.html">真值库</a>
+      <a href="hf_eval.html">评测对比</a><a href="index.html" data-nav>绕过系统</a>
+    </div>
+    <p class="boundary">第二功能区 · 无训练 RAG 路线 · 判定为独立确定性算法 · 默认零外部请求 · 不构成可运行系统。</p>
+  </div>
+  <div class="foot-end"><span class="lbl">HF / LAB · NO TRAINING</span></div>
+</footer>
+<div class="pt" id="pt" aria-hidden="true"><div class="pt__mark"><span class="pt__dot"></span>HF / LAB</div></div>
+</div>
+<script src="js/core.js" defer></script>
+</body>
+</html>

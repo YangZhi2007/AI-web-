@@ -1,3 +1,6 @@
+# WorkBuddy 本地工作数据（不提交）
+.workbuddy/
+
 # OS / editor junk
 .DS_Store
 Thumbs.db

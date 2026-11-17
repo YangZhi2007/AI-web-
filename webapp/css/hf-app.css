@@ -1,0 +1,184 @@
+/* ============================================================
+   hf-app.css · 幻觉修复功能区子页样式（无训练 RAG 版）
+   复用 console.css 的 token 与 .card/.grid-*/.page-head/.metrics/.tag/.tbl。
+   本文件只放功能页独有类。零外部请求。
+   ============================================================ */
+
+/* 幻觉功能区二级导航：本模块内 4 个子页翻页 */
+.hfnav{display:flex;align-items:center;gap:0;margin-left:8px;overflow-x:auto}
+.hfnav a{position:relative;display:inline-flex;align-items:center;min-height:56px;padding:0 14px;
+  font:500 13px/1 var(--body);color:var(--t-2);border-bottom:2px solid transparent;white-space:nowrap;
+  transition:color var(--d-inst),border-color var(--d-inst),background var(--d-inst)}
+.hfnav a .nav-no{font:500 10px/1 var(--mono);color:var(--t-3);margin-right:6px;opacity:.7}
+.hfnav a:hover{color:var(--t-1);background:var(--n-raised)}
+.hfnav a.is-current{color:var(--t-1);border-bottom-color:var(--key);background:var(--n-raised)}
+.hfnav a.is-current .nav-no{color:var(--accent-ink)}
+
+/* 统一子页导航在窄屏的换行 */
+@media(max-width:700px){
+  .hfnav{order:3;flex:1 0 100%;margin-left:0}
+  .hfnav a{min-height:48px;padding:0 12px}
+}
+
+/* 模式切换段（mock / ollama）：方形控制半径，不滥用 pill；当前项发丝线 + 表面步 */
+.hf-mode{display:inline-flex;align-items:center;gap:0;padding:2px;border:1px solid var(--n-line-2);border-radius:8px;background:var(--n-surface)}
+.hf-mode button{min-height:36px;padding:0 14px;border:0;border-radius:6px;background:transparent;
+  color:var(--t-2);font:500 12px/1 var(--mono);cursor:pointer;transition:background var(--d-inst),color var(--d-inst)}
+.hf-mode button:hover{background:var(--n-raised)}
+.hf-mode button[aria-pressed="true"]{background:var(--key);color:var(--key-ink);font-weight:500;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+
+/* 无训练声明条 */
+.hf-notrain{display:flex;align-items:flex-start;gap:12px;margin:0 0 24px;padding:14px 16px;
+  border:1px solid var(--n-line-2);border-left:3px solid var(--sig-ok);border-radius:var(--r-in);background:var(--n-raised)}
+.hf-notrain__tag{flex:none;align-self:flex-start;font:600 11px/1 var(--mono);letter-spacing:.04em;
+  color:var(--accent-ink);background:var(--accent);padding:7px 10px;border-radius:6px}
+.hf-notrain p{margin:0;font-size:14px;line-height:1.7;color:var(--t-1)}
+.hf-notrain small{display:block;margin-top:4px;color:var(--t-3);font-size:12px}
+
+/* 运行控制条：池选择 + ollama 地址 + 运行按钮 */
+.hf-control{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;padding:20px 22px;margin-bottom:20px}
+.hf-control .field{min-width:180px}
+.hf-control .field--wide{flex:1;min-width:260px}
+.hf-control .lbl{display:block;margin-bottom:8px}
+.hf-control input[type=text],.hf-control select{font-size:13px}
+.hf-control__btn{min-width:150px}
+.hf-control__msg{display:inline-flex;align-items:center;min-height:44px;font:500 13px/1.4 var(--mono)}
+.hf-control__msg.err{color:var(--sig-err)}.hf-control__msg.ok{color:var(--sig-ok)}
+
+/* 判定结果两版本对照徽标 */
+.hf-v{display:inline-flex;align-items:center;gap:6px;font:600 11px/1 var(--mono);
+  padding:6px 9px;border-radius:6px;white-space:nowrap}
+.hf-v[data-v="CONSISTENT"]{color:var(--sig-ok);background:var(--sig-ok-soft);border:1px solid var(--sig-ok)}
+.hf-v[data-v="HALLUCINATION"]{color:var(--sig-alert);background:var(--sig-alert-soft);border:1px solid var(--sig-alert)}
+
+/* 成因标签：四类用形状前缀 + 中文，不靠单一颜色 */
+.hf-cause{display:inline-flex;align-items:center;gap:6px;font:500 11px/1 var(--mono);
+  padding:5px 8px;border:1px solid var(--n-line-3);border-radius:999px;color:var(--t-2)}
+.hf-cause::before{content:"";width:7px;height:7px;flex:none;border:1.5px solid currentColor}
+.hf-cause[data-c="knowledge"]::before{border-radius:50%}
+.hf-cause[data-c="prompt"]::before{border-radius:2px;transform:rotate(45deg)}
+.hf-cause[data-c="logic"]::before{border-radius:0}
+.hf-cause[data-c="context"]::before{border-radius:50%;background:currentColor}
+
+/* 结果读数带 */
+.hf-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--n-line);
+  border-radius:var(--r);background:var(--n-surface);margin-bottom:24px;overflow:hidden}
+.hf-stats>div{padding:18px 22px;border-right:1px solid var(--n-line);position:relative}
+.hf-stats>div:last-child{border-right:0}
+.hf-stats .lbl{display:block;margin-bottom:10px}
+.hf-stats b{font:500 30px/1 var(--display);color:var(--t-1);font-variant-numeric:tabular-nums}
+.hf-stats b.is-good{color:var(--sig-ok)}
+.hf-stats small{display:block;margin-top:6px;font-size:12px;color:var(--t-3)}
+
+/* 分组对比条：base 灰底 + rag 主色，数值在右 */
+.hf-bars{margin:16px 0 0}
+.hf-bar{margin-bottom:16px}
+.hf-bar__head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px}
+.hf-bar__head b{font:500 14px/1 var(--body);color:var(--t-1)}
+.hf-bar__head span{font:500 12px/1 var(--mono);color:var(--t-3)}
+.hf-bar__track{display:flex;align-items:center;gap:8px;margin-top:6px}
+.hf-bar__track .lbl{width:56px;flex:none;font-size:11px}
+.hf-bar__rail{position:relative;flex:1;height:14px;background:var(--n-sunken);border-radius:3px;overflow:hidden}
+.hf-bar__fill{position:absolute;left:0;top:0;bottom:0;border-radius:3px}
+.hf-bar__fill--base{background:var(--t-3);opacity:.45}
+.hf-bar__fill--rag{background:var(--sig-ok)}
+.hf-bar__num{width:44px;flex:none;text-align:right;font:500 12px/1 var(--mono);color:var(--t-2)}
+
+/* 题目级差异表：可展开原文 */
+.hf-diff summary{cursor:pointer;min-height:44px;display:flex;align-items:center;gap:10px;padding:0 12px;
+  border-bottom:1px solid var(--n-line);font:500 13px/1.4 var(--body);color:var(--t-1)}
+.hf-diff summary::-webkit-details-marker{display:none}
+.hf-diff summary::before{content:"+";font:600 16px/1 var(--mono);color:var(--t-3);width:16px;flex:none}
+.hf-diff[open] summary::before{content:"−"}
+.hf-diff__body{padding:12px 16px 16px;border-bottom:1px solid var(--n-line);background:var(--n-raised)}
+.hf-diff__pair{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.hf-diff__col h4{margin:0 0 8px;font:600 12px/1 var(--mono);color:var(--t-2)}
+.hf-diff__col pre{margin:0;padding:12px;background:var(--n-surface);border:1px solid var(--n-line);
+  border-radius:var(--r-in);font:400 12px/1.6 var(--body);color:var(--t-1);white-space:pre-wrap;word-break:break-word}
+.hf-diff__reason{margin:12px 0 0;font-size:13px;line-height:1.65;color:var(--t-2)}
+
+/* 空态：三步引导替代一句话，居中但不空洞 */
+.hf-empty{padding:40px 24px 48px;text-align:center;color:var(--t-3)}
+.hf-empty>b{display:block;margin-bottom:20px;font:500 18px/1.3 var(--body);color:var(--t-2)}
+.hf-empty a{display:inline-flex;align-items:center;min-height:44px;margin-top:16px;color:var(--sig-ok);font-weight:500}
+.hf-empty__steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:720px;margin:0 auto;text-align:left}
+.hf-empty__step{padding:16px;border:1px solid var(--n-line);border-radius:var(--r-in);background:var(--n-surface)}
+.hf-empty__step>span:first-child{font:500 11px/1 var(--mono);color:var(--t-3)}
+.hf-empty__step b{display:block;margin:8px 0 4px;font:500 14px/1.3 var(--body);color:var(--t-1)}
+.hf-empty__step>span:last-child{font-size:12px;line-height:1.5;color:var(--t-3)}
+@media(max-width:700px){.hf-empty__steps{grid-template-columns:1fr}}
+
+/* 真值库双池卡 */
+.hf-pool__head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.hf-pool__head h3{margin:0;font:500 16px/1.2 var(--body);color:var(--t-1)}
+.hf-pool__meta{font:500 12px/1 var(--mono);color:var(--t-3)}
+.hf-pool table{width:100%;border-collapse:collapse;font-size:13px}
+.hf-pool th,.hf-pool td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--n-line);color:var(--t-2);vertical-align:top}
+.hf-pool th{font:500 11px/1.4 var(--mono);letter-spacing:.02em;color:var(--t-3)}
+.hf-pool td.mono{font-family:var(--mono)}
+.hf-pool tr.is-hit td:first-child{box-shadow:inset 2px 0 0 var(--sig-alert)}
+
+/* ===== unslop 精炼：双轨 signature + 破除等宽模板 ===== */
+
+/* 入口卡分组：可用区与规划区视觉分层，不再 8 张一样 */
+.hf-sec--split{margin-bottom:28px}
+.hf-sec__label{display:flex;align-items:center;gap:10px;margin:24px 0 12px;
+  padding-bottom:10px;border-bottom:1px solid var(--n-line);
+  font:500 13px/1 var(--body);color:var(--t-2)}
+.hf-sec__label::after{content:"";flex:1;height:1px;background:var(--n-line)}
+.hf-sec__label span{font:500 11px/1 var(--mono);color:var(--t-3)}
+/* grid 内跨列的分组标签：占满整行，不参与卡片列计数 */
+.hf-grid__label{grid-column:1/-1;margin:8px 0 4px}
+.hf-grid__label:first-child{margin-top:0}
+/* 可用卡：唯一亮元素聚焦，左上角标强调 */
+.hf-page--link .hf-page__no{color:var(--accent-ink)}
+.hf-page--link{border-left:2px solid var(--key)}
+/* 规划卡：压缩为安静列表态，弱化到几乎无描边 */
+.hf-page:not(.hf-page--link){min-height:96px;padding:12px 16px;gap:4px;
+  background:transparent;border-color:var(--n-line);border-left:2px solid var(--n-line-2)}
+.hf-page:not(.hf-page--link) .hf-page__title{font-size:14px}
+.hf-page:not(.hf-page--link) .hf-page__desc{font-size:12px}
+.hf-page:not(.hf-page--link) .hf-page__state{padding:3px 7px;font-size:10px}
+
+/* 样本溯源：成因分组标题，让 10 行不再是一模一样的墙 */
+.hf-group{margin:0 0 6px;padding:14px 4px 8px;display:flex;align-items:center;gap:10px;
+  border-bottom:1px solid var(--n-line-2);font:500 14px/1 var(--body);color:var(--t-1)}
+.hf-group__no{font:500 11px/1 var(--mono);color:var(--t-3)}
+.hf-group__n{margin-left:auto;font:500 11px/1 var(--mono);color:var(--t-3)}
+
+/* 双轨结论条：收起态就能看到 base → RAG 的成对结果（signature） */
+.hf-dual{display:inline-flex;align-items:center;gap:6px;margin-left:auto;flex:none;
+  font:500 11px/1 var(--mono);white-space:nowrap}
+.hf-dual__v{padding:3px 6px;border-radius:5px;border:1px solid}
+.hf-dual__v[data-v="HALLUCINATION"]{color:var(--sig-alert);border-color:var(--sig-alert);background:var(--sig-alert-soft)}
+.hf-dual__v[data-v="CONSISTENT"]{color:var(--sig-ok);border-color:var(--sig-ok);background:var(--sig-ok-soft)}
+.hf-dual__arrow{color:var(--t-3)}
+.hf-diff summary{flex-wrap:wrap;row-gap:8px}
+.hf-diff__q{flex:1;min-width:180px}
+
+/* 成因标签：改成对齐的一列（固定宽度），可纵向扫读 */
+.hf-diff summary .hf-cause{width:104px;justify-content:flex-start;order:3}
+
+/* 评测对比：图例替代每行重复的 BASE / RAG 标签 */
+.hf-legend{display:flex;align-items:center;gap:16px;margin:0 0 18px;
+  font:500 11px/1 var(--mono);color:var(--t-3)}
+.hf-legend i{display:inline-block;width:14px;height:8px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.hf-legend .k-base{background:var(--t-3);opacity:.45}
+.hf-legend .k-rag{background:var(--sig-ok)}
+.hf-legend__note{margin-left:auto}
+/* 轨道标签改为不重复：保留 DOM 供脚本/无障碍，视觉隐藏 */
+.hf-bar__track .lbl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.hf-bar__rail{height:16px}
+.hf-bar__num{width:52px}
+/* 唯一主图：RAG 轨迹清晰，BASE 退到背景；已修复的 0% 给正向文字 */
+.hf-bar__fill--rag{box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
+.hf-bar__head .is-fixed{color:var(--sig-ok);font-weight:600}
+
+@media(max-width:700px){
+  .hf-stats{grid-template-columns:repeat(2,1fr)}
+  .hf-stats>div{border-bottom:1px solid var(--n-line)}
+  .hf-diff__pair{grid-template-columns:1fr}
+  .hf-dual{width:100%;margin-left:0;order:4}
+  .hf-diff summary .hf-cause{width:auto}
+}

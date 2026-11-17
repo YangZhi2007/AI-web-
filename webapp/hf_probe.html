@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>探测面板 · 幻觉修复</title>
+<script>try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classList.add('pt-cover'); }catch(e){}</script>
+<link rel="stylesheet" href="css/core.css" />
+<link rel="stylesheet" href="css/console.css" />
+<link rel="stylesheet" href="css/refine.css" />
+<link rel="stylesheet" href="css/hf-app.css" />
+</head>
+<body data-page="hf" data-hf-page="probe">
+<div class="wrap">
+<header class="topbar">
+  <a class="brand" href="hf.html" data-nav data-ripple><i></i>HF / LAB</a>
+  <nav class="hfnav" aria-label="幻觉功能区导航">
+    <a href="hf.html" data-hf-page="overview"><span class="nav-no">00</span>总览</a>
+    <a href="hf_probe.html" data-hf-page="probe"><span class="nav-no">01</span>探测面板</a>
+    <a href="hf_sample.html" data-hf-page="sample"><span class="nav-no">02</span>样本溯源</a>
+    <a href="hf_truth.html" data-hf-page="truth"><span class="nav-no">03</span>真值库</a>
+    <a href="hf_eval.html" data-hf-page="eval"><span class="nav-no">07</span>评测对比</a>
+  </nav>
+</header>
+
+<p class="crumb">幻觉修复 <span></span> <b>探测面板</b></p>
+<div class="page-head">
+  <div class="page-head__main">
+    <p class="eyebrow">Module B / Probe · 零训练路线</p>
+    <h1 class="page-title">探测面板<span class="dash" aria-hidden="true"></span></h1>
+    <p class="page-sub">选择题目池与推理模式，对每道题在「无证据 / 注入真值证据」两种条件下作答，用独立确定性算法逐题判定。全程不训练模型。</p>
+  </div>
+  <span class="page-no" aria-hidden="true">01</span>
+</div>
+
+<div class="hf-notrain" role="status">
+  <span class="hf-notrain__tag">NO TRAINING</span>
+  <p>修复手段是 RAG 证据注入，不是 LoRA 微调；模型权重零改动。
+    <small>默认 mock 模式使用预置输出、零外部请求；切换到本地 Ollama 后才会调用你填写的地址做真实推理，仍不训练。</small>
+  </p>
+</div>
+
+<section class="card hf-control" aria-label="运行控制">
+  <div class="field">
+    <label class="lbl" for="hfPool">题目池 / Pool</label>
+    <select id="hfPool">
+      <option value="valid">验证池（10 题 · 用于评测）</option>
+      <option value="train">训练池（12 题）</option>
+    </select>
+  </div>
+  <div class="field">
+    <span class="lbl">推理模式 / Mode</span>
+    <div class="hf-mode" role="group" aria-label="推理模式">
+      <button type="button" data-mode="mock" aria-pressed="true">Mock · 零外联</button>
+      <button type="button" data-mode="ollama" aria-pressed="false">本地 Ollama</button>
+    </div>
+  </div>
+  <div class="field field--wide hidden" id="hfEndpointRow">
+    <label class="lbl" for="hfEndpoint">Ollama 地址 / Endpoint（仅本地）</label>
+    <input id="hfEndpoint" type="text" value="http://127.0.0.1:11434/api/generate" />
+  </div>
+  <div class="field hidden" id="hfModelRow">
+    <label class="lbl" for="hfModel">模型 / Model</label>
+    <input id="hfModel" type="text" value="qwen2.5:7b-instruct-q4_K_M" />
+  </div>
+  <button id="hfRun" class="btn-solid hf-control__btn" type="button" data-ripple>开始探测 →</button>
+  <span class="hf-control__msg" id="hfRunMsg" role="status"></span>
+</section>
+
+<section id="hfProbeResult" aria-label="逐题判定结果"></section>
+
+<footer>
+  <div>
+    <div class="foot-links">
+      <a href="hf.html">总览</a><a href="hf_probe.html">探测面板</a>
+      <a href="hf_sample.html">样本溯源</a><a href="hf_truth.html">真值库</a>
+      <a href="hf_eval.html">评测对比</a><a href="index.html" data-nav>绕过系统</a>
+    </div>
+    <p class="boundary">幻觉修复功能区 · 无训练 RAG 路线 · 演示数据 · 判定为真实确定性算法 · 零外部请求（mock 模式）。</p>
+  </div>
+  <div class="foot-end"><span class="lbl">HF / LAB · NO TRAINING</span></div>
+</footer>
+<div class="pt" id="pt" aria-hidden="true"><div class="pt__mark"><span class="pt__dot"></span>HF / LAB</div></div>
+</div>
+<script src="js/hf.js" defer></script>
+<script src="js/hf-app.js" defer></script>
+<script src="js/core.js" defer></script>
+</body>
+</html>

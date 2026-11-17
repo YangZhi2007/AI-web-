@@ -7,6 +7,7 @@
 <script>try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classList.add('pt-cover'); }catch(e){}</script>
 <link rel="stylesheet" href="css/core.css" />
 <link rel="stylesheet" href="css/console.css" />
+<link rel="stylesheet" href="css/refine.css" />
 </head>
 <body data-page="history">
 <div class="wrap">
@@ -28,7 +29,7 @@
 <p class="crumb">控制台 <span></span> 工具 <span></span> <b>历史任务</b></p>
 <div class="page-head">
   <div class="page-head__main">
-    <p class="eyebrow">UTILITY / TASK LOG</p>
+    <p class="eyebrow">Utility / Task log</p>
     <h1 class="page-title">历史任务<span class="dash" aria-hidden="true"></span></h1>
     <p class="page-sub">本次会话内完成的探测任务登记，可回看轮次、终止原因与数据来源。任务记录保存在当前浏览器会话中。</p>
   </div>
@@ -36,7 +37,7 @@
 </div>
 
 <div class="card" style="padding:0;overflow:hidden">
-  <h2 class="card-title" style="padding:20px 20px 0">TASK LOG / 会话内任务</h2>
+  <h2 class="card-title" style="padding:20px 20px 0">会话内任务 / Task log</h2>
   <div class="empty" id="historyEmpty"><b>暂无历史任务</b><span>完成一次分析后会在此登记，可回看轮次、终止原因与数据来源。</span></div>
   <div class="tbl-scroll hidden" id="historyFrame"><table class="tbl"><thead><tr>
     <th>任务 ID</th><th>时间</th><th>目标别名</th><th>剧本</th><th>轮次</th><th>终止原因</th><th>数据来源</th>

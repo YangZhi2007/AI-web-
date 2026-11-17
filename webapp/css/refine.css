@@ -1,0 +1,155 @@
+/* ============================================================
+   refine.css · 功能页 UI 精炼（unslop 方向 A · v0.29）
+   ------------------------------------------------------------
+   全部规则按 body[data-page] 作用域，在 console.css 之后加载，
+   不修改 console.css 主体与其他页任何既有规则。
+   保留 v0.16→v0.27 全部基因：高饱和亮底、酸柠 --key、SOC 卷宗刻度、
+   pill 主按钮、grid-2 布局、逐页主色、8 态形状编码。
+   仅修审计发现的真问题：
+     1 全大写宽字距描述性标签 → 句首大写 + 正常字距 + 12px
+       （状态枚举 IDLE/RUNNING、品牌 PROBE / LAB、SOUND OFF 保留大写）
+     2 字重 600 偏重 → 500（层级靠尺寸与颜色，不靠加粗）
+     3 hover 大位移发光 → 1px + 中性小阴影
+     4 各页 signature 焦点强化（任务台卷宗刻度带等）
+   硬契约零改动：--accent=#c8f560、--key 高饱和、按钮酸柠底深墨字、
+   44px 命中、390 无溢出、全部 DOM id / data-* 与 aria-*、状态机、
+   打印黑白、reduced-motion。
+   注意：CSS 注释内禁止出现「星号斜杠」字面序列（会提前闭合注释，
+   吞掉紧随的规则——v0.28 已踩过此坑）。
+   ============================================================ */
+
+/* ---------- 1. 通用段：全部功能页共享 ---------- */
+:is(body[data-page="console"],body[data-page="monitor"],body[data-page="evidence"],
+    body[data-page="report"],body[data-page="settings"],body[data-page="history"],
+    body[data-page="about"],body[data-page="replay"],body[data-page="hf"]) .eyebrow,
+:is(body[data-page="console"],body[data-page="monitor"],body[data-page="evidence"],
+    body[data-page="report"],body[data-page="settings"],body[data-page="history"],
+    body[data-page="about"],body[data-page="replay"],body[data-page="hf"]) .lbl,
+:is(body[data-page="console"],body[data-page="monitor"],body[data-page="evidence"],
+    body[data-page="report"],body[data-page="settings"],body[data-page="history"],
+    body[data-page="about"],body[data-page="replay"],body[data-page="hf"]) .card-title{
+  text-transform:none;
+  letter-spacing:.01em;
+  font-size:12px;
+  line-height:1.5;
+}
+:is(body[data-page="console"],body[data-page="monitor"],body[data-page="evidence"],
+    body[data-page="report"],body[data-page="settings"],body[data-page="history"],
+    body[data-page="about"],body[data-page="replay"],body[data-page="hf"]) .eyebrow{
+  color:var(--t-3);margin-bottom:16px;
+}
+:is(body[data-page="console"],body[data-page="monitor"],body[data-page="evidence"],
+    body[data-page="report"],body[data-page="settings"],body[data-page="history"],
+    body[data-page="about"],body[data-page="replay"],body[data-page="hf"]) .lbl{
+  color:var(--t-3);font-weight:500;
+}
+:is(body[data-page="console"],body[data-page="monitor"],body[data-page="evidence"],
+    body[data-page="report"],body[data-page="settings"],body[data-page="history"],
+    body[data-page="about"],body[data-page="replay"],body[data-page="hf"]) .card-title{
+  color:var(--t-2);font-weight:500;margin-bottom:24px;
+}
+
+/* 字重收敛：层级靠尺寸与颜色，不靠 600/700 */
+:is(body[data-page="console"],body[data-page="monitor"],body[data-page="evidence"],
+    body[data-page="report"],body[data-page="settings"],body[data-page="history"],
+    body[data-page="about"],body[data-page="replay"],body[data-page="hf"]) .brand{font-weight:500}
+:is(body[data-page="console"],body[data-page="monitor"],body[data-page="evidence"],
+    body[data-page="report"],body[data-page="settings"],body[data-page="history"],
+    body[data-page="about"],body[data-page="replay"],body[data-page="hf"]) .btn-solid,
+:is(body[data-page="console"],body[data-page="monitor"],body[data-page="evidence"],
+    body[data-page="report"],body[data-page="settings"],body[data-page="history"],
+    body[data-page="about"],body[data-page="replay"],body[data-page="hf"]) .btn-grad,
+:is(body[data-page="console"],body[data-page="monitor"],body[data-page="evidence"],
+    body[data-page="report"],body[data-page="settings"],body[data-page="history"],
+    body[data-page="about"],body[data-page="replay"],body[data-page="hf"]) .btn-ghost{font-weight:500}
+
+/* 页头呼吸与小字放大：副标题 15px、面包屑 20px */
+:is(body[data-page="console"],body[data-page="monitor"],body[data-page="evidence"],
+    body[data-page="report"],body[data-page="settings"],body[data-page="history"],
+    body[data-page="about"],body[data-page="replay"],body[data-page="hf"]) .page-head{padding:32px 0 28px}
+:is(body[data-page="console"],body[data-page="monitor"],body[data-page="evidence"],
+    body[data-page="report"],body[data-page="settings"],body[data-page="history"],
+    body[data-page="about"],body[data-page="replay"],body[data-page="hf"]) .page-sub{
+  font-size:15px;line-height:1.65;color:var(--t-2);max-width:62ch;
+}
+:is(body[data-page="console"],body[data-page="monitor"],body[data-page="evidence"],
+    body[data-page="report"],body[data-page="settings"],body[data-page="history"],
+    body[data-page="about"],body[data-page="replay"],body[data-page="hf"]) .crumb{margin-top:20px}
+
+/* hover：去掉大位移与发光，改为 1px + 中性小阴影（不动静态颜色，对比度契约不受影响） */
+:is(body[data-page="console"],body[data-page="monitor"],body[data-page="evidence"],
+    body[data-page="report"],body[data-page="settings"],body[data-page="history"],
+    body[data-page="about"],body[data-page="replay"],body[data-page="hf"])
+  .btn-solid:not(:disabled):hover,
+:is(body[data-page="console"],body[data-page="monitor"],body[data-page="evidence"],
+    body[data-page="report"],body[data-page="settings"],body[data-page="history"],
+    body[data-page="about"],body[data-page="replay"],body[data-page="hf"])
+  .btn-grad:not(:disabled):hover{
+  transform:translateY(-1px);
+  box-shadow:0 2px 8px rgba(16,33,10,.14);
+}
+:is(body[data-page="console"],body[data-page="monitor"],body[data-page="evidence"],
+    body[data-page="report"],body[data-page="settings"],body[data-page="history"],
+    body[data-page="about"],body[data-page="replay"],body[data-page="hf"])
+  .btn-solid:not(:disabled):active,
+:is(body[data-page="console"],body[data-page="monitor"],body[data-page="evidence"],
+    body[data-page="report"],body[data-page="settings"],body[data-page="history"],
+    body[data-page="about"],body[data-page="replay"],body[data-page="hf"])
+  .btn-grad:not(:disabled):active{
+  transform:translateY(0) scale(.99);
+  box-shadow:none;
+}
+
+/* ---------- 2. console 任务台：卷宗刻度带 signature ---------- */
+body[data-page="console"] .card--key{position:relative;border-left-width:3px}
+body[data-page="console"] .card--key::before{
+  content:"";position:absolute;left:0;right:0;top:0;height:4px;
+  border-top-left-radius:var(--r);border-top-right-radius:var(--r);
+  background:repeating-linear-gradient(90deg,var(--key) 0 12px,transparent 12px 24px);
+  opacity:.55;pointer-events:none;
+}
+body[data-page="console"] .field{gap:10px}
+body[data-page="console"] input[type=text],
+body[data-page="console"] select{font-size:14px;font-weight:400}
+body[data-page="console"] .checks{margin-top:28px;padding-top:24px}
+body[data-page="console"] .checks label{font-weight:400}
+body[data-page="console"] .checks .lbl{font-size:12px;line-height:1.6}
+body[data-page="console"] .metrics{margin-top:28px}
+body[data-page="console"] .metrics b{font-size:30px;letter-spacing:-.01em}
+body[data-page="console"] .metrics .lbl{margin-bottom:12px}
+body[data-page="console"] .boundary-card{border-top:1px solid var(--n-line-2)}
+body[data-page="console"] .boundary-card__title{font-size:13px;font-weight:500}
+body[data-page="console"] .boundary-card li{font-size:14px}
+body[data-page="console"] .actions{margin-top:28px;gap:16px}
+body[data-page="console"] .agent-hint{font-size:13px;line-height:1.7}
+body[data-page="console"] .hint{font-size:13px}
+
+/* ---------- 3. monitor / evidence / report：读数与提示小字放大 ---------- */
+body[data-page="monitor"] .dash__head .lbl{font-size:12px}
+body[data-page="monitor"] .stage-kicker{font-size:12px}
+body[data-page="monitor"] .hint,
+body[data-page="evidence"] .hint,
+body[data-page="report"] .hint{font-size:13px}
+body[data-page="monitor"] .agent-hint,
+body[data-page="evidence"] .agent-hint{font-size:13px}
+
+/* ---------- 4. reduced-motion / print ---------- */
+@media (prefers-reduced-motion:reduce){
+  :is(body[data-page="console"],body[data-page="monitor"],body[data-page="evidence"],
+      body[data-page="report"],body[data-page="settings"],body[data-page="history"],
+      body[data-page="about"],body[data-page="replay"],body[data-page="hf"]) .btn-solid,
+  :is(body[data-page="console"],body[data-page="monitor"],body[data-page="evidence"],
+      body[data-page="report"],body[data-page="settings"],body[data-page="history"],
+      body[data-page="about"],body[data-page="replay"],body[data-page="hf"]) .btn-grad{transition:none}
+  :is(body[data-page="console"],body[data-page="monitor"],body[data-page="evidence"],
+      body[data-page="report"],body[data-page="settings"],body[data-page="history"],
+      body[data-page="about"],body[data-page="replay"],body[data-page="hf"])
+    .btn-solid:not(:disabled):hover,
+  :is(body[data-page="console"],body[data-page="monitor"],body[data-page="evidence"],
+      body[data-page="report"],body[data-page="settings"],body[data-page="history"],
+      body[data-page="about"],body[data-page="replay"],body[data-page="hf"])
+    .btn-grad:not(:disabled):hover{transform:none;box-shadow:none}
+}
+@media print{
+  body[data-page="console"] .card--key::before{display:none}
+}

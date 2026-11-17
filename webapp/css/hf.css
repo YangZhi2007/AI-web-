@@ -1,0 +1,174 @@
+/* ============================================================
+   hf.css · 幻觉修复功能区（MODULE B）导航壳专属样式
+   复用 console.css 的 token 与 .card/.grid-*/.page-head/.metrics/.footer；
+   此处只放幻觉页独有的类。零外部请求，深浅主题由 console.css 统一提供。
+   ============================================================ */
+
+/* 指标带：4 格等宽（覆盖 console.css 的 3 列默认），窄屏回退两列 */
+.hf-metrics {
+  grid-template-columns: repeat(4, 1fr);
+}
+.hf-metrics > div {
+  min-width: 0;
+}
+@media (max-width: 900px) {
+  .hf-metrics { grid-template-columns: repeat(2, 1fr); }
+}
+.hf-metrics > div small {
+  display: block;
+  margin-top: 4px;
+  font: 400 12px/1.4 var(--body);
+  color: var(--t-3);
+}
+
+/* 壳状态提示条：形状 + 文字双编码，单一强调色 */
+.hf-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin: 20px 0 28px;
+  padding: 16px 18px;
+  border: 1px solid var(--accent-line);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--r-in);
+  background: var(--accent-soft);
+}
+.hf-notice__tag {
+  flex: none;
+  font: 700 11px/1 var(--mono);
+  letter-spacing: 0.06em;
+  color: var(--accent-ink);
+  background: var(--accent);
+  padding: 7px 10px;
+  border-radius: var(--r-in);
+}
+.hf-notice p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--t-1);
+}
+.hf-notice b {
+  color: var(--sig-ok);
+}
+
+/* 区块标题 */
+.hf-sec {
+  margin-bottom: 28px;
+}
+.hf-sec__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--n-line-2);
+}
+.hf-sec__head h2 {
+  margin: 0;
+  font: 600 18px/1.2 var(--body);
+  color: var(--t-1);
+}
+
+/* 8 个页面入口：禁用占位但保留可读文字，不做跳转 */
+.hf-page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 132px;
+  padding: 16px 18px;
+  text-align: left;
+  font: inherit;
+  color: var(--t-2);
+  background: var(--n-surface);
+  border: 1px solid var(--n-line);
+  border-radius: var(--r);
+  cursor: not-allowed;
+}
+.hf-page__no {
+  font: 500 12px/1 var(--mono);
+  color: var(--t-3);
+}
+.hf-page__title {
+  font: 600 17px/1.2 var(--body);
+  color: var(--t-1);
+}
+.hf-page__desc {
+  font: 400 13px/1.55 var(--body);
+  color: var(--t-2);
+  flex: 1;
+}
+.hf-page__state {
+  align-self: flex-start;
+  font: 700 11px/1 var(--mono);
+  letter-spacing: 0.04em;
+  color: var(--sig-idle);
+  border: 1px dashed var(--n-line-3);
+  border-radius: 999px;
+  padding: 5px 9px;
+}
+/* 已上线入口：真实链接，取消禁用光标，状态标用正向语义 */
+.hf-page--link {
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color var(--d-inst), background var(--d-inst), transform var(--d-inst);
+}
+.hf-page--link:hover {
+  border-color: var(--accent);
+  background: var(--n-raised);
+  transform: translateY(-2px);
+}
+.hf-page__state--ok {
+  color: var(--sig-ok);
+  border: 1px solid var(--sig-ok);
+  border-radius: 6px;
+}
+
+/* 底部两卡 */
+.hf-bottom {
+  align-items: stretch;
+}
+.hf-bottom .card {
+  padding: 20px 22px;
+}
+
+.hf-flow,
+.hf-scope {
+  margin: 14px 0 0;
+  padding-left: 20px;
+}
+.hf-flow li,
+.hf-scope li {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--t-2);
+  margin-bottom: 8px;
+}
+.hf-flow b {
+  color: var(--t-1);
+  margin-right: 6px;
+}
+.hf-scope strong {
+  color: var(--sig-alert);
+}
+.hf-scope__foot {
+  margin: 16px 0 0;
+  padding-top: 12px;
+  border-top: 1px dashed var(--n-line-2);
+  font: 400 12px/1.5 var(--mono);
+  color: var(--t-3);
+}
+
+@media (max-width: 700px) {
+  .hf-notice {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .hf-sec__head {
+    flex-direction: column;
+    gap: 6px;
+  }
+}

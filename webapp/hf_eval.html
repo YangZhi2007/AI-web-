@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>评测对比 · 幻觉修复</title>
+<script>try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classList.add('pt-cover'); }catch(e){}</script>
+<link rel="stylesheet" href="css/core.css" />
+<link rel="stylesheet" href="css/console.css" />
+<link rel="stylesheet" href="css/refine.css" />
+<link rel="stylesheet" href="css/hf-app.css" />
+</head>
+<body data-page="hf" data-hf-page="eval">
+<div class="wrap">
+<header class="topbar">
+  <a class="brand" href="hf.html" data-nav data-ripple><i></i>HF / LAB</a>
+  <nav class="hfnav" aria-label="幻觉功能区导航">
+    <a href="hf.html" data-hf-page="overview"><span class="nav-no">00</span>总览</a>
+    <a href="hf_probe.html" data-hf-page="probe"><span class="nav-no">01</span>探测面板</a>
+    <a href="hf_sample.html" data-hf-page="sample"><span class="nav-no">02</span>样本溯源</a>
+    <a href="hf_truth.html" data-hf-page="truth"><span class="nav-no">03</span>真值库</a>
+    <a href="hf_eval.html" data-hf-page="eval"><span class="nav-no">07</span>评测对比</a>
+  </nav>
+</header>
+
+<p class="crumb">幻觉修复 <span></span> <b>评测对比</b></p>
+<div class="page-head">
+  <div class="page-head__main">
+    <p class="eyebrow">Module B / Evaluation · 零训练路线</p>
+    <h1 class="page-title">评测对比<span class="dash" aria-hidden="true"></span></h1>
+    <p class="page-sub">同一批验证题、同一模型，比较无证据（base）与注入真值证据（RAG）两种条件下的幻觉率。下降由独立确定性判定真实算出，不是预置指标。</p>
+  </div>
+  <span class="page-no" aria-hidden="true">07</span>
+</div>
+
+<section id="hfEvalHost" aria-label="评测结果"></section>
+
+<footer>
+  <div>
+    <div class="foot-links">
+      <a href="hf.html">总览</a><a href="hf_probe.html">探测面板</a>
+      <a href="hf_sample.html">样本溯源</a><a href="hf_truth.html">真值库</a>
+      <a href="hf_eval.html">评测对比</a><a href="index.html" data-nav>绕过系统</a>
+    </div>
+    <p class="boundary">幻觉修复功能区 · 无训练 RAG 路线 · 评测在隔离验证集上进行 · 零外部请求（mock 模式）。</p>
+  </div>
+  <div class="foot-end"><span class="lbl">HF / LAB · NO TRAINING</span></div>
+</footer>
+<div class="pt" id="pt" aria-hidden="true"><div class="pt__mark"><span class="pt__dot"></span>HF / LAB</div></div>
+</div>
+<script src="js/hf.js" defer></script>
+<script src="js/hf-app.js" defer></script>
+<script src="js/core.js" defer></script>
+</body>
+</html>

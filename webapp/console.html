@@ -19,6 +19,7 @@
 <script>try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classList.add('pt-cover'); }catch(e){}</script>
 <link rel="stylesheet" href="css/core.css" />
 <link rel="stylesheet" href="css/console.css" />
+<link rel="stylesheet" href="css/refine.css" />
 </head>
 <body data-page="console">
 <div class="wrap">
@@ -43,7 +44,7 @@
 <p class="crumb">控制台 <span></span> <b>任务台</b></p>
 <div class="page-head">
   <div class="page-head__main">
-    <p class="eyebrow">STEP 01 / TASK CONSOLE</p>
+    <p class="eyebrow">Step 01 / Task console</p>
     <h1 class="page-title">探测任务台<span class="dash" aria-hidden="true"></span></h1>
     <p class="page-sub">把目标地址交给智能体，在授权靶场内逐轮自适应探测、攻破即停，并自动生成报告。全过程为演示数据，不向目标地址发起任何真实请求。</p>
   </div>
@@ -52,18 +53,18 @@
 
 <div class="grid-2">
   <section class="card card--key card--shadow" aria-label="任务配置">
-    <h2 class="card-title">TASK CONFIGURATION / 任务配置</h2>
+    <h2 class="card-title">任务配置 / Task configuration</h2>
     <div class="form-grid">
       <div class="f-url field">
-        <label class="lbl" for="urlInput">Target URL / 目标地址（仅作展示字符串）</label>
+        <label class="lbl" for="urlInput">目标地址 / Target URL（仅作展示字符串）</label>
         <input id="urlInput" type="text" placeholder="http://127.0.0.1/lab/sqli_01.php" value="http://127.0.0.1/lab/sqli_01.php">
       </div>
       <div class="field">
-        <label class="lbl" for="typeSel">Vuln type / 漏洞类型</label>
+        <label class="lbl" for="typeSel">漏洞类型 / Type</label>
         <select id="typeSel"><option value="sqli">SQL 注入</option><option value="xss">XSS</option><option value="upload">文件上传</option></select>
       </div>
       <div class="field">
-        <label class="lbl" for="scriptSel">Scenario / 演示剧本</label>
+        <label class="lbl" for="scriptSel">演示剧本 / Scenario</label>
         <select id="scriptSel">
           <option value="CONVERGE_3">三轮收敛命中</option>
           <option value="NO_CONVERGE">八轮未收敛</option>
@@ -87,7 +88,7 @@
   </section>
 
   <aside class="boundary-card" aria-label="合规与边界声明">
-    <div class="boundary-card__title"><i aria-hidden="true"></i>合规与边界 / BOUNDARY</div>
+    <div class="boundary-card__title"><i aria-hidden="true"></i>合规与边界 / Boundary</div>
     <ul>
       <li>仅限 <span class="mono">localhost / 127.0.0.1 / lab</span> 靶场别名</li>
       <li>提交前须勾选书面授权确认</li>
