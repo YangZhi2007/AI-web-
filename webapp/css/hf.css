@@ -1,6 +1,6 @@
 /* ============================================================
    hf.css · 幻觉修复功能区（MODULE B）导航壳专属样式
-   复用 console.css 的 token 与 .card/.grid-*/.page-head/.metrics/.footer；
+   复用 console.css 的 token 与 card、grid、page-head、metrics、footer 等类；
    此处只放幻觉页独有的类。零外部请求，深浅主题由 console.css 统一提供。
    ============================================================ */
 

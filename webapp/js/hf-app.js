@@ -343,12 +343,321 @@
     });
   }
 
+  /* ---------- 04 证据库管理：真值库 → 可注入证据条目 ---------- */
+  function bootEvidence() {
+    var all = H.TRAIN_POOL.concat(H.VALID_POOL);
+    var stats = $('#hfEvStats');
+    if (stats) {
+      stats.innerHTML = '';
+      [['证据条目', all.length + ' 条', '每条含结论 + 关键事实'],
+       ['来源', '2 池', '训练池 ' + H.TRAIN_POOL.length + ' · 验证池 ' + H.VALID_POOL.length],
+       ['注入方式', 'RAG', '推理时拼入提示词'],
+       ['版本', H.CONFIG.VERSION, '标注集 ' + H.CONFIG.LABEL_SET]].forEach(function (s) {
+        var d = el('div');
+        d.appendChild(el('span', 'lbl', s[0]));
+        d.appendChild(el('b', null, s[1]));
+        d.appendChild(el('small', null, s[2]));
+        stats.appendChild(d);
+      });
+    }
+    var list = $('#hfEvList');
+    var preview = $('#hfEvPreview');
+    if (!list) return;
+    list.innerHTML = '';
+    var meta = $('#hfEvMeta');
+    if (meta) meta.textContent = all.length + ' 条 · 点击预览';
+    var first = null;
+    all.forEach(function (q, i) {
+      var b = el('button', 'hf-ev-item');
+      b.type = 'button';
+      b.appendChild(el('span', 'mono hf-ev-item__id', q.id));
+      b.appendChild(el('span', 'hf-ev-item__concl', q.conclusion));
+      b.appendChild(causeTag(q.cat));
+      b.addEventListener('click', function () {
+        $$('.hf-ev-item').forEach(function (x) { x.classList.remove('is-active'); });
+        b.classList.add('is-active');
+        renderEvidencePreview(q, preview);
+      });
+      if (i === 0) first = b;
+      list.appendChild(b);
+    });
+    if (first) first.classList.add('is-active');
+    if (first && preview) renderEvidencePreview(H.TRAIN_POOL[0], preview);
+  }
+
+  function renderEvidencePreview(q, preview) {
+    if (!preview) return;
+    preview.innerHTML = '';
+    var head = el('div', 'hf-ev-prev__head');
+    head.appendChild(el('span', 'mono', q.id));
+    head.appendChild(causeTag(q.cat));
+    preview.appendChild(head);
+    preview.appendChild(el('h3', 'hf-ev-prev__q', q.q));
+    var factBox = el('div', 'hf-ev-prev__facts');
+    factBox.appendChild(el('span', 'lbl', '关键事实点 · ' + q.facts.length));
+    var chips = el('div', 'hf-ev-prev__chips');
+    q.facts.forEach(function (f) { chips.appendChild(el('span', 'hf-chip', f)); });
+    factBox.appendChild(chips);
+    preview.appendChild(factBox);
+    preview.appendChild(el('div', 'hf-ev-prev__lbl', '生成的注入证据（buildEvidence）'));
+    var pre = el('pre', 'hf-ev-prev__code', H.buildEvidence(q));
+    preview.appendChild(pre);
+    preview.appendChild(el('div', 'hf-ev-prev__lbl', '完整提示词条件（makePrompt · 含证据）'));
+    var pre2 = el('pre', 'hf-ev-prev__code', H.makePrompt(q, true));
+    preview.appendChild(pre2);
+    preview.appendChild(el('p', 'boundary-card__foot',
+      '来源：' + (q.id.indexOf('T-') === 0 ? '训练池' : '验证池') + ' · 该证据在 base 条件不注入，在 RAG 条件注入；判定不读证据命中以外的任何模型信号。'));
+  }
+
+  /* ---------- 05 修复记录：逐题判定轨迹 + 证据命中（不虚构耗时） ---------- */
+  function bootRepair() {
+    var res = H.Store.get();
+    if (!res) { emptyResult('#hfRepairHost', 'hf-probe.html'); return; }
+    var host = $('#hfRepairHost');
+    if (!host) return;
+    host.innerHTML = '';
+    var stats = el('div', 'hf-stats');
+    [['推理条件', '2 种', 'base 无证据 / RAG 有证据'],
+     ['已完成判定', (res.total * 2) + ' 次', '逐题双条件'],
+     ['修复样本', res.fixed + ' 条', 'base 幻觉 → RAG 一致'],
+     ['耗时读数', '未采集', res.mode === 'mock' ? 'mock 演示 · 不虚构毫秒' : '本地推理 · 未记录耗时']].forEach(function (s) {
+      var d = el('div');
+      d.appendChild(el('span', 'lbl', s[0]));
+      d.appendChild(el('b', null, s[1]));
+      d.appendChild(el('small', null, s[2]));
+      stats.appendChild(d);
+    });
+    host.appendChild(stats);
+
+    var card = el('section', 'card');
+    card.appendChild(el('h2', 'card-title', '逐题修复轨迹'));
+    var legend = el('div', 'hf-legend');
+    var l1 = el('span'); l1.appendChild(el('i', 'k-base')); l1.appendChild(document.createTextNode('BASE 判定'));
+    var l2 = el('span'); l2.appendChild(el('i', 'k-rag')); l2.appendChild(document.createTextNode('RAG 判定'));
+    legend.appendChild(l1); legend.appendChild(l2);
+    legend.appendChild(el('span', 'hf-legend__note', '命中 = 事实点命中数 / 总数'));
+    card.appendChild(legend);
+
+    var scroll = el('div', 'tbl-scroll');
+    var table = el('table', 'hf-pool hf-repair');
+    var thead = el('thead');
+    thead.innerHTML = '<tr><th>题号</th><th>场景</th><th>BASE 判定</th><th>命中</th><th>RAG 判定</th><th>命中</th><th>结果</th></tr>';
+    table.appendChild(thead);
+    var tbody = el('tbody');
+    res.rows.forEach(function (r) {
+      var tr = el('tr');
+      var fixed = r.base.judge.verdict === 'HALLUCINATION' && r.rag.judge.verdict === 'CONSISTENT';
+      if (fixed) tr.className = 'is-hit';
+      var cells = [
+        [r.id, 'mono'], [H.CAUSE_CN[r.cat] || r.cat, '']
+      ];
+      cells.forEach(function (c) {
+        var td = el('td', c[1]); td.textContent = c[0]; tr.appendChild(td);
+      });
+      // BASE 判定 + 命中
+      tr.appendChild(judgeCell(r.base.judge));
+      tr.appendChild(hitCell(r.base.judge));
+      // RAG 判定 + 命中
+      tr.appendChild(judgeCell(r.rag.judge));
+      tr.appendChild(hitCell(r.rag.judge));
+      // 结果
+      var tdR = el('td');
+      var tag = el('span', 'hf-repair__result',
+        fixed ? '已修复' : (r.base.judge.verdict === 'CONSISTENT' ? '原本一致' : '未修复'));
+      tag.setAttribute('data-r', fixed ? 'fixed' : (r.base.judge.verdict === 'CONSISTENT' ? 'ok' : 'no'));
+      tdR.appendChild(tag);
+      tr.appendChild(tdR);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    scroll.appendChild(table);
+    card.appendChild(scroll);
+    card.appendChild(el('p', 'boundary-card__foot',
+      '命中为确定性事实点比对结果（' + H.CONFIG.COVERAGE_THRESHOLD * 100 + '% 覆盖率阈值）；耗时与显存读数仅在真实本地推理并采集后才有意义，演示态如实留空。'));
+    host.appendChild(card);
+  }
+
+  function judgeCell(j) {
+    var td = el('td');
+    td.appendChild(verdictBadge(j.verdict, true));
+    return td;
+  }
+  function hitCell(j) {
+    var td = el('td', 'mono hf-repair__hit');
+    td.textContent = j.factHits.length + '/' + j.facts.length;
+    return td;
+  }
+
+  /* ---------- 06 版本对比：base / RAG 提示词条件真实 diff ---------- */
+  function bootVersion() {
+    var sel = $('#hfVQ');
+    var host = $('#hfVersionHost');
+    if (!sel || !host) return;
+    var all = H.TRAIN_POOL.concat(H.VALID_POOL);
+    sel.innerHTML = '';
+    all.forEach(function (q) {
+      var o = el('option', null, q.id + ' · ' + q.q);
+      o.value = q.id;
+      sel.appendChild(o);
+    });
+    sel.value = H.VALID_POOL[0].id;
+    function render(id) {
+      var q = all.filter(function (x) { return x.id === id; })[0] || all[0];
+      host.innerHTML = '';
+      var grid = el('div', 'grid-2 hf-ver-grid');
+      var specs = [
+        { k:'base', t:'BASE 条件', desc:'无证据 · 仅题面', prompt:H.makePrompt(q, false),
+          meta:['证据注入', '关闭', '模型权重', '零改动'] },
+        { k:'rag', t:'RAG 条件', desc:'推理时注入真值证据', prompt:H.makePrompt(q, true),
+          meta:['证据注入', '开启', '模型权重', '零改动'] }
+      ];
+      specs.forEach(function (s) {
+        var card = el('section', 'card hf-ver-card hf-ver-card--' + s.k);
+        var h = el('h2', 'card-title', s.t);
+        card.appendChild(h);
+        card.appendChild(el('p', 'hf-ver-card__desc', s.desc));
+        var kv = el('div', 'hf-ver-kv');
+        for (var i = 0; i < s.meta.length; i += 2) {
+          var row = el('div', 'hf-ver-kv__row');
+          row.appendChild(el('span', null, s.meta[i]));
+          row.appendChild(el('b', null, s.meta[i + 1]));
+          kv.appendChild(row);
+        }
+        card.appendChild(kv);
+        card.appendChild(el('div', 'hf-ev-prev__lbl', '实际提示词'));
+        var pre = el('pre', 'hf-ev-prev__code hf-ver-prompt', s.prompt);
+        if (s.k === 'rag') {
+          // 证据段加高亮标记
+          var evLine = H.buildEvidence(q);
+          pre.textContent = '';
+          s.prompt.split('\n').forEach(function (line) {
+            var p = el('span', line.indexOf('【真值证据】') === 0 ? 'hf-ver-evidence' : '');
+            p.textContent = line;
+            pre.appendChild(p);
+            pre.appendChild(document.createTextNode('\n'));
+          });
+        }
+        card.appendChild(pre);
+        grid.appendChild(card);
+      });
+      host.appendChild(grid);
+      host.appendChild(el('p', 'boundary-card__foot',
+        '两版本模型与权重完全相同，唯一差异是 RAG 条件在提示词前拼入一段真值证据（上方高亮行）。无训练、无 LoRA、无权重版本。'));
+    }
+    sel.addEventListener('change', function () { render(sel.value); });
+    render(sel.value);
+  }
+
+  /* ---------- 08 报告导出：基于评测生成可复制/下载的 Markdown ---------- */
+  function buildReportMd(res) {
+    var L = [];
+    L.push('# 幻觉溯源自愈系统 · 分析报告');
+    L.push('');
+    L.push('- 标注集：' + res.label_set);
+    L.push('- 引擎版本：' + res.version);
+    L.push('- 推理模式：' + (res.mode === 'mock' ? 'Mock（契约桩预置，零外部请求）' : '本地 Ollama（无训练）'));
+    L.push('- 题目池：' + (res.poolName === 'valid' ? '验证池' : '训练池') + ' · ' + res.total + ' 题');
+    L.push('- 生成时间：' + new Date(res.time).toISOString());
+    L.push('');
+    L.push('## 一、总体指标');
+    L.push('');
+    L.push('| 指标 | 数值 |');
+    L.push('| --- | --- |');
+    L.push('| BASE 幻觉率 | ' + res.baseRate + '% |');
+    L.push('| RAG 幻觉率 | ' + res.ragRate + '% |');
+    L.push('| 幻觉率下降 | ' + res.drop + ' pp |');
+    L.push('| 修复样本 | ' + res.fixed + ' / ' + res.total + ' |');
+    L.push('');
+    L.push('## 二、四类场景分组');
+    L.push('');
+    L.push('| 场景 | 题数 | BASE 幻觉率 | RAG 幻觉率 |');
+    L.push('| --- | --- | --- | --- |');
+    ['knowledge','logic','prompt','context'].forEach(function (c) {
+      var b = res.byCat[c];
+      if (!b || !b.total) return;
+      L.push('| ' + (H.CAUSE_CN[c] || c) + ' | ' + b.total + ' | ' + b.baseRate + '% | ' + b.ragRate + '% |');
+    });
+    L.push('');
+    L.push('## 三、逐题判定');
+    L.push('');
+    L.push('| 题号 | 场景 | BASE | RAG | 结果 |');
+    L.push('| --- | --- | --- | --- | --- |');
+    res.rows.forEach(function (r) {
+      var fixed = r.base.judge.verdict === 'HALLUCINATION' && r.rag.judge.verdict === 'CONSISTENT';
+      var bv = r.base.judge.verdict === 'CONSISTENT' ? '一致' : '幻觉';
+      var rv = r.rag.judge.verdict === 'CONSISTENT' ? '一致' : '幻觉';
+      L.push('| ' + r.id + ' | ' + (H.CAUSE_CN[r.cat] || r.cat) + ' | ' + bv + ' | ' + rv +
+        ' | ' + (fixed ? '已修复' : (bv === '一致' ? '原本一致' : '未修复')) + ' |');
+    });
+    L.push('');
+    L.push('## 四、判定口径与诚实边界');
+    L.push('');
+    L.push('- 判定由独立真值库确定性比对完成（结论锚点 + 事实点覆盖率 ' +
+      (H.CONFIG.COVERAGE_THRESHOLD * 100) + '%），零模型投票、不读模型置信度。');
+    L.push('- 修复采用 RAG 真值证据注入替代 LoRA 微调，全程不训练模型、无权重变更。');
+    L.push('- RAG 仅对知识盲区类有效；推理逻辑、提示词、上下文类不由证据注入修复。');
+    L.push('- ' + res.note);
+    L.push('');
+    return L.join('\n');
+  }
+
+  function bootReport() {
+    var res = H.Store.get();
+    var host = $('#hfReportHost');
+    var bar = $('#hfReportBar');
+    if (bar) bar.classList.toggle('hidden', !res);
+    if (!res) { emptyResult('#hfReportHost', 'hf-probe.html'); return; }
+    if (!host) return;
+    var md = buildReportMd(res);
+    host.innerHTML = '';
+    var card = el('section', 'card hf-report-paper');
+    var seal = el('div', 'hf-report-seal');
+    seal.appendChild(el('span', 'lbl', 'HF / LAB · 签发'));
+    seal.appendChild(el('b', null, res.label_set + ' · ' + res.version));
+    card.appendChild(seal);
+    var pre = el('pre', 'hf-report-md', md);
+    card.appendChild(pre);
+    host.appendChild(card);
+
+    var copy = $('#hfRepCopy');
+    var dl = $('#hfRepDl');
+    var msg = $('#hfRepMsg');
+    function say(t, ok) { if (msg) { msg.textContent = t; msg.className = 'hf-rcbar__msg' + (ok ? ' ok' : ''); } }
+    if (copy) copy.addEventListener('click', function () {
+      // file:// 下优先 textarea + execCommand，避免 Clipboard API 的安全上下文限制
+      var ta = el('textarea');
+      ta.value = md;
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      say(ok ? '已复制到剪贴板' : '复制未获授权，请手动选择报告文本', ok);
+    });
+    if (dl) dl.addEventListener('click', function () {
+      try {
+        var blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var a = el('a');
+        a.href = url;
+        a.download = 'HF报告-' + res.label_set + '-' + new Date(res.time).toISOString().slice(0,10) + '.md';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        say('已生成 Markdown 文件', true);
+      } catch (e) { say('浏览器拒绝了本地下载，请复制文本', false); }
+    });
+  }
+
   function init() {
     markNav();
     if (page === 'probe') bootProbe();
     if (page === 'sample') bootSample();
     if (page === 'eval') bootEval();
     if (page === 'truth') bootTruth();
+    if (page === 'evidence') bootEvidence();
+    if (page === 'repair') bootRepair();
+    if (page === 'version') bootVersion();
+    if (page === 'report') bootReport();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();

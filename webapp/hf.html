@@ -23,11 +23,15 @@
 <header class="topbar">
   <a class="brand" href="hf.html" data-nav data-ripple><i></i>HF / LAB</a>
   <nav class="hfnav" aria-label="幻觉功能区导航">
-    <a class="is-current" href="hf.html" data-hf-page="overview" aria-current="page"><span class="nav-no">00</span>总览</a>
+    <a href="hf.html" data-hf-page="overview"><span class="nav-no">00</span>总览</a>
     <a href="hf_probe.html" data-hf-page="probe"><span class="nav-no">01</span>探测面板</a>
     <a href="hf_sample.html" data-hf-page="sample"><span class="nav-no">02</span>样本溯源</a>
     <a href="hf_truth.html" data-hf-page="truth"><span class="nav-no">03</span>真值库</a>
+    <a href="hf_evidence.html" data-hf-page="evidence"><span class="nav-no">04</span>证据库</a>
+    <a href="hf_repair.html" data-hf-page="repair"><span class="nav-no">05</span>修复记录</a>
+    <a href="hf_version.html" data-hf-page="version"><span class="nav-no">06</span>版本对比</a>
     <a href="hf_eval.html" data-hf-page="eval"><span class="nav-no">07</span>评测对比</a>
+    <a href="hf_report.html" data-hf-page="report"><span class="nav-no">08</span>报告导出</a>
   </nav>
 </header>
 
@@ -55,11 +59,11 @@
 
 <section class="hf-sec" aria-label="功能页面">
   <div class="hf-sec__head">
-    <h2>功能页面 / 4 已上线 · 4 规划</h2>
-    <span class="lbl">前 4 项与第 7 项可用 · 其余待接入</span>
+    <h2>功能页面 / 8 页全部上线</h2>
+    <span class="lbl">按编号进入 · 数据全部来自同一评测引擎</span>
   </div>
   <div class="grid-3 hf-grid" id="hfGrid">
-    <div class="hf-sec__label hf-grid__label">可使用 <span>4 PAGES · 点击进入</span></div>
+    <div class="hf-sec__label hf-grid__label">探测与判定 <span>01–03 · 产生评测数据</span></div>
     <a class="hf-page hf-page--link" href="hf_probe.html" data-nav data-hf-page="probe">
       <span class="hf-page__no">01</span><span class="hf-page__title">探测面板</span>
       <span class="hf-page__desc">选池与推理模式，逐题双条件作答与判定</span>
@@ -75,32 +79,32 @@
       <span class="hf-page__desc">训练池与验证池、双池隔离与交集校验</span>
       <span class="hf-page__state hf-page__state--ok">已上线</span>
     </a>
+    <div class="hf-sec__label hf-grid__label">证据、记录与导出 <span>04–08 · 复用评测数据</span></div>
+    <a class="hf-page hf-page--link" href="hf_evidence.html" data-nav data-hf-page="evidence">
+      <span class="hf-page__no">04</span><span class="hf-page__title">证据库管理</span>
+      <span class="hf-page__desc">真值库生成的可注入证据条目、来源与预览</span>
+      <span class="hf-page__state hf-page__state--ok">已上线</span>
+    </a>
+    <a class="hf-page hf-page--link" href="hf_repair.html" data-nav data-hf-page="repair">
+      <span class="hf-page__no">05</span><span class="hf-page__title">修复记录</span>
+      <span class="hf-page__desc">逐题判定轨迹、事实命中与诚实的耗时口径</span>
+      <span class="hf-page__state hf-page__state--ok">已上线</span>
+    </a>
+    <a class="hf-page hf-page--link" href="hf_version.html" data-nav data-hf-page="version">
+      <span class="hf-page__no">06</span><span class="hf-page__title">版本对比</span>
+      <span class="hf-page__desc">base / RAG 提示词条件真实差异（无权重版本）</span>
+      <span class="hf-page__state hf-page__state--ok">已上线</span>
+    </a>
     <a class="hf-page hf-page--link" href="hf_eval.html" data-nav data-hf-page="eval">
       <span class="hf-page__no">07</span><span class="hf-page__title">评测对比</span>
       <span class="hf-page__desc">base vs RAG 幻觉率、四类分组与题目级差异</span>
       <span class="hf-page__state hf-page__state--ok">已上线</span>
     </a>
-    <div class="hf-sec__label hf-grid__label">规划中 <span>4 PAGES · 待接入</span></div>
-    <button class="hf-page" type="button" disabled aria-disabled="true">
-      <span class="hf-page__no">04</span><span class="hf-page__title">证据库管理</span>
-      <span class="hf-page__desc">RAG 证据条目版本、来源与预览（无训练替代训练集）</span>
-      <span class="hf-page__state">待实现</span>
-    </button>
-    <button class="hf-page" type="button" disabled aria-disabled="true">
-      <span class="hf-page__no">05</span><span class="hf-page__title">修复记录</span>
-      <span class="hf-page__desc">推理日志、证据命中与显存/耗时读数</span>
-      <span class="hf-page__state">待实现</span>
-    </button>
-    <button class="hf-page" type="button" disabled aria-disabled="true">
-      <span class="hf-page__no">06</span><span class="hf-page__title">版本对比</span>
-      <span class="hf-page__desc">base / RAG 配置版本与启用回滚（无权重版本）</span>
-      <span class="hf-page__state">待实现</span>
-    </button>
-    <button class="hf-page" type="button" disabled aria-disabled="true">
+    <a class="hf-page hf-page--link" href="hf_report.html" data-nav data-hf-page="report">
       <span class="hf-page__no">08</span><span class="hf-page__title">报告导出</span>
-      <span class="hf-page__desc">幻觉分析报告与评测报告预览</span>
-      <span class="hf-page__state">待实现</span>
-    </button>
+      <span class="hf-page__desc">基于评测生成报告预览，复制或下载 Markdown</span>
+      <span class="hf-page__state hf-page__state--ok">已上线</span>
+    </a>
   </div>
 </section>
 
@@ -131,9 +135,10 @@
 <footer>
   <div>
     <div class="foot-links">
-      <a href="hf.html">总览</a><a href="hf_probe.html">探测面板</a>
-      <a href="hf_sample.html">样本溯源</a><a href="hf_truth.html">真值库</a>
-      <a href="hf_eval.html">评测对比</a><a href="index.html" data-nav>绕过系统</a>
+      <a href="hf.html">总览</a><a href="hf_probe.html">探测</a><a href="hf_sample.html">溯源</a>
+      <a href="hf_truth.html">真值</a><a href="hf_evidence.html">证据</a><a href="hf_repair.html">记录</a>
+      <a href="hf_version.html">版本</a><a href="hf_eval.html">评测</a><a href="hf_report.html">报告</a>
+      <a href="index.html" data-nav>绕过系统</a>
     </div>
     <p class="boundary">第二功能区 · 无训练 RAG 路线 · 判定为独立确定性算法 · 默认零外部请求 · 不构成可运行系统。</p>
   </div>

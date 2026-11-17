@@ -97,7 +97,7 @@ const check = (name, ok, detail) => {
         back:[...n.querySelectorAll('a')].some(x=>x.dataset.sys==='waf'&&x.getAttribute('href')==='index.html')};})()`);
     check('幻觉页当前项=幻觉', swOnHf && swOnHf.cur.length === 1 && swOnHf.cur[0] === 'hf', JSON.stringify(swOnHf));
     check('幻觉页可切回绕过', swOnHf && swOnHf.back);
-    /* v0.30 结构升级：8 入口卡片中 4 个已上线(链接)、4 个规划(禁用按钮)。
+    /* v0.32 结构升级：8 入口卡片全部上线为链接（04/05/06/08 由规划转真实页）。
        二级导航也用 data-hf-page，故选择器限定到 #hfGrid .hf-page。 */
     const pages = await evalx(`(()=>{const b=[...document.querySelectorAll('#hfGrid .hf-page')];
       const links=b.filter(x=>x.tagName==='A'&&x.getAttribute('href'));
@@ -106,12 +106,13 @@ const check = (name, ok, detail) => {
         titles:b.map(x=>x.querySelector('.hf-page__title').textContent),
         linkHrefs:links.map(x=>x.getAttribute('href'))};})()`);
     check('幻觉页 8 入口', pages && pages.n === 8, 'n=' + (pages && pages.n));
-    check('4 入口已上线为链接', pages && pages.links === 4, 'links=' + (pages && pages.links));
-    check('4 入口仍禁用占位', pages && pages.disabled === 4, 'disabled=' + (pages && pages.disabled));
-    check('已上线链接指向真实页', pages && ['hf_probe.html','hf_sample.html','hf_truth.html','hf_eval.html']
+    check('8 入口全部上线为链接', pages && pages.links === 8, 'links=' + (pages && pages.links));
+    check('无禁用占位', pages && pages.disabled === 0, 'disabled=' + (pages && pages.disabled));
+    check('8 链接指向真实页', pages && ['hf_probe.html','hf_sample.html','hf_truth.html',
+      'hf_evidence.html','hf_repair.html','hf_version.html','hf_eval.html','hf_report.html']
       .every(h => pages.linkHrefs.includes(h)), JSON.stringify(pages && pages.linkHrefs));
-    check('入口标题齐全', pages && ['探测面板','样本溯源','真值库','评测对比','报告导出']
-      .every((t) => pages.titles.includes(t)), JSON.stringify(pages && pages.titles));
+    check('入口标题齐全', pages && ['探测面板','样本溯源','真值库','证据库管理','修复记录',
+      '版本对比','评测对比','报告导出'].every((t) => pages.titles.includes(t)), JSON.stringify(pages && pages.titles));
 
     // ④ 零外联：页面无 http(s) 资源引用（仅文本里的示意 URL 不算）
     const ext = await evalx(`(()=>{const tags=[...document.querySelectorAll('script[src],link[href],img[src]')];
