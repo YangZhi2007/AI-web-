@@ -40,7 +40,7 @@
 <div class="card" style="padding:14px 18px;margin-bottom:20px" aria-label="当前任务快照">
   <div class="config-grid" style="border:0">
     <div><span>目标 / TARGET</span><b id="mTarget" class="mono" style="font-size:13px">—</b></div>
-    <div><span>漏洞类型 / TYPE</span><b id="mType" style="font-size:13px">—</b></div>
+    <div><span>漏洞判定 / VERDICT</span><b id="mType" style="font-size:13px">—</b></div>
     <div><span>模式 / MODE</span><b id="mScript" class="mono" style="font-size:13px">—</b></div>
     <div><span>范围 / SCOPE</span><b id="mScope" style="font-size:13px">—</b></div>
   </div>
@@ -157,7 +157,7 @@
 
   <!-- v0.23.1 智能体决策流：把「智能体这一轮为什么选这个算子」做成实时可读的逐轮记录。
        数据只来自报告对象的逐轮字段（agent_observed / strategy_tag / response_class / oracle_verdict），
-       不新增数据源；非自主模式显示固定剧本演示说明。 -->
+       不新增数据源；全部任务均走自主攻击闭环。 -->
   <section class="card agent-live" id="agentLive" aria-labelledby="agentLiveTitle">
     <div class="agent-live__head">
       <div class="agent-live__txt">

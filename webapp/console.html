@@ -9,7 +9,7 @@
   跨页状态走 sessionStorage（console.js 的 Store）：任务在任务台点击「开始分析」→ 写一次性
   pendingRun 意图 + cfg 只读快照 → 监控页消费 pendingRun（读即清除）后执行一次 → 报告/证据/
   历史页各自恢复；cfg 残留仅作快照展示，浏览/刷新/跨页导航不触发任务。
-  引擎 console.js 业务逻辑（MockEngine 三剧本 / 越界诚信 / 授权闸门 / mock_flag / 8 态状态机）
+  引擎 console.js 业务逻辑（自主攻击智能体 / 越界诚信 / 授权闸门 / mock_flag / 8 态状态机）
   零改动；全部静态 DOM id、data-* / aria-* / role / tabindex、#pt、打印与 44×44 契约保留。
   零外部请求，file:// 可运行；prefers-reduced-motion 全降级。
 -->
@@ -59,32 +59,19 @@
         <label class="lbl" for="urlInput">目标地址 / Target URL（仅作展示字符串）</label>
         <input id="urlInput" type="text" placeholder="http://127.0.0.1/lab/sqli_01.php" value="http://127.0.0.1/lab/sqli_01.php">
       </div>
-      <div class="field">
-        <label class="lbl" for="typeSel">漏洞类型 / Type</label>
-        <select id="typeSel"><option value="sqli">SQL 注入</option><option value="xss">XSS</option><option value="upload">文件上传</option></select>
-      </div>
-      <div class="field">
-        <label class="lbl" for="scriptSel">演示剧本 / Scenario</label>
-        <select id="scriptSel">
-          <option value="CONVERGE_3">三轮收敛命中</option>
-          <option value="NO_CONVERGE">八轮未收敛</option>
-          <option value="DEGRADED">模型降级</option>
-        </select>
-      </div>
     </div>
     <div class="checks">
       <label for="authChk"><input id="authChk" type="checkbox">我已获得该目标的书面授权</label>
       <span class="lbl">授权范围仅限 localhost / 127.0.0.1 / lab 靶场别名；越界仅作纯模拟演示</span>
     </div>
     <div class="actions">
-      <button id="agentBtn" class="btn-grad" type="button" disabled data-ripple>自主攻击 · 打到攻破 →</button>
-      <button id="startBtn" class="btn-solid" type="button" disabled data-ripple>开始分析 →</button>
+      <button id="startBtn" class="btn-solid" type="button" disabled data-ripple>开始攻击 · 打到攻破 →</button>
       <a id="runLink" class="nav-trigger" href="monitor.html" data-nav aria-hidden="true" tabindex="-1">进入监控</a>
       <button id="cancelBtn" class="btn-ghost hidden" type="button" data-ripple>取消</button>
       <span class="msg-box"><span id="msg" role="status"></span></span>
     </div>
-    <p class="hint auth-hint" id="authHint">请先勾选授权确认，否则无法开始分析。</p>
-    <p class="hint agent-hint" id="agentHint">自主攻击：智能体依据每轮 WAF 拦截特征自选算子，<b>攻破（标注点位被独立确认）即停</b>；未攻破在 8 轮预算内如实终止，不无限重试。换靶场路径可演示不同结局：<span class="mono">/lab/hard.php</span> 打不穿、<span class="mono">/lab/trap.php</span> 模型误判后继续迭代。</p>
+    <p class="hint auth-hint" id="authHint">请先勾选授权确认，否则无法开始攻击。</p>
+    <p class="hint agent-hint" id="agentHint">只填网址即可：智能体依据每轮 WAF 拦截特征自选算子，<b>攻破（标注点位被独立确认）即停</b>，随后按命中点位与裁决确认给出漏洞分析与报告；未攻破在 8 轮预算内如实终止，不无限重试。换靶场路径可演示不同结局：<span class="mono">/lab/hard.php</span> 打不穿、<span class="mono">/lab/trap.php</span> 降级并出现一次被裁决否决的误报。</p>
   </section>
 
   <aside class="boundary-card" aria-label="合规与边界声明">

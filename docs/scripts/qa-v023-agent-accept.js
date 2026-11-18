@@ -88,26 +88,28 @@ const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run
     await c.send('Page.enable'); await c.send('Runtime.enable'); await c.send('Network.enable'); await c.send('Log.enable');
     await c.vp(1440, 900);
 
-    /* ===== §1 触发契约：只有点击「自主攻击」才置位 agent 意图 ===== */
+    /* ===== §1 触发契约：唯一入口「开始攻击」才置位 agent 意图 ===== */
     await c.goto(fileUrl('console.html'));
     await c.eval(`sessionStorage.clear()`);
     /* 用 dispatchEvent 绕过 disabled 元素的默认不派发，真正测到授权闸门而非「按钮被禁用」 */
-    const noAuth = await c.eval(`(()=>{document.querySelector('#agentBtn').dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+    const noAuth = await c.eval(`(()=>{document.querySelector('#startBtn').dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
       return {cfg:sessionStorage.getItem('probe.cfg'),pending:sessionStorage.getItem('probe.pendingRun'),
-              disabled:document.querySelector('#agentBtn').disabled}})()`);
+              disabled:document.querySelector('#startBtn').disabled,
+              agentBtnGone:!document.querySelector('#agentBtn')}})()`);
     ok('未勾选授权时不产生任何执行意图（授权闸门 + 按钮禁用双保险）',
       noAuth.cfg === null && noAuth.pending === null && noAuth.disabled === true, JSON.stringify(noAuth));
-    const trig = await c.eval(`(()=>{document.querySelector('#authChk').click();document.querySelector('#agentBtn').click();
+    ok('双按钮已合并（#agentBtn 不再存在）', noAuth.agentBtnGone === true);
+    const trig = await c.eval(`(()=>{document.querySelector('#authChk').click();document.querySelector('#startBtn').click();
       return {cfg:sessionStorage.getItem('probe.cfg'),pending:sessionStorage.getItem('probe.pendingRun')}})()`);
     const tc = JSON.parse(trig.cfg || '{}');
-    ok('点击「自主攻击」写入 cfg.agent + 一次性 pendingRun',
+    ok('点击「开始攻击」写入 cfg.agent + 一次性 pendingRun',
       tc.agent === true && tc.script === 'AGENT_LOOP' && trig.pending === '1', JSON.stringify(tc));
 
     /* ===== §2 真实跑四档自主攻击闭环 ===== */
     const cases = [
       { k: 'EASY', u: 'http://127.0.0.1/lab/sqli_01.php', breached: true, round: 3, stop: 'BREACH', used: 3 },
       { k: 'HARD', u: 'http://127.0.0.1/lab/hard.php', breached: false, round: null, stop: 'BUDGET_EXHAUSTED', used: 8 },
-      { k: 'TRAP', u: 'http://127.0.0.1/lab/trap.php', breached: false, round: null, stop: 'BUDGET_EXHAUSTED', used: 8 },
+      { k: 'TRAP', u: 'http://127.0.0.1/lab/trap.php', breached: true, round: 6, stop: 'BREACH', used: 6 },
       { k: 'OOS', u: 'https://example.com/x', breached: false, round: null, stop: 'OUT_OF_SCOPE', used: 3 }
     ];
     const reports = {};
@@ -166,8 +168,9 @@ const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run
       hard.findings.length === 0 && hard.rounds.length === 8);
     ok('TRAP 模型误判被证伪后继续迭代，不提前收工',
       trap.rounds.some(x => x.hit_signal === true && x.oracle_verdict === 'REFUTED' && x.gt_triggered === false) &&
-      trap.rounds.length === 8 && trap.agent.breached === false,
-      trap.rounds.filter(x => x.oracle_verdict === 'REFUTED').map(x => 'R' + x.round_no).join(','));
+      trap.agent.breached === true && trap.agent.breachRound === 6 && trap.rounds.length === 6,
+      'refuted=' + trap.rounds.filter(x => x.oracle_verdict === 'REFUTED').map(x => 'R' + x.round_no).join(',') +
+      ' breachR=' + trap.agent.breachRound + ' rounds=' + trap.rounds.length);
     ok('越界：纯模拟、无授权、全不适用、不构成攻破',
       oos.task.out_of_scope === true && /无授权/.test(oos.task.authorization_id) &&
       oos.rounds.every(x => x.oracle_verdict === 'NOT_APPLICABLE') &&
@@ -190,14 +193,14 @@ const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run
       await sleep(250);
     }
     const legacy = JSON.parse(await c.eval(`sessionStorage.getItem('probe.report')`));
-    ok('cfg 无 agent 标记时仍走固定剧本（零回归）',
-      !legacy.agent && legacy.task.script_tag === 'CONVERGE_3' && legacy.rounds.length === 3 && st2 === 'hit',
+    ok('旧 cfg（无 agent 标记）仍走自主攻击，剧本路径已下线',
+      !!legacy.agent && /^AGENT_/.test(legacy.task.script_tag) && st2 === 'hit',
       'state=' + st2 + ' script=' + legacy.task.script_tag);
     const liveLegacy=await c.eval(`(()=>({rows:document.querySelectorAll('#agentLiveRows .agent-live__row').length,
       state:document.querySelector('#agentLiveState').textContent,
       empty:document.querySelector('#agentLiveEmpty')?document.querySelector('#agentLiveEmpty').textContent:''}))()`);
-    ok('固定剧本模式不伪造决策流，显示非自主迭代说明',
-      liveLegacy.rows===0 && /固定剧本演示/.test(liveLegacy.state) && /非自主迭代/.test(liveLegacy.empty),
+    ok('自主攻击下决策流按真实轮次渲染',
+      liveLegacy.rows===3 && /已攻破/.test(liveLegacy.state),
       JSON.stringify(liveLegacy));
 
     /* ===== §4 报告页：5 附录 + 闭环摘要 + 打印黑白 ===== */
@@ -260,8 +263,8 @@ const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run
       clash:document.querySelectorAll('.orc-track--oracle .orc-cell.is-clash').length,
       rows:document.querySelectorAll('#roundBody tr').length,
       verdict:document.querySelector('#verdictWord').textContent}))()`);
-    ok('证据链页双轨 / 逐轮表 / 未攻破结论联动',
-      ev.cells === 16 && ev.clash > 0 && ev.rows === 8 && ev.verdict === '未攻破', JSON.stringify(ev));
+    ok('证据链页双轨 / 逐轮表 / 攻破结论联动',
+      ev.cells === 16 && ev.clash > 0 && ev.rows === 6 && ev.verdict === '已攻破', JSON.stringify(ev));
 
     /* ===== §6 视觉规格 ===== */
     await putReport(easy);

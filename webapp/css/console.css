@@ -234,7 +234,7 @@ input,select{min-height:44px}
 .nav-trigger{position:absolute;width:0;height:0;overflow:hidden;opacity:0;pointer-events:none}
 
 /* ---------- 7. 表单 ---------- */
-.form-grid{display:grid;grid-template-columns:1.8fr 1fr 1fr;gap:20px}
+.form-grid{display:grid;grid-template-columns:minmax(0,760px);gap:20px}
 .field{display:flex;flex-direction:column;gap:8px}
 .field.lbl{color:var(--t-2)}
 input[type=text],select{width:100%;min-height:44px;padding:0 12px;background:var(--n-surface);border:1px solid var(--n-line-2);
@@ -999,6 +999,27 @@ footer{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;
 .rpt-audit__cells b{font:500 18px/1.2 var(--display-cn);color:var(--t-1);font-variant-numeric:tabular-nums}
 .rpt-audit__cells b.is-warn{color:var(--sig-alert)}
 .rpt-audit .rpt-note{margin:12px 0 0;font-size:12px;line-height:1.7;color:var(--t-2)}
+/* 漏洞分析块：有结论给确认态左边线，无结论用虚框弱化——两者都不隐藏 */
+.rpt-vuln{margin:16px 0;padding:16px;border:1px solid var(--n-line-2);
+  border-left:3px solid var(--sig-ok);border-radius:var(--r-in);background:var(--n-surface)}
+.rpt-vuln--none{border-left:3px solid var(--n-line-3);border-left-style:dashed;background:transparent}
+.rpt-vuln__head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.rpt-vuln__head .lbl{font:500 11px/1.3 var(--mono);letter-spacing:.1em;color:var(--t-2)}
+.rpt-vuln__head b{font:500 16px/1.2 var(--display-cn);color:var(--t-1)}
+.rpt-vuln--none .rpt-vuln__head b{color:var(--t-2)}
+.rpt-vuln__sig{margin:0 0 12px;font-size:13px;line-height:1.6;color:var(--t-2)}
+.rpt-vuln__cells{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin-bottom:12px;
+  border:1px solid var(--n-line);background:var(--n-line)}
+.rpt-vuln__cells>div{padding:10px 12px;background:var(--n-surface)}
+.rpt-vuln__cells span{display:block;font-size:11px;color:var(--t-3);margin-bottom:4px}
+.rpt-vuln__cells b{font:500 13px/1.35 var(--mono);color:var(--t-1);word-break:break-all}
+.rpt-vuln__ev{margin:0;padding-left:18px;font-size:12.5px;line-height:1.75;color:var(--t-1)}
+.rpt-vuln__ev li{margin-bottom:2px}
+.rpt-vuln__ex{margin-top:12px;padding-top:10px;border-top:1px dashed var(--n-line-2)}
+.rpt-vuln__ex .lbl{display:block;margin-bottom:6px;font:500 11px/1.3 var(--mono);color:var(--sig-alert)}
+.rpt-vuln__ex ul{margin:0;padding-left:18px;font-size:12px;line-height:1.7;color:var(--t-2)}
+.rpt-vuln .rpt-note{margin:12px 0 0;font-size:12px;line-height:1.7;color:var(--t-2)}
+@media(max-width:1100px){ .rpt-vuln__cells{grid-template-columns:repeat(2,1fr)} }
 @media(max-width:1100px){ .orc-track{grid-template-columns:80px minmax(0,1fr)} }
 @media(max-width:700px){
   .orc-head{flex-direction:column}
@@ -1122,7 +1143,7 @@ footer{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;
 .rpw__bridge{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
   background:var(--n-sunken);border-left:1px solid var(--n-line);border-right:1px solid var(--n-line)}
 .rpw__bridge span{font:500 28px/1 var(--mono);color:var(--t-3)}
-.rpw__bridge small{font:500 10px/1.4 var(--mono);color:var(--t-3);text-align:center}
+.rpw__bridge small{font:500 11px/1.4 var(--mono);color:var(--t-3);text-align:center}
 .rpw[data-state="running"] .rpw__bridge span,
 .rpw[data-state="pass"] .rpw__bridge span,
 .rpw[data-state="fail"] .rpw__bridge span{color:var(--sig-ok)}

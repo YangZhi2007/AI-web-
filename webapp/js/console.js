@@ -44,6 +44,12 @@ const paramRefOf = (url,type) => {
   const key=({sqli:'id',xss:'q',upload:'file'})[type]||'id';
   return `POST ${p}#${key}（${inScope?'靶场抽象点位':'纯模拟抽象点位'}）`;
 };
+/* 按「点位名」直接构造引用：自主攻击不预设漏洞类型，点位由靶场画像给出 */
+const pointRefOf = (url,param) => {
+  const inScope=scopeOK(url);let p='/lab/target.php';
+  if(inScope){try{p=new URL(url).pathname||p;}catch{}}
+  return `POST ${p}#${param||'id'}（${inScope?'靶场抽象点位':'纯模拟抽象点位'}）`;
+};
 /* ---------- 三套剧本：只含算子编号，不含任何载荷文本 ---------- */
 const SCRIPTS = {
   CONVERGE_3:{terminate_reason:'HIT', rounds:[
@@ -258,12 +264,16 @@ const AGENT_OPS = Object.freeze([
   {id:'OP_FALLBACK_2', avoids:null,              cost:1020,note:'兜底算子 2（模型降级）'},
   {id:'OP_FALLBACK_3', avoids:'RULE_KEYWORD_B',  cost:1240,note:'兜底算子 3（绕过规则但点位未触发）'}
 ]);
-/* 靶场强度由目标路径派生：换一个靶场路径就能演示「攻破 / 打不穿 / 模型误判」三种结局，
-   不需要用户额外选参数——仍是「丢一个网址进去」这一个动作。 */
+/* 靶场强度由目标路径派生：换一个靶场路径就能演示「攻破 / 打不穿 / 降级误判」三种结局，
+   不需要用户额外选参数——仍是「丢一个网址进去」这一个动作。
+   probe/vulnType 描述该靶场的**客观情况**（探测哪个点位、该点位是否真有漏洞），
+   由目标决定而非用户选择——漏洞类型因此是攻击的产出，不是输入。
+   诱导靶场：第 4 轮起降级，第 5 轮兜底算子绕过 WAF 但点位未触发（AI 误报被裁决证伪），
+   第 6 轮才真正打穿 → 终态 degraded，一次完整演示「误报被拦住、降级仍可收敛」。 */
 const AGENT_PROFILES = Object.freeze({
-  EASY:      {key:'EASY',      label:'标准靶场',   breakAt:'OP_ENC_SEQ_2', trapOp:null,            degradeFrom:0},
-  HARD:      {key:'HARD',      label:'加固靶场',   breakAt:null,           trapOp:null,            degradeFrom:0},
-  DECEPTIVE: {key:'DECEPTIVE', label:'诱导靶场',   breakAt:null,           trapOp:'OP_FALLBACK_3', degradeFrom:4}
+  EASY:      {key:'EASY',      label:'标准靶场',   breakAt:'OP_ENC_SEQ_2', trapOp:null,             probe:'id',   vulnType:'sqli',   degradeFrom:0},
+  HARD:      {key:'HARD',      label:'加固靶场',   breakAt:null,           trapOp:null,             probe:'id',   vulnType:null,     degradeFrom:0},
+  DECEPTIVE: {key:'DECEPTIVE', label:'诱导靶场',   breakAt:'OP_FALLBACK_3',trapOp:'OP_FALLBACK_2',  probe:'file', vulnType:'upload', degradeFrom:4}
 });
 function agentProfileOf(url){
   let p='/'; try{ p=new URL(url).pathname.toLowerCase(); }catch(e){}
@@ -296,6 +306,45 @@ function agentResponse(op,profile,no,degraded){
   const sig='RULE_KEYWORD_'+String.fromCharCode(65+((no-1)%4));
   return {cls:'BLOCKED',sig,triggered:false,note:'WAF 规则 '+sig+' 命中，算子未触达标注点位',degraded};
 }
+/* ---------- 漏洞分析：把「打穿用的算子 + 命中点位 + 裁决确认」归因为漏洞类别 ----------
+   这里不做「回显用户选的类型」：结论由命中点位的参数性质推导，并把被裁决证伪的轮次
+   列为反证一起输出——这是分析，不是复述。 */
+const PARAM_VULN = Object.freeze({
+  id:  {type:'sqli',   label:'SQL 注入',
+        signal:'注入型参数返回数据库层差异响应，布尔/时间维度可复现'},
+  q:   {type:'xss',    label:'跨站脚本（XSS）',
+        signal:'输入参数在响应正文中被原样回显，未做实体编码'},
+  file:{type:'upload', label:'文件上传 / 路径穿越',
+        signal:'文件型参数产生写入落盘或路径解析异常'}
+});
+function paramOfRef(ref){
+  const m=/#([A-Za-z_][\w-]*)/.exec(String(ref||''));
+  return m?m[1].toLowerCase():'';
+}
+function analyzeBreach(report){
+  const hit=report.rounds.find(r=>r.hit_signal&&r.gt_triggered);
+  if(!hit)return null;
+  const param=paramOfRef(hit.param_ref);
+  const v=PARAM_VULN[param]||{type:'unknown',label:'待人工复核',signal:'点位性质不在既有签名库内'};
+  const chain=report.rounds.filter(r=>r.round_no<=hit.round_no).map(r=>r.strategy_tag);
+  const refuted=report.rounds.filter(r=>r.oracle_verdict==='REFUTED');
+  const blocked=report.rounds.filter(r=>r.response_class==='BLOCKED');
+  return {
+    type:v.type,label:v.label,signal:v.signal,
+    point:param||'—',param_ref:hit.param_ref,round:hit.round_no,
+    evidence:[
+      `命中点位：${hit.param_ref}`,
+      `触发事实：${hit.gt_note||'标注点位出现可复现状态变化'}`,
+      `算子链：第 ${hit.round_no} 轮 · ${chain.join(' → ')}`,
+      `响应分类：${hit.response_class}（WAF 未拦截只是前置条件，不是攻破依据）`,
+      `裁决确认：${hit.oracle_cn||hit.oracle_verdict}（标注来源 ${hit.oracle_source}）`
+    ],
+    excluded:refuted.map(r=>`R${String(r.round_no).padStart(2,'0')} ${r.strategy_tag}：AI 声称存在漏洞，独立裁决证伪（${r.gt_note||'标注点位未触发'}）`),
+    blockedCount:blocked.length,
+    confidence:'HIGH',
+    note:'结论由「命中点位性质 + 独立裁决确认」共同给出，不采信模型自述的 validation 字段；标注集为演示数据，不构成对真实目标的实测结论。'
+  };
+}
 const AttackAgent = {
   async analyze(url,options,onEvent){
     const profile=agentProfileOf(url), cap=CONFIG.MAX_ROUNDS;
@@ -306,7 +355,7 @@ const AttackAgent = {
       task:{task_id:taskId,target_url:displayUrl(url),
         target_alias:outOfScope?'lab-target-demo（纯模拟，不对应任何真实目标）':aliasOf(url),
         authorization_id:outOfScope?'—（越界演示，无授权）':options.authorizationId,
-        out_of_scope:outOfScope,script_tag:'AGENT_'+profile.key,vuln_type:options.vulnType,
+        out_of_scope:outOfScope,script_tag:'AGENT_'+profile.key,vuln_type:profile.vulnType||'unknown',
         group_tag:'A',adapter_name:'MOCK',max_rounds:cap,
         ruleset_version:'LAB-RULESET-01',
         ai_mode:'AUTONOMOUS',started_at:nowISO()},
@@ -328,7 +377,7 @@ const AttackAgent = {
       const oracle=oracleVerdict(aiClaim,gt,{outOfScope,degraded:resp.degraded});
       const rec={
         round_id:`${taskId}-R${pad(no)}`,round_no:no,prev_round_id:prev,
-        param_ref:paramRefOf(url,options.vulnType),
+        param_ref:pointRefOf(url,profile.probe),
         strategy_tag:plan.op.id,operator_chain:[plan.op.id],
         response_class:resp.cls,http_status:resp.cls==='BLOCKED'?403:200,
         waf_signal:resp.sig||'无',hit_signal:aiClaim,
@@ -366,7 +415,11 @@ const AttackAgent = {
     report.terminate_reason=breached?'HIT':(outOfScope?'OOS':'MAX_ROUNDS');
     report.elapsed_ms=report.rounds.reduce((a,r)=>a+r.cost_ms,0);
     const hit=report.rounds.find(r=>r.hit_signal&&r.gt_triggered);
-    if(breached&&hit)report.findings.push({finding_id:taskId+'-F01',vuln_type:options.vulnType,
+    /* 漏洞分析：攻破后由命中点位性质归因；未攻破则不给漏洞结论，不猜类别 */
+    report.analysis=breached?analyzeBreach(report):null;
+    if(breached&&hit)report.findings.push({finding_id:taskId+'-F01',
+      vuln_type:(report.analysis&&report.analysis.type)||options.vulnType,
+      vuln_label:(report.analysis&&report.analysis.label)||options.vulnType,
       param_ref:hit.param_ref,risk_level:'HIGH',verdict:'VULNERABLE',
       verdict_source:hit.verdict_source,confidence:hit.confidence,
       evidence_round_ids:report.rounds.map(r=>r.round_id),mock_flag:true});
@@ -460,13 +513,12 @@ function log(text,kind=''){
   term.appendChild(d);term.scrollTop=term.scrollHeight;
 }
 function syncStart(){
-  const btn=$('#startBtn'),chk=$('#authChk'),hint=$('#authHint'),agentBtn=$('#agentBtn');
+  const btn=$('#startBtn'),chk=$('#authChk'),hint=$('#authHint');
   if(!btn||!chk)return;
   btn.disabled=running||!chk.checked;
-  if(agentBtn)agentBtn.disabled=running||!chk.checked;
   if(hint)hint.textContent=chk.checked
     ? '授权已确认 · 本页不会向该地址发起任何真实请求。'
-    : '请先勾选授权确认，否则无法开始分析。';
+    : '请先勾选授权确认，否则无法开始攻击。';
 }
 function setStat(id,text){pulse($(id),String(text));}
 /* ---------- 仪表台：状态灯 / 刻度轨 / 比例条 ----------
@@ -689,8 +741,9 @@ function renderResult(r){
   put('#rRisk',oos?'—（纯模拟）':(f?f.risk_level:'—'));
   put('#rConf',oos?'—（纯模拟）':(f?f.confidence.toFixed(2):'—'));
   put('#rSource',oos?'—（纯模拟）':(f?f.verdict_source:'规则基线（未命中）'));
-  put('#verdictWord',oos?'模拟命中':(r.agent?(r.agent.breached?'已攻破':'未攻破')
-    :(r.terminate_reason==='HIT'?'已检出':'未检出')));
+  /* 结论词一律由终态判定派生：任何数据组合都不会出现「状态未攻破、结论却已攻破」 */
+  const stR=resolveTerminalState(r);
+  put('#verdictWord',VERDICT_CN[stR.state]||stR.label);
   const notice=$('#oosResult');
   if(notice){notice.textContent=oos?OOS_NOTICE:'';notice.classList.toggle('hidden',!oos);}
   const blocked=r.rounds.filter(x=>x.response_class==='BLOCKED').map(x=>x.round_no);
@@ -707,7 +760,7 @@ function renderResult(r){
    details.raw 结构、打印前展开全部保持；只重排版面层级：
    卷首签发带把结论 / 终态形状 / 3 个读数提到第一屏，02 用与配置页同源的 8 格轮次预算刻度
    回答「这次实际花掉多少轮」，附录 A 用形状标签与命中行标记让逐轮记录可读。 */
-const VERDICT_CN={hit:'已检出',nofind:'未检出',degraded:'降级命中',oos:'纯模拟',
+const VERDICT_CN={hit:'已攻破',nofind:'未攻破',degraded:'降级攻破',oos:'模拟命中',
   cancel:'已取消',error:'异常',idle:'待机',run:'执行中'};
 const CLS_TAG={BLOCKED:['blocked','BLOCKED'],ANOMALY:['anomaly','ANOMALY'],
   NORMAL:['normal','NORMAL'],TIMEOUT:['deg','TIMEOUT']};
@@ -748,6 +801,28 @@ function renderReport(r){
   const termLine=r.terminate_reason===st.label
     ? `终止原因 ${esc(r.terminate_reason)}` : `${esc(r.terminate_reason||'—')} · ${st.label}`;
   const fact=(label,value)=>`<div><span>${label}</span><b class="mono">${value}</b></div>`;
+  /* 漏洞分析：攻破后给出结论与依据链（含被证伪轮次作反证）；未攻破则明确不给结论 */
+  const an=r.analysis;
+  const vulnBlock=an?`<div class="rpt-vuln">
+        <div class="rpt-vuln__head"><span class="lbl">漏洞分析 / VULN ANALYSIS</span>
+          <b class="mono">${esc(an.label)}</b></div>
+        <p class="rpt-vuln__sig">${esc(an.signal)}</p>
+        <div class="rpt-vuln__cells">
+          <div><span>命中点位</span><b class="mono">${esc(an.param_ref)}</b></div>
+          <div><span>攻破轮</span><b class="mono">R${String(an.round).padStart(2,'0')}</b></div>
+          <div><span>置信度</span><b>${esc(an.confidence)}</b></div>
+          <div><span>已排除误报</span><b>${an.excluded.length} 轮</b></div>
+        </div>
+        <ol class="rpt-vuln__ev">${an.evidence.map(e=>`<li>${esc(e)}</li>`).join('')}</ol>
+        ${an.excluded.length?`<div class="rpt-vuln__ex">
+          <span class="lbl">反证 / REFUTED</span>
+          <ul>${an.excluded.map(e=>`<li>${esc(e)}</li>`).join('')}</ul></div>`:''}
+        <p class="rpt-note">${esc(an.note)}</p>
+      </div>`:`<div class="rpt-vuln rpt-vuln--none">
+        <div class="rpt-vuln__head"><span class="lbl">漏洞分析 / VULN ANALYSIS</span>
+          <b class="mono">无结论</b></div>
+        <p class="rpt-note">本次未攻破标注点位，<b>不输出漏洞类型</b>——没有确认的命中就没有漏洞结论，不用推测填充报告。已执行 ${r.rounds.length} 轮，拦截详情见附录 A。</p>
+      </div>`;
   card.innerHTML=`
     <div class="rpt-tools no-print">
       <span class="mono">REPORT / ${esc(r.task.task_id)} · 打印输出 5 个附录</span>
@@ -762,7 +837,7 @@ function renderReport(r){
         </div>
         <div class="rpt-seal" data-s="${st.state}">
           <span class="rpt-seal__g" data-g="${st.state}" aria-hidden="true"></span>
-          <span class="rpt-seal__txt"><b>${r.agent?(r.agent.breached?'已攻破':'未攻破'):(VERDICT_CN[st.state]||st.label)}</b>
+          <span class="rpt-seal__txt"><b>${VERDICT_CN[st.state]||st.label}</b>
             <small class="mono">${termLine}</small></span>
         </div>
       </div>
@@ -783,7 +858,7 @@ function renderReport(r){
         ${fact('生成时间 / ISSUED',esc(fmt(r.task.started_at)))}
         ${fact('目标 URL / TARGET',esc(r.task.target_url))}
         ${fact('授权 ID / AUTH',esc(r.task.authorization_id))}
-        ${fact('数据来源 / SOURCE','MockEngine 契约桩（演示数据）')}
+        ${fact('数据来源 / SOURCE',r.agent?'AttackAgent 自主闭环（演示数据）':'MockEngine 契约桩（演示数据）')}
       </div>
       <p class="rpt-note">${oos?'纯模拟演示 · 未对应任何真实站点 · 未发起任何请求 · 未使用任何授权凭据':'仅限授权范围内使用 · 演示环境为本地隔离靶场 · 不含任何真实请求与原始凭据'}；目标 URL 仅作展示，已剥离凭据。</p>
     </div>
@@ -815,6 +890,7 @@ function renderReport(r){
         </div>
         <p class="rpt-note">算子由上一轮拦截特征实时选出，只含算子编号、不含载荷文本；攻破判据是独立裁决确认标注点位被触发，不是 WAF 未拦截。模型把响应异常当成攻破时会被判证伪并继续迭代。达到攻破即停；未攻破则在 ${r.agent.budget} 轮预算内如实终止，不做无限重试。本页为授权靶场内的模拟闭环，演示数据 · 零外部请求。</p>
       </div>`:''}
+      ${vulnBlock}
       <div class="rpt-audit">
         <div class="rpt-audit__head"><span class="lbl">独立裁决 / ORACLE VERDICT</span>
           <b class="mono">${esc(cr.label_set)} · 演示标注集</b></div>
@@ -849,7 +925,7 @@ function renderReport(r){
         ${fact('规则集 / RULESET',esc(r.task.ruleset_version))}
         ${fact('运行模式 / MODE',esc(r.task.ai_mode))}
         ${fact('契约版本 / CONTRACT',esc(r.contract_version))}
-        ${fact('剧本 / SCENARIO',esc(r.task.script_tag))}
+        ${fact('靶场画像 / PROFILE',esc(r.agent?(r.agent.profileLabel+' · '+r.agent.profile):r.task.script_tag))}
         ${fact('数据标记 / FLAG','mock_flag=true')}
       </div></div>
     <div class="watermark">${esc(r.task.task_id)} · 演示数据 · 非实时推理 · 零外部请求 · 本地契约桩生成</div>`;
@@ -891,11 +967,14 @@ async function runTask(opts){
   if(!authed){setMsg('请先勾选授权确认','err');return;}
   if(!/^https?:\/\/[^\s]+$/i.test(url)){setMsg('请输入以 http:// 或 https:// 开头的合法地址','err');return;}
   if(!scopeOK(url))setMsg(OOS_NOTICE,'warn');
-  const scriptVal=o.script!==undefined?o.script:($('#scriptSel')?$('#scriptSel').value:'CONVERGE_3');
+  /* 剧本只保留给 MockEngine 契约桩（单元测试直调）；UI 不再暴露剧本选择，
+     自主攻击路径不使用 RUNTIME.script。 */
+  const scriptVal=o.script!==undefined?o.script:'CONVERGE_3';
   RUNTIME.script=SCRIPTS[scriptVal]?scriptVal:'CONVERGE_3';
   const token=++runToken, isCancelled=()=>token!==runToken;
   running=true;syncStart();resetUI();
-  const options={vulnType:o.vulnType!==undefined?o.vulnType:($('#typeSel')?$('#typeSel').value:'sqli'),
+  /* vulnType 仅 MockEngine 契约桩使用；自主攻击的漏洞类型由靶场点位与裁决确定 */
+  const options={vulnType:o.vulnType!==undefined?o.vulnType:'sqli',
     authorizationId:'AUTH-LAB-DEMO-001',isCancelled};
   try{
     /* v0.23：o.agent 走状态驱动的自主攻击闭环；默认仍走三剧本演示，两条路径共用
@@ -963,7 +1042,7 @@ function cancelRun(){
 /* ---------- 绑定（多页面：对每个元素判空，缺失即跳过，绝不抛错） ---------- */
 const on=(sel,evt,fn)=>{const el=$(sel);if(el)el.addEventListener(evt,fn);};
 on('#authChk','change',syncStart);
-on('#startBtn','click',()=>runTask());
+on('#startBtn','click',()=>runTask({agent:true}));
 on('#cancelBtn','click',cancelRun);
 on('#urlInput','keydown',e=>{if(e.key==='Enter'&&$('#startBtn')&&!$('#startBtn').disabled)runTask();});
 $$('.action-btn').forEach(b=>{
@@ -975,10 +1054,6 @@ on('#soundOffBtn','click',()=>{
   const b=$('#soundOffBtn');const now=b.getAttribute('aria-checked')!=='true';
   b.setAttribute('aria-checked',String(now));b.textContent=now?'SOUND ON':'SOUND OFF';
 });
-/* 答辩现场可用 ?script=NO_CONVERGE|DEGRADED|CONVERGE_3 直接切剧本 */
-const qs=new URLSearchParams(location.search).get('script');
-if(qs&&SCRIPTS[qs])RUNTIME.script=qs;
-const scriptSel=$('#scriptSel');if(scriptSel)scriptSel.value=RUNTIME.script;
 ['#dMax','#dMaxNum','#cfgMax'].forEach(s=>{const e=$(s);if(e)e.textContent=String(CONFIG.MAX_ROUNDS);});
 /* 仪表台初始化：刻度轨按配置常量生成，初始为空态 */
 buildRail(CONFIG.MAX_ROUNDS);
@@ -992,7 +1067,8 @@ syncStart();
 window.Probe={
   CONFIG, RUNTIME, SCRIPTS, Store, SCOPE, TICKS,
   GROUND_TRUTH, ORACLE_CN, buildCredibility, oracleVerdict, groundTruthOf,
-  AttackAgent, AGENT_OPS, AGENT_PROFILES, agentProfileOf, planNextRound,
+  AttackAgent, AGENT_OPS, AGENT_PROFILES, agentProfileOf, planNextRound, agentResponse,
+  analyzeBreach, PARAM_VULN,
   paintAgentLiveAll, paintAgentDecision, resetAgentLive,
   runTask, start, cancelRun,
   setDashState, applyTerminalState, resolveTerminalState,

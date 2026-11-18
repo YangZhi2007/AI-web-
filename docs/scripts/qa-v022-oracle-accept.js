@@ -92,17 +92,18 @@ const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run
     await c.vp(1440, 900);
 
     /* ===== §1 真实跑 4 次任务，校验裁决分支与独立性 ===== */
+    /* 靶场画像驱动：用户不再选剧本，三种终态由目标路径派生
+       EASY→3 轮攻破 / DECEPTIVE→6 轮降级后攻破（含一次被证伪的误报）/ HARD→8 轮打不穿 */
     const cases = [
-      { key: 'CONVERGE_3', url: 'http://127.0.0.1/lab/sqli_01.php', expect: { claims: 1, confirmed: 1, refuted: 0, disagreement: 0, used: 3 } },
-      { key: 'DEGRADED', url: 'http://127.0.0.1/lab/sqli_01.php', expect: { claims: 1, confirmed: 0, refuted: 1, disagreement: 3, used: 4 } },
-      { key: 'NO_CONVERGE', url: 'http://127.0.0.1/lab/sqli_01.php', expect: { claims: 0, confirmed: 0, refuted: 0, disagreement: 0, used: 8 } },
+      { key: 'EASY', url: 'http://127.0.0.1/lab/sqli_01.php', expect: { claims: 1, confirmed: 1, refuted: 0, disagreement: 0, used: 3 } },
+      { key: 'DECEPTIVE', url: 'http://127.0.0.1/lab/trap/x', expect: { claims: 2, confirmed: 1, refuted: 1, disagreement: 2, used: 6 } },
+      { key: 'HARD', url: 'http://127.0.0.1/lab/hard/x', expect: { claims: 0, confirmed: 0, refuted: 0, disagreement: 0, used: 8 } },
       { key: 'OOS', url: 'https://example.com/x', expect: { claims: 1, confirmed: 0, refuted: 0, disagreement: 0, used: 3 } }
     ];
     const reports = {};
     for (const cs of cases) {
-      const script = cs.key === 'OOS' ? 'CONVERGE_3' : cs.key;
       await c.goto(fileUrl('monitor.html'));
-      await c.eval(`sessionStorage.clear();sessionStorage.setItem('probe.cfg',JSON.stringify({url:${JSON.stringify(cs.url)},vulnType:'sqli',script:${JSON.stringify(script)}}));sessionStorage.setItem('probe.pendingRun','1');`);
+      await c.eval(`sessionStorage.clear();sessionStorage.setItem('probe.cfg',JSON.stringify({url:${JSON.stringify(cs.url)},agent:true,script:'AGENT_LOOP'}));sessionStorage.setItem('probe.pendingRun','1');`);
       await c.goto(fileUrl('monitor.html'));
       let st = 'idle', t = 0;
       while (t++ < 120) {
@@ -123,23 +124,23 @@ const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run
         x.oracle_verdict && x.oracle_source === 'LAB-GT-01');
       ok(cs.key + ' 每轮双通道字段齐全', fieldsOK, 'rounds=' + r.rounds.length);
     }
-    const dg = reports.DEGRADED, cv = reports.CONVERGE_3, nc = reports.NO_CONVERGE, oos = reports.OOS;
-    ok('独立性：DEGRADED R4 模型判 VULNERABLE 但裁决 REFUTED',
-      dg.rounds[3].verdict === 'VULNERABLE' && dg.rounds[3].oracle_verdict === 'REFUTED' && dg.rounds[3].gt_triggered === false,
-      'verdict=' + dg.rounds[3].verdict + ' oracle=' + dg.rounds[3].oracle_verdict);
+    const dg = reports.DECEPTIVE, cv = reports.EASY, nc = reports.HARD, oos = reports.OOS;
+    ok('独立性：诱导靶场 R5 模型判 VULNERABLE 但裁决 REFUTED',
+      dg.rounds[4].verdict === 'VULNERABLE' && dg.rounds[4].oracle_verdict === 'REFUTED' && dg.rounds[4].gt_triggered === false,
+      'verdict=' + dg.rounds[4].verdict + ' oracle=' + dg.rounds[4].oracle_verdict);
     ok('模型自证 PASSED 原文保留但不作为裁决依据',
-      dg.rounds[3].validation_result === 'PASSED' && dg.rounds[3].oracle_verdict === 'REFUTED' &&
-      /"validation":\s*"PASSED"/.test(dg.rounds[3].model_decision_raw));
+      dg.rounds[4].validation_result === 'PASSED' && dg.rounds[4].oracle_verdict === 'REFUTED' &&
+      /"validation":\s*"PASSED"/.test(dg.rounds[4].model_decision_raw));
     ok('裁决不读置信度：同为 0.91 的两轮得到不同裁决',
-      cv.rounds[2].confidence === dg.rounds[3].confidence &&
-      cv.rounds[2].oracle_verdict === 'CONFIRMED' && dg.rounds[3].oracle_verdict === 'REFUTED');
+      cv.rounds[2].confidence === dg.rounds[4].confidence &&
+      cv.rounds[2].oracle_verdict === 'CONFIRMED' && dg.rounds[4].oracle_verdict === 'REFUTED');
     ok('降级轮不是「阴性结论」而是 UNCONFIRMED',
-      dg.rounds[1].oracle_verdict === 'UNCONFIRMED' && dg.rounds[2].oracle_verdict === 'UNCONFIRMED');
-    ok('NO_CONVERGE 跑满 8 轮预算且无虚假阳性', nc.rounds.length === 8 && nc.credibility.cap === 8 &&
+      dg.rounds[3].oracle_verdict === 'UNCONFIRMED');
+    ok('加固靶场跑满 8 轮预算且无虚假阳性', nc.rounds.length === 8 && nc.credibility.cap === 8 &&
       nc.credibility.claims === 0 && nc.credibility.signalRounds.length === 0);
     ok('越界全部 NOT_APPLICABLE 且诚信标注保留', oos.task.out_of_scope === true &&
       oos.credibility.na === 3 && oos.credibility.confirmed === 0 && oos.mock_flag === true);
-    ok('precision 只作本次计数口径不外推', cv.credibility.precision === 1 && dg.credibility.precision === 0 &&
+    ok('precision 只作本次计数口径不外推', cv.credibility.precision === 1 && dg.credibility.precision === 0.5 &&
       nc.credibility.precision === null);
 
     /* ===== §2 证据链页：双轨 / 明细 / 结论优先级 ===== */
@@ -155,8 +156,8 @@ const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run
       oracleCells:document.querySelectorAll('.orc-track--oracle .orc-cell').length,
       clash:document.querySelectorAll('.orc-track--oracle .orc-cell.is-clash').length,
       clashText:[...document.querySelectorAll('.orc-track--oracle .orc-cell.is-clash .orc-cell__t')].map(e=>e.textContent),
-      r4Claim:document.querySelector('.orc-track--claim .orc-cell[data-round="4"]')?.getAttribute('data-claim'),
-      r4Oracle:document.querySelector('.orc-track--oracle .orc-cell[data-round="4"]')?.getAttribute('data-v'),
+      r4Claim:document.querySelector('.orc-track--claim .orc-cell[data-round="5"]')?.getAttribute('data-claim'),
+      r4Oracle:document.querySelector('.orc-track--oracle .orc-cell[data-round="5"]')?.getAttribute('data-v'),
       detailRows:document.querySelectorAll('#orcDetail tbody tr').length,
       gtCells:[...document.querySelectorAll('#orcDetail tbody tr td:nth-child(3)')].map(e=>e.textContent),
       stats:[...document.querySelectorAll('.orc-stat b')].map(e=>e.textContent),
@@ -166,14 +167,14 @@ const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run
       note:document.querySelector('#orcNote').textContent
     }))()`);
     ok('双轨各 8 格、与轮次预算同源', ev.cells === 16 && ev.claimCells === 8 && ev.oracleCells === 8);
-    ok('DEGRADED 下轨 3 个错位格且都有中文短标签',
-      ev.clash === 3 && ev.clashText.filter(t => t && t.trim()).length === 3, JSON.stringify(ev.clashText));
-    ok('R4 上轨声称阳性 / 下轨证伪（错位可核对）',
+    ok('诱导靶场下轨 2 个错位格且都有中文短标签',
+      ev.clash === 2 && ev.clashText.filter(t => t && t.trim()).length === 2, JSON.stringify(ev.clashText));
+    ok('R5 上轨声称阳性 / 下轨证伪（错位可核对）',
       ev.r4Claim === 'pos' && ev.r4Oracle === 'REFUTED', 'claim=' + ev.r4Claim + ' oracle=' + ev.r4Oracle);
-    ok('明细表 3 行且点位标注全部为「点位未触发」',
-      ev.detailRows === 3 && ev.gtCells.length === 3 && ev.gtCells.every(t => t === '点位未触发'), JSON.stringify(ev.gtCells));
+    ok('明细表 2 行且点位标注全部为「点位未触发」',
+      ev.detailRows === 2 && ev.gtCells.length === 2 && ev.gtCells.every(t => t === '点位未触发'), JSON.stringify(ev.gtCells));
     ok('4 个读数取自 credibility 真值', JSON.stringify(ev.stats) ===
-      JSON.stringify(['1', '0', '3', 'R04']), JSON.stringify(ev.stats));
+      JSON.stringify(['2', '1', '2', 'R05 / R06']), JSON.stringify(ev.stats));
     ok('结论优先级消除「已检出 vs 证伪」矛盾',
       ev.tone === 'warn' && /独立裁决优先/.test(ev.verdictNote) && /不作为最终判定/.test(ev.verdictNote));
     ok('诚信标注齐全（标注集 / 不读置信度 / 不采信自证 / 非实测误报率）',
@@ -189,7 +190,7 @@ const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run
     ok('旧会话缓存（无 credibility）自动现算，双轨不塌', await c.eval(`(()=>({
       cells:document.querySelectorAll('.orc-cell').length,
       clash:document.querySelectorAll('.orc-track--oracle .orc-cell.is-clash').length}))()`)
-      .then(o => o.cells === 16 && o.clash === 3));
+      .then(o => o.cells === 16 && o.clash === 2));
 
     /* 干净成功态：无错位格、两轨一致 */
     await setReport(cv);
@@ -197,7 +198,7 @@ const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run
       clash:document.querySelectorAll('.orc-cell.is-clash').length,
       none:document.querySelector('.orc-detail__none')?.textContent||'',
       tone:document.querySelector('#orcVerdict').getAttribute('data-tone')}))()`);
-    ok('CONVERGE_3 无错位格且给出「不代表不会误报」的克制说明',
+    ok('标准靶场无错位格且给出「不代表不会误报」的克制说明',
       clean.clash === 0 && clean.tone === 'ok' && /不代表系统不会误报/.test(clean.none));
 
     /* 空态 */
@@ -221,7 +222,7 @@ const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run
       lead:document.querySelector('.rpt-sec[data-sec="03"] .rpt-sec__lead').textContent,
       export:!!document.querySelector('#exportBtn')}))()`);
     ok('报告仍是 5 附录 + 导出按钮（QA51 契约不变）', rp.secs === 5 && rp.export);
-    ok('02 裁决读数取自 report 真值', JSON.stringify(rp.figures) === JSON.stringify(['1', '0', '3', 'R04']),
+    ok('02 裁决读数取自 report 真值', JSON.stringify(rp.figures) === JSON.stringify(['2', '1', '2', 'R05 / R06']),
       JSON.stringify(rp.figures));
     ok('02 说明「终态 ≠ 裁决」与冲突优先级', /任务终态/.test(rp.note) && /以裁决为准/.test(rp.note));
     ok('附录 A 标明记录的是模型侧判定', /模型侧判定/.test(rp.lead));
@@ -235,19 +236,28 @@ const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run
       JSON.stringify(pr));
     await c.send('Emulation.setEmulatedMedia', { media: '' });
 
-    /* ===== §4 配置页剧本库联动 ===== */
+    /* ===== §4 配置页靶场画像库（剧本已移除：画像由 URL 派生、用户不可选）===== */
     await c.goto(fileUrl('settings.html'));
     const st = await c.eval(`(()=>{
       const cards=[...document.querySelectorAll('.cfg-scn__card')];
-      return {n:cards.length,audit:cards.map(x=>({script:x.getAttribute('data-script'),
-        text:x.querySelector('.cfg-scn__audit')?.textContent||'',
-        warn:!!x.querySelector('.cfg-scn__audit.is-warn')}))};})()`);
-    ok('3 张剧本卡都有裁决预告', st.n === 3 && st.audit.every(a => /LAB-GT-01/.test(a.text) && /待复核/.test(a.text)),
-      JSON.stringify(st.audit));
-    const dgCard = st.audit.find(a => a.script === 'DEGRADED');
-    ok('DEGRADED 剧本卡预告「证伪 1 · 待复核 3」且标为告警语义',
-      !!dgCard && /证伪 1/.test(dgCard.text) && /待复核 3/.test(dgCard.text) && dgCard.warn,
-      dgCard ? dgCard.text : 'missing');
+      return {n:cards.length,
+        keys:cards.map(x=>x.getAttribute('data-profile')),
+        metas:cards.map(x=>(x.querySelector('.cfg-scn__meta')||{}).textContent||''),
+        rules:cards.map(x=>(x.querySelector('.cfg-scn__rule')||{}).textContent||''),
+        loadBtns:document.querySelectorAll('.cfg-load').length,
+        hasTypeSel:!!document.querySelector('#cfgType'),
+        hasScriptSel:!!document.querySelector('#cfgScript'),
+        count:(document.querySelector('#cfgScnCount')||{}).textContent};})()`);
+    ok('3 张靶场画像卡且键为 EASY/HARD/DECEPTIVE', st.n === 3 &&
+      ['EASY','HARD','DECEPTIVE'].every(k => st.keys.includes(k)), JSON.stringify(st.keys));
+    ok('画像卡分别预告 攻破 / 未攻破 / 降级 三种终态',
+      st.metas.some(t => /HIT · 攻破/.test(t)) && st.metas.some(t => /NOT FOUND/.test(t)) &&
+      st.metas.some(t => /DEGRADED/.test(t)), JSON.stringify(st.metas));
+    ok('画像卡给出 URL 派生条件（用户不选）', st.rules.length === 3 && st.rules.every(r => /派生条件/.test(r)),
+      JSON.stringify(st.rules));
+    ok('画像不可由用户载入，类型/剧本下拉已移除',
+      st.loadBtns === 0 && st.hasTypeSel === false && st.hasScriptSel === false &&
+      st.count === '3', JSON.stringify({load:st.loadBtns,type:st.hasTypeSel,script:st.hasScriptSel,cnt:st.count}));
 
     /* ===== §5 视觉规格：对比度 / 字号 / 44px / 四档溢出 ===== */
     await setReport(dg);

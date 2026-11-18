@@ -15,6 +15,13 @@
   var $ = function(s){ return document.querySelector(s); };
   var $$ = function(s){ return Array.prototype.slice.call(document.querySelectorAll(s)); };
 
+  /* 画像标签：任务/历史里存的是 AGENT_EASY 这类标记，渲染时换成可读名 */
+  function profileLabelOf(tag){
+    var m=/^AGENT_([A-Z]+)$/.exec(String(tag||''));
+    if(m&&P.AGENT_PROFILES&&P.AGENT_PROFILES[m[1]])return P.AGENT_PROFILES[m[1]].label;
+    return tag||'—';
+  }
+
   /* ① 顶栏当前项高亮：主导航 4 项 + 工具区子页面 */
   function markNav(){
     $$('.mainnav a, .tool').forEach(function(a){
@@ -44,8 +51,9 @@
     /* 只读回填配置快照条（有无 cfg 都与执行无关） */
     if(cfg){
       var put=function(sel,v){var e=$(sel);if(e)e.textContent=v;};
-      put('#mTarget',cfg.url); put('#mType',({sqli:'SQL 注入',xss:'XSS',upload:'文件上传'})[cfg.vulnType]||cfg.vulnType);
-      put('#mScript',cfg.agent?'自主攻击 / AGENT LOOP':cfg.script);
+      put('#mTarget',cfg.url);
+      put('#mType','攻击后由命中点位判定');
+      put('#mScript','自主攻击 / AGENT LOOP');
       put('#mScope',/lab|localhost|127\.0\.0\.1|::1/.test(cfg.url)?'授权靶场':'越界 · 纯模拟');
     }
 
@@ -60,8 +68,7 @@
       /* 授权视为已在任务台勾选确认；仅此处、仅此刻执行一次 */
       /* v0.23：cfg.agent 决定走状态驱动的自主攻击闭环，默认仍是三剧本演示；
          执行开关始终是这一次性 pendingRun，cfg 残留不会触发任何任务。 */
-      P.runTask({url:cfg.url, vulnType:cfg.vulnType, script:cfg.script,
-        authed:true, agent:!!cfg.agent});
+      P.runTask({url:cfg.url, script:'AGENT_LOOP', authed:true, agent:true});
       return;
     }
 
@@ -355,7 +362,7 @@
     var frame=$('#historyFrame'); if(frame)frame.classList.remove('hidden');
     body.innerHTML=hist.map(function(h){
       return '<tr><td class="mono">'+esc(h.id)+'</td><td class="mono">'+esc(h.time)+'</td><td>'+esc(h.alias)+
-        '</td><td class="mono">'+esc(h.script)+'</td><td>'+h.rounds+'</td><td class="mono">'+esc(h.reason)+
+        '</td><td class="mono">'+esc(profileLabelOf(h.script))+'</td><td>'+h.rounds+'</td><td class="mono">'+esc(h.reason)+
         '</td><td>mock_flag=true</td></tr>';
     }).join('');
   }
@@ -364,9 +371,7 @@
      「下一次任务默认值」可改，写 Store.defaults，仅预填任务台表单，绝不置位 pendingRun；
      「边界与契约 / 剧本库 / 终态判定 / 最近任务」全部实时取自引擎导出（CONFIG / SCRIPTS /
      SCOPE / Store），页面不写死参数值。用户输入一律以 textContent 写入，避免注入。 */
-  var SCN_NAME={CONVERGE_3:'三轮收敛命中',NO_CONVERGE:'八轮未收敛',DEGRADED:'模型降级'};
-  var TYPE_NAME={sqli:'SQL 注入',xss:'XSS',upload:'文件上传'};
-  var FACTORY={url:'http://127.0.0.1/lab/sqli_01.php',vulnType:'sqli',script:'CONVERGE_3'};
+  var FACTORY={url:'http://127.0.0.1/lab/sqli_01.php'};
   var LETTER=['A','B','C','D','E'];
 
   function mk(tag,cls,text){
@@ -376,14 +381,26 @@
     return n;
   }
 
+  /* 画像逐轮预览：完全复用运行时的决策与响应模拟，避免配置页另写一套判断导致漂移 */
+  function previewProfile(prof,cap){
+    var hist=[], out=[];
+    for(var no=1;no<=cap;no++){
+      var plan=P.planNextRound(hist,prof,no);
+      var resp=P.agentResponse(plan.op,prof,no,plan.degraded);
+      out.push({no:no,cls:resp.cls,degraded:!!resp.degraded,triggered:!!resp.triggered,op:plan.op.id});
+      hist.push({opId:plan.op.id,cls:resp.cls,sig:resp.sig});
+      if(resp.triggered)break;
+    }
+    return out;
+  }
+
   function bootSettings(){
     var c=P.CONFIG||{};
-    var scripts=P.SCRIPTS||{};
     var put=function(sel,v){var e=$(sel);if(e)e.textContent=String(v);};
     put('#cfgMode',c.ENGINE_MODE); put('#cfgMax',c.MAX_ROUNDS); put('#cfgTick',c.TICK_SPEED);
     put('#cfgAdapter','MOCK'); put('#cfgRuleset','LAB-RULESET-01'); put('#cfgContract','1.0');
     put('#cfgApi',c.API_BASE_URL||'—');
-    put('#cfgScnCount',Object.keys(scripts).length);
+    put('#cfgScnCount',Object.keys(P.AGENT_PROFILES||{}).length);
 
     /* 授权白名单：真值来自引擎 SCOPE；两条通配规则与 scopeOK() 的判定一致 */
     var chips=$('#cfgChips');
@@ -392,74 +409,64 @@
       ['*.lab','lab-*'].forEach(function(h){ chips.appendChild(mk('span','cfg-chip cfg-chip--wild',h)); });
     }
 
-    /* 剧本库：逐轮格子由 SCRIPTS 的 cls / degradeFrom 渲染，一个值都不写死 */
+    /* 靶场画像：由 URL 派生，用户不选。逐轮预览直接复用运行时的
+       planNextRound / agentResponse 推演，显示的是真会跑出来的结果，不是文案描述。 */
     var scnWrap=$('#cfgScn');
-    if(scnWrap){
-      Object.keys(scripts).forEach(function(key,i){
-        var sc=scripts[key]||{}, rounds=sc.rounds||[];
-        var card=mk('article','cfg-scn__card'); card.setAttribute('data-script',key);
+    if(scnWrap&&P.AGENT_PROFILES){
+      var PROFILE_ORDER=['EASY','HARD','DECEPTIVE'];
+      var PROFILE_RULE={
+        EASY:'路径不含 hard / fort / 加固，也不含 trap / deceptive / 诱导',
+        HARD:'路径含 hard / fort / 加固',
+        DECEPTIVE:'路径含 trap / deceptive / 诱导'
+      };
+      var STATE_NAME={hit:'HIT · 攻破',nofind:'NOT FOUND · 未攻破',degraded:'DEGRADED · 降级后攻破'};
+      PROFILE_ORDER.forEach(function(key){
+        var prof=P.AGENT_PROFILES[key]; if(!prof)return;
+        var cap=c.MAX_ROUNDS||8;
+        var steps=previewProfile(prof,cap);
+        var breached=steps.some(function(s){return s.triggered;});
+        var degN=steps.filter(function(s){return s.degraded;}).length;
+        var termState=!breached?'nofind':(degN?'degraded':'hit');
+        var card=mk('article','cfg-scn__card'); card.setAttribute('data-profile',key);
         var top=mk('div','cfg-scn__top');
-        top.appendChild(mk('span','cfg-scn__tag',LETTER[i]||String(i+1)));
-        top.appendChild(mk('h3','cfg-scn__name',SCN_NAME[key]||key));
+        top.appendChild(mk('span','cfg-scn__tag',String(PROFILE_ORDER.indexOf(key)+1)));
+        top.appendChild(mk('h3','cfg-scn__name',prof.label));
         top.appendChild(mk('span','cfg-scn__en',key));
         card.appendChild(top);
-        var degN=rounds.filter(function(r,idx){ return sc.degradeFrom&&(idx+1)>=sc.degradeFrom; }).length;
-        var cap=(c.MAX_ROUNDS||rounds.length);
         card.appendChild(mk('p','cfg-scn__meta',
-          '轮数 '+rounds.length+' / 上限 '+cap+' · 终止 '+sc.terminate_reason+' · 降级轮 '+degN));
-        /* v0.22：用与运行时完全相同的裁决规则预告每套剧本会产生几轮分歧，
-           让「失败样本」在演示动线的起点（剧本库）就能被指出来，而不是只在报告里出现 */
-        var vd=rounds.map(function(r,idx){
-          var no=idx+1, gt=P.groundTruthOf(key,no);
-          return P.oracleVerdict(!!r.hit,gt,{outOfScope:false,
-            degraded:!!(sc.degradeFrom&&no>=sc.degradeFrom)});
-        });
-        var vConf=vd.filter(function(v){return v==='CONFIRMED';}).length;
-        var vRef=vd.filter(function(v){return v==='REFUTED';}).length;
-        var vClash=vd.filter(function(v){return v==='REFUTED'||v==='MISSED'||v==='UNCONFIRMED';}).length;
-        card.appendChild(mk('p','cfg-scn__audit'+(vClash?' is-warn':''),
-          '裁决 '+P.GROUND_TRUTH.label_set+' · 确认 '+vConf+' · 证伪 '+vRef+' · 待复核 '+vClash));
+          '轮数 '+steps.length+' / 上限 '+cap+' · 预期终态 '+STATE_NAME[termState]+' · 降级轮 '+degN));
+        card.appendChild(mk('p','cfg-scn__rule','派生条件：'+PROFILE_RULE[key]));
         var rail=mk('div','cfg-rail'); rail.setAttribute('aria-hidden','true');
-        rounds.forEach(function(r,idx){
-          var cell=mk('i',null,idx+1);
-          cell.setAttribute('data-cls',r.cls);
-          if(sc.degradeFrom&&(idx+1)>=sc.degradeFrom)cell.classList.add('is-deg');
+        steps.forEach(function(s){
+          var cell=mk('i',null,s.no);
+          cell.setAttribute('data-cls',s.cls);
+          if(s.degraded)cell.classList.add('is-deg');
           rail.appendChild(cell);
         });
-        /* 未使用的轮次预算画成空槽：三张卡永远是同一把 8 格刻度，早停与否一眼可读 */
-        for(var e=rounds.length;e<cap;e++)rail.appendChild(mk('i','is-empty',''));
+        for(var e=steps.length;e<cap;e++)rail.appendChild(mk('i','is-empty',''));
         card.appendChild(rail);
-        var btn=mk('button','cfg-load','载入到 01');
-        btn.type='button'; btn.setAttribute('data-load',key);
-        card.appendChild(btn);
         scnWrap.appendChild(card);
       });
     }
 
     /* 默认值表单 */
-    var urlEl=$('#cfgUrl'), typeEl=$('#cfgType'), scriptEl=$('#cfgScript'), msg=$('#cfgMsg');
+    var urlEl=$('#cfgUrl'), msg=$('#cfgMsg');
     function say(t,k){ if(!msg)return; msg.textContent=t||''; msg.className='cfg-msg'+(k?' '+k:''); }
     function read(){
-      return {url:urlEl?urlEl.value.trim():FACTORY.url,
-              vulnType:typeEl?typeEl.value:FACTORY.vulnType,
-              script:scriptEl?scriptEl.value:FACTORY.script};
+      return {url:urlEl?urlEl.value.trim():FACTORY.url};
     }
     function fill(d){
       if(!d)return;
       if(urlEl&&d.url)urlEl.value=d.url;
-      if(typeEl&&d.vulnType)typeEl.value=d.vulnType;
-      if(scriptEl&&d.script)scriptEl.value=d.script;
+
     }
     /* 待改标记：当前值与已保存默认值（无则出厂值）不一致的行点亮方块 */
     function mark(){
       var base=(P.Store.getDefaults&&P.Store.getDefaults())||FACTORY;
       var cur=read();
-      ['url','vulnType','script'].forEach(function(k){
+      ['url'].forEach(function(k){
         var row=$('.cfg-row[data-row="'+k+'"]');
         if(row)row.classList.toggle('is-dirty',String(cur[k])!==String(base[k]));
-      });
-      $$('.cfg-scn__card').forEach(function(card){
-        card.classList.toggle('is-loaded',card.getAttribute('data-script')===cur.script);
       });
     }
     fill(P.Store.getDefaults?P.Store.getDefaults():null);
@@ -472,7 +479,6 @@
         if(urlEl)urlEl.focus();
         return false;
       }
-      if(!scripts[d.script])d.script=FACTORY.script;
       if(P.Store.setDefaults)P.Store.setDefaults(d);
       mark(); say('已保存 · 任务台将按此预填，不会自动执行','ok');
       return true;
@@ -490,16 +496,7 @@
     }
     var toBtn=$('#cfgToConsole');
     if(toBtn)toBtn.addEventListener('click',function(){ if(save())go('console.html'); });
-    [urlEl,typeEl,scriptEl].forEach(function(e){
-      if(e)e.addEventListener(e.tagName==='INPUT'?'input':'change',mark);
-    });
-    if(scnWrap)scnWrap.addEventListener('click',function(e){
-      var b=e.target&&e.target.closest?e.target.closest('.cfg-load'):null;
-      if(!b)return;
-      var key=b.getAttribute('data-load');
-      if(scriptEl&&scripts[key])scriptEl.value=key;
-      mark(); say('已载入「'+(SCN_NAME[key]||key)+'」到 01，保存后生效','ok');
-    });
+    if(urlEl)urlEl.addEventListener('input',mark);
 
     /* 最近一次任务：只读回显 cfg 快照与报告终态，不写任何 Store */
     var rows=$('#cfgLastRows'), empty=$('#cfgLastEmpty'), repBtn=$('#cfgGoReport');
@@ -515,8 +512,7 @@
       rows.innerHTML='';
       if(cfgP){
         rows.appendChild(kv('目标 / Target',cfgP.url||'—'));
-        rows.appendChild(kv('漏洞类型 / Type',TYPE_NAME[cfgP.vulnType]||cfgP.vulnType||'—'));
-        rows.appendChild(kv('剧本 / Scenario',SCN_NAME[cfgP.script]||cfgP.script||'—'));
+        rows.appendChild(kv('靶场画像 / Profile',profileLabelOf(cfgP.script)));
       }
       if(repP){
         var st=P.resolveTerminalState(repP);
@@ -545,11 +541,11 @@
     /* 配置中心保存的默认值：只预填表单初始值，不置位执行意图、不触发任何任务 */
     var d=P.Store.getDefaults?P.Store.getDefaults():null;
     if(d){
-      var uEl=$('#urlInput'), tEl=$('#typeSel'), sEl=$('#scriptSel');
+      var uEl=$('#urlInput');
       if(uEl&&d.url)uEl.value=d.url;
-      if(tEl&&d.vulnType)tEl.value=d.vulnType;
-      if(sEl&&d.script)sEl.value=d.script;
     }
+    /* 唯一入口：填网址 → 开始攻击。靶场强度与漏洞类型均由目标自身决定，
+       用户不再选择剧本或漏洞类型（那是攻击的产出，不是输入）。 */
     var btn=$('#startBtn');
     if(btn){
       btn.addEventListener('click',function(e){
@@ -563,9 +559,8 @@
           return;
         }
         e.stopImmediatePropagation();
-        P.Store.setCfg({url:url, vulnType:$('#typeSel')?$('#typeSel').value:'sqli',
-          script:$('#scriptSel')?$('#scriptSel').value:'CONVERGE_3'});
-        /* 一次性执行意图：只有真实点击「开始分析」才置位；监控页读后立即清除并消费。
+        P.Store.setCfg({url:url, script:'AGENT_LOOP', agent:true});
+        /* 一次性执行意图：只有真实点击才置位；监控页读后立即清除并消费。
            cfg 仅回填只读快照条，不再作为执行开关，故浏览/导航/刷新都不会触发任务。 */
         if(P.Store.setPendingRun) P.Store.setPendingRun();
         var link=$('#runLink');
@@ -573,29 +568,7 @@
         else location.href='monitor.html';
       },true);
     }
-    /* v0.23 自主攻击入口：与「开始分析」共用授权闸门、URL 校验和一次性 pendingRun 意图，
-       差别只在 cfg.agent 标记——监控页据此选择状态驱动的 Agent Loop 而非固定剧本。 */
-    var agentBtn=$('#agentBtn');
-    if(agentBtn){
-      agentBtn.addEventListener('click',function(e){
-        var urlEl=$('#urlInput'); if(!urlEl)return;
-        var url=urlEl.value.trim();
-        var chk=$('#authChk'); var msg=$('#msg');
-        if(chk&&!chk.checked){ P.syncStart(); return; }
-        if(!/^https?:\/\/[^\s]+$/i.test(url)){
-          if(msg){msg.textContent='请输入以 http:// 或 https:// 开头的合法地址';msg.className='err';}
-          return;
-        }
-        e.stopImmediatePropagation();
-        P.Store.setCfg({url:url, vulnType:$('#typeSel')?$('#typeSel').value:'sqli',
-          script:'AGENT_LOOP', agent:true});
-        if(P.Store.setPendingRun) P.Store.setPendingRun();
-        var link=$('#runLink');
-        if(link) link.click();
-        else location.href='monitor.html';
-      },true);
-    }
-    /* 授权勾选变化时同步两个入口的可用态（引擎已绑 change，这里仅兜底可见性） */
+    /* 授权勾选变化时同步入口可用态（引擎已绑 change，这里仅兜底可见性） */
     var chk=$('#authChk');
     if(chk) chk.addEventListener('change',function(){ P.syncStart(); });
   }

@@ -7,7 +7,7 @@
     01 下一次任务默认值 —— 可改，写 Store.defaults，只预填任务台表单，
        绝不置位 pendingRun，因此「保存 / 恢复出厂 / 带到任务台」都不会产生任务。
     02 边界与契约 —— 冻结常量取自脚本顶部 CONFIG，只读投影，不提供写入。
-    03 剧本库 / 04 终态判定 / 05 最近任务 —— 全部由引擎导出（SCRIPTS / CONFIG / Store）
+    03 靶场画像 / 04 终态判定 / 05 最近任务 —— 全部由引擎导出（AGENT_PROFILES / CONFIG / Store）
        实时渲染，页面不写死任何参数值。
   零外部请求，file:// 可运行；[data-nav] 走 core.js 圆形揭幕跨页过渡。
 -->
@@ -64,9 +64,9 @@
     <small>fast / demo / slow 三档</small>
   </div>
   <div class="cfg-read__cell">
-    <span class="lbl">Scenarios / 剧本</span>
+    <span class="lbl">Profiles / 靶场画像</span>
     <b id="cfgScnCount">3</b>
-    <small>固定剧本 · 逐轮数据见 03</small>
+    <small>由 URL 派生 · 详见 03</small>
   </div>
 </section>
 
@@ -83,31 +83,7 @@
         <div class="cfg-row__ctl">
           <input id="cfgUrl" type="text" value="http://127.0.0.1/lab/sqli_01.php"
                  placeholder="http://127.0.0.1/lab/sqli_01.php" autocomplete="off" spellcheck="false">
-          <p class="cfg-row__note">仅作展示字符串与参数点位来源，本演示不向该地址发起任何请求。</p>
-        </div>
-      </div>
-      <div class="cfg-row" data-row="vulnType">
-        <span class="cfg-row__mark" aria-hidden="true"></span>
-        <label class="cfg-row__label" for="cfgType">漏洞类型<span>Vuln type</span></label>
-        <div class="cfg-row__ctl">
-          <select id="cfgType">
-            <option value="sqli">SQL 注入</option>
-            <option value="xss">XSS</option>
-            <option value="upload">文件上传</option>
-          </select>
-          <p class="cfg-row__note">决定抽象参数点位：SQLi 为 id，XSS 为 q，文件上传为 file。</p>
-        </div>
-      </div>
-      <div class="cfg-row" data-row="script">
-        <span class="cfg-row__mark" aria-hidden="true"></span>
-        <label class="cfg-row__label" for="cfgScript">演示剧本<span>Scenario</span></label>
-        <div class="cfg-row__ctl">
-          <select id="cfgScript">
-            <option value="CONVERGE_3">三轮收敛命中</option>
-            <option value="NO_CONVERGE">八轮未收敛</option>
-            <option value="DEGRADED">模型降级</option>
-          </select>
-          <p class="cfg-row__note">三套固定剧本，逐轮响应分类与降级轮次见 03 剧本库。</p>
+          <p class="cfg-row__note">仅作展示字符串与参数点位来源，本演示不向该地址发起任何请求。靶场强度与漏洞类型由目标自身决定，无需在此指定。</p>
         </div>
       </div>
     </div>
@@ -117,7 +93,7 @@
       <button id="cfgToConsole" class="btn-ghost" type="button" data-ripple>带到任务台</button>
       <span class="msg-box"><span id="cfgMsg" class="cfg-msg" role="status" aria-live="polite"></span></span>
     </div>
-    <p class="hint">默认值只影响任务台表单的初始值与下拉选项；执行仍需在任务台勾选授权并点击「开始分析」。</p>
+    <p class="hint">默认值只影响任务台目标地址的初始值；执行仍需在任务台勾选授权并点击「开始攻击」。</p>
   </section>
 
   <div class="cfg-side">
@@ -146,11 +122,11 @@
   </div>
 </div>
 
-<section class="cfg-block" aria-label="演示剧本库">
+<section class="cfg-block" aria-label="靶场画像">
   <div class="cfg-head">
     <span class="cfg-no">03</span>
-    <h2 class="cfg-title">演示剧本库<em>Scenarios</em></h2>
-    <span class="cfg-head__note">载入到 01 后保存生效 · 横杠=拦截　实心=异常命中　虚线框=降级轮　空槽=未使用轮次</span>
+    <h2 class="cfg-title">靶场画像<em>Profiles</em></h2>
+    <span class="cfg-head__note">由目标路径派生，不需要用户选择 · 横杠=拦截　实心=攻破　虚线框=降级轮　空槽=未使用轮次</span>
   </div>
   <div class="cfg-scn" id="cfgScn"></div>
 </section>

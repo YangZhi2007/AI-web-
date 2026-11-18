@@ -150,9 +150,9 @@ const chrome = spawn(CHROME, ['--headless=new','--disable-gpu','--no-first-run',
     /* ===== §12 触发契约抽样（独立复核，不依赖既有 harness）===== */
     console.log('=== §12 触发契约抽样 ===');
     const reset=()=>c.eval(`['probe.cfg','probe.report','probe.history','probe.pendingRun'].forEach(k=>{try{sessionStorage.removeItem(k)}catch(e){}})`);
-    const runTo=async(script,url,max=80)=>{
+    const runTo=async(url,max=80)=>{
       await c.eval(`sessionStorage.setItem('probe.pendingRun','1');sessionStorage.setItem('probe.cfg',`+
-        `JSON.stringify({url:${JSON.stringify(url)},vulnType:'sqli',script:${JSON.stringify(script)}}))`);
+        `JSON.stringify({url:${JSON.stringify(url)},agent:true,script:'AGENT_LOOP'}))`);
       await c.goto(fileUrl('monitor.html'));
       let s='idle';
       for(let i=0;i<max;i++){ s=await c.eval(`document.querySelector('#dash').dataset.state`);
@@ -168,26 +168,25 @@ const chrome = spawn(CHROME, ['--headless=new','--disable-gpu','--no-first-run',
     console.log('  空 Store 进 monitor: '+JSON.stringify(empty));
     await c.goto(fileUrl('console.html')); await reset();
     await c.goto(fileUrl('monitor.html'));
-    const cfgOnly=await c.eval(`(()=>{sessionStorage.setItem('probe.cfg',JSON.stringify({url:'http://127.0.0.1/lab/x',vulnType:'sqli',script:'CONVERGE_3'}));return 1})()`);
+    const cfgOnly=await c.eval(`(()=>{sessionStorage.setItem('probe.cfg',JSON.stringify({url:'http://127.0.0.1/lab/x',agent:true,script:'AGENT_LOOP'}));return 1})()`);
     await c.goto(fileUrl('monitor.html'));
     const cfg=await c.eval(`(()=>({state:document.querySelector('#dash').dataset.state,
       report:!!sessionStorage.getItem('probe.report'),target:document.querySelector('#mTarget').textContent}))()`);
     R.contract.push({case:'仅残留 probe.cfg',...cfg});
     console.log('  仅残留 cfg: '+JSON.stringify(cfg));
-    const deg=await runTo('DEGRADED','http://127.0.0.1/lab/x');
-    R.contract.push({case:'DEGRADED 剧本',state:deg});
-    console.log('  DEGRADED → '+deg);
-    const oos=await runTo('CONVERGE_3','https://example.com/x');
+    const deg=await runTo('http://127.0.0.1/lab/trap/x');
+    R.contract.push({case:'诱导靶场（降级+误报）',state:deg});
+    console.log('  诱导靶场 → '+deg);
+    const oos=await runTo('https://example.com/x');
     R.contract.push({case:'越界目标',state:oos});
     console.log('  越界 → '+oos);
-    const nf=await runTo('NO_CONVERGE','http://127.0.0.1/lab/x');
-    R.contract.push({case:'NO_CONVERGE 剧本',state:nf});
-    console.log('  NO_CONVERGE → '+nf);
+    const nf=await runTo('http://127.0.0.1/lab/hard/x');
+    R.contract.push({case:'加固靶场（打不穿）',state:nf});
+    console.log('  加固靶场 → '+nf);
     /* 真实点击一次到 hit + 刷新不重跑 */
     await c.goto(fileUrl('console.html')); await reset();
     await c.goto(fileUrl('console.html'));
     await c.eval(`document.querySelector('#urlInput').value='http://127.0.0.1/lab/sqli_01.php';
-      document.querySelector('#typeSel').value='sqli';document.querySelector('#scriptSel').value='CONVERGE_3';
       if(!document.querySelector('#authChk').checked)document.querySelector('#authChk').click();`);
     const before=await c.eval(`({disabled:document.querySelector('#startBtn').disabled,pending:sessionStorage.getItem('probe.pendingRun')})`);
     await c.eval(`document.querySelector('#startBtn').click()`);

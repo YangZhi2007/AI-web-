@@ -135,7 +135,7 @@ const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run
     }))()`);
     ok('5 附录 + 导出按钮 + 空态隐藏', s.secs === 5 && s.export && s.emptyHidden && !s.wrapHidden,
       'secs=' + s.secs);
-    ok('签发章终态与引擎判定一致（hit / 已检出）', s.seal === 'hit' && s.glyph === 'hit' && s.verdict === '已检出',
+    ok('签发章终态与引擎判定一致（hit / 已攻破）', s.seal === 'hit' && s.glyph === 'hit' && s.verdict === '已攻破',
       s.seal + ' / ' + s.verdict + ' / ' + s.term);
     ok('签发章不重复 HIT · HIT', s.term.indexOf('HIT · HIT') < 0, s.term);
     ok('3 读数取自 report 真值', s.stats[0].indexOf(String(r.rounds.length)) === 0 &&
@@ -197,10 +197,10 @@ const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run
 
     /* ===== §5 四个终态分支（派生边界输入，仅验证渲染分支） ===== */
     const cases = [
-      { name: 'HIT', mutate: x => x, expect: ['hit', '已检出'] },
-      { name: 'MAX_ROUNDS', mutate: x => { x.terminate_reason = 'MAX_ROUNDS'; x.findings = []; x.rounds.forEach(q => q.hit_signal = false); return x; }, expect: ['nofind', '未检出'] },
-      { name: 'DEGRADED', mutate: x => { x.terminate_reason = 'HIT'; x.degraded_rounds = [2, 3]; x.rounds[1].degraded_flag = true; x.rounds[2].degraded_flag = true; return x; }, expect: ['degraded', '降级命中'] },
-      { name: 'OOS', mutate: x => { x.task.out_of_scope = true; x.terminate_reason = 'HIT'; return x; }, expect: ['oos', '纯模拟'] }
+      { name: 'HIT', mutate: x => x, expect: ['hit', '已攻破'] },
+      { name: 'MAX_ROUNDS', mutate: x => { x.terminate_reason = 'MAX_ROUNDS'; x.findings = []; x.rounds.forEach(q => q.hit_signal = false); return x; }, expect: ['nofind', '未攻破'] },
+      { name: 'DEGRADED', mutate: x => { x.terminate_reason = 'HIT'; x.degraded_rounds = [2, 3]; x.rounds[1].degraded_flag = true; x.rounds[2].degraded_flag = true; return x; }, expect: ['degraded', '降级攻破'] },
+      { name: 'OOS', mutate: x => { x.task.out_of_scope = true; x.terminate_reason = 'HIT'; return x; }, expect: ['oos', '模拟命中'] }
     ];
     for (const cs of cases) {
       const obj = cs.mutate(JSON.parse(rep));

@@ -261,7 +261,7 @@ class CDP {
     }))()`);
     ok('证据页恢复逐轮表(3 行)', ev.rows === 3, 'rows=' + ev.rows);
     ok('关键路径高亮命中轮', ev.keyRows === 1, 'key=' + ev.keyRows);
-    ok('结论已检出', ev.verdict === '已检出', ev.verdict);
+    ok('结论已检出 · 已攻破', ev.verdict === '已攻破', ev.verdict);
     ok('证据页状态 HIT', ev.state === 'HIT', ev.state);
     ok('证据内容可见', ev.wrapHidden === false);
 
@@ -304,12 +304,12 @@ class CDP {
     ok('pendingRun 不被子页面误消费（仅监控页消费）', navResult.pending === '1');
     await c.eval(`sessionStorage.removeItem('probe.pendingRun');`);  // 清掉模拟意图，避免污染后续用例
 
-    // ---- 7. NO_CONVERGE → nofind（不被覆盖）----
-    await c.eval(`sessionStorage.setItem('probe.pendingRun','1');sessionStorage.setItem('probe.cfg', JSON.stringify({url:'http://127.0.0.1/lab/x',vulnType:'sqli',script:'NO_CONVERGE'}));`);
+    // ---- 7. 加固靶场 → nofind（剧本已移除，由 URL 派生靶场画像）----
+    await c.eval(`sessionStorage.setItem('probe.pendingRun','1');sessionStorage.setItem('probe.cfg', JSON.stringify({url:'http://127.0.0.1/lab/hard/x',agent:true,script:'AGENT_LOOP'}));`);
     await c.goto(fileUrl('monitor.html'));
     let st2 = 'idle', t2 = 0;
     while (t2++ < 100) { st2 = await c.eval(`document.querySelector('#dash').dataset.state`); if (['hit','nofind','degraded','oos','cancel','error'].includes(st2)) break; await sleep(250); }
-    ok('NO_CONVERGE → nofind（关键回归不被覆盖）', st2 === 'nofind', 'state=' + st2);
+    ok('加固靶场 → nofind（关键回归不被覆盖）', st2 === 'nofind', 'state=' + st2);
 
     // ---- 8. 越界 → oos ----
     await c.eval(`sessionStorage.setItem('probe.pendingRun','1');sessionStorage.setItem('probe.cfg', JSON.stringify({url:'https://example.com/x',vulnType:'sqli',script:'CONVERGE_3'}));`);
