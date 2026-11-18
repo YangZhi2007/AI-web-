@@ -7,6 +7,9 @@
 <script>try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classList.add('pt-cover'); }catch(e){}</script>
 <link rel="stylesheet" href="../css/core.css" />
 <link rel="stylesheet" href="css/hf.css" />
+<!-- 访问守卫：未登录跳登录页；head 内同步执行，正文不会闪现 -->
+<script src="js/auth.js"></script>
+<script>try{ HFAuth.guard(); }catch(e){}</script>
 </head>
 <body data-page="hfdash" data-hf-page="eval">
 <div class="hf-shell">
@@ -33,6 +36,10 @@
       <span>标注集 <b>HF-LAB-02</b></span>
       <span>引擎 <b>V1.1</b> · 零训练</span>
       <span>外联 <b>0</b> · mock 模式</span>
+      <div class="hf-acct">
+        <span class="hf-acct__who" data-acct>—</span>
+        <button class="hf-acct__out" type="button" data-logout>退出</button>
+      </div>
     </div>
   </aside>
 

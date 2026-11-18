@@ -648,8 +648,23 @@
     });
   }
 
+  /* 账户条：显示当前管理员并绑定退出。会话由 js/auth.js 维护。 */
+  function bindAccount() {
+    var A = window.HFAuth;
+    if (!A) return;
+    var s = A.session();
+    var who = $('[data-acct]');
+    if (who) who.textContent = s ? s.user + ' · ' + s.role : '未登录';
+    var out = $('[data-logout]');
+    if (out) out.addEventListener('click', function () {
+      A.logout();
+      location.replace('login.html');
+    });
+  }
+
   function init() {
     markNav();
+    bindAccount();
     if (page === 'probe') bootProbe();
     if (page === 'sample') bootSample();
     if (page === 'eval') bootEval();

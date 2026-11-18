@@ -44,9 +44,20 @@ const check = (name, ok, detail) => {
     await send('Page.enable'); await send('Runtime.enable');
     await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
 
+    /* ⓿ 管理员登录：看板页面均受访问守卫保护，先真实走一遍登录流程 */
+    async function hfLogin(nav, run) {
+      await nav(fileUrl('hf/login.html'));
+      await run("(function(){document.getElementById('lgUser').value='admin';"
+        + "document.getElementById('lgPass').value='HfLab@2026';"
+        + "document.getElementById('lgForm').dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));})()");
+      await sleep(1500);
+    }
+    await hfLogin(go, ev);
+
+
     /* ① 先跑一次评测写入 Store（所有新页的数据源） */
     await go(fileUrl('hf/probe.html'));
-    await ev('sessionStorage.clear()');
+    await ev('sessionStorage.removeItem("hf.eval")');
     await go(fileUrl('hf/probe.html'));
     await ev('document.querySelector("#hfRun").click()');
     await sleep(550);

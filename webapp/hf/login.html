@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>管理员登录 · 幻觉溯源看板</title>
+<link rel="stylesheet" href="../css/core.css" />
+<link rel="stylesheet" href="css/hf.css" />
+<!-- 守卫前置：已登录直接进目标页，避免登录表单闪现 -->
+<script src="js/auth.js"></script>
+<script>
+  try { HFAuth.redirectIfLoggedIn(); } catch (e) {}
+</script>
+</head>
+<body class="lg-page">
+
+<main class="lg-wrap">
+
+  <div class="lg-brand">
+    <span class="lg-brand__mark" aria-hidden="true"></span>
+    <span class="lg-brand__txt">
+      <b>HF / LAB</b>
+      <span>幻觉溯源自愈 · 后端看板</span>
+    </span>
+  </div>
+
+  <section class="lg-card" aria-labelledby="lgTitle">
+    <h1 id="lgTitle">管理员登录</h1>
+    <p class="lg-card__sub">本看板包含判定口径、真值库与评测记录，仅限授权管理员访问。</p>
+    <div class="lg-card__rule"></div>
+
+    <form class="lg-form" id="lgForm" novalidate>
+      <div class="field">
+        <label class="lbl" for="lgUser">管理员账号</label>
+        <input id="lgUser" name="user" type="text" autocomplete="username"
+               spellcheck="false" autocapitalize="off" required />
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="lgPass">口令</label>
+        <div class="lg-pw">
+          <input id="lgPass" name="password" type="password"
+                 autocomplete="current-password" required />
+          <button class="lg-pw__btn" type="button" id="lgToggle"
+                  aria-pressed="false" aria-controls="lgPass">显示</button>
+        </div>
+      </div>
+
+      <p class="lg-err" id="lgErr" role="alert"></p>
+
+      <button class="btn-solid lg-submit" type="submit" id="lgBtn">登录</button>
+    </form>
+  </section>
+
+  <aside class="lg-note" aria-label="演示凭据与安全边界">
+    <p class="lg-note__h">演示凭据 / DEMO</p>
+    <dl>
+      <dt>账号</dt><dd>admin</dd>
+      <dt>口令</dt><dd>HfLab@2026</dd>
+    </dl>
+    <p>
+      口令以加盐 2048 轮 SHA-256 派生值比对，源码中<strong>不存明文</strong>；会话写入
+      sessionStorage，关闭标签页即失效，上限 8 小时；连续 5 次失败临时锁定，锁定时长逐次翻倍。
+    </p>
+    <p style="margin-top:8px">
+      <strong>安全边界：</strong>本站点是 file:// 纯前端演示，没有服务端，任何客户端校验都能被绕过。
+      这里的登录是<strong>访问控制流程的演示</strong>，不构成真实身份认证；正式部署须改为服务端会话
+      （HttpOnly Cookie）并在服务端逐次校验权限。
+    </p>
+  </aside>
+
+  <div class="lg-foot">
+    <span>标注集 <b>HF-LAB-02</b></span>
+    <span>引擎 <b>V1.1</b> · 零训练</span>
+    <span>外联 <b>0</b></span>
+  </div>
+
+</main>
+
+<script>
+(function () {
+  'use strict';
+  var f = document.getElementById('lgForm');
+  var user = document.getElementById('lgUser');
+  var pass = document.getElementById('lgPass');
+  var err = document.getElementById('lgErr');
+  var btn = document.getElementById('lgBtn');
+  var toggle = document.getElementById('lgToggle');
+
+  var next = 'index.html';
+  try {
+    next = HFAuth.safeNext(new URLSearchParams(location.search).get('next'));
+  } catch (e) {}
+
+  toggle.addEventListener('click', function () {
+    var showing = pass.type === 'text';
+    pass.type = showing ? 'password' : 'text';
+    toggle.setAttribute('aria-pressed', showing ? 'false' : 'true');
+    toggle.textContent = showing ? '显示' : '隐藏';
+    pass.focus();
+  });
+
+  f.addEventListener('submit', function (e) {
+    e.preventDefault();
+    err.textContent = '';
+    btn.disabled = true;
+    btn.textContent = '验证中…';
+
+    /* 先让按钮态绘制，再做 2048 轮派生，避免点击无反馈 */
+    setTimeout(function () {
+      var r = HFAuth.login(user.value, pass.value);
+      if (r.ok) {
+        location.replace(next);
+        return;
+      }
+      err.textContent = r.msg || '登录失败';
+      btn.disabled = false;
+      btn.textContent = '登录';
+      pass.value = '';
+      pass.focus();
+    }, 16);
+  });
+
+  user.focus();
+})();
+</script>
+
+</body>
+</html>

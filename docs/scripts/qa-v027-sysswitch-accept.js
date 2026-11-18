@@ -82,6 +82,16 @@ const HF_PAGES = [
     check('绕过系统导航未破坏', navBroken.length === 0, 'console mainnav|tools=' + (navBroken[0] || '4|3'));
 
     /* ② 看板壳：侧栏 248 宽、9 项导航、当前项高亮、无绕过系统互链 */
+
+    /* ⓿ 管理员登录：看板页面均受访问守卫保护，先真实走一遍登录流程 */
+    async function hfLogin(nav, run) {
+      await nav(fileUrl('hf/login.html'));
+      await run("(function(){document.getElementById('lgUser').value='admin';"
+        + "document.getElementById('lgPass').value='HfLab@2026';"
+        + "document.getElementById('lgForm').dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));})()");
+      await sleep(1500);
+    }
+    await hfLogin(goto, evalx);
     await goto(fileUrl('hf/index.html'));
     /* 避免在模板字符串里写含 "/" 的正则字面量（会提前终止正则）；改用字符串判断 */
     const shell = await evalx(`(()=>{
@@ -123,7 +133,7 @@ const HF_PAGES = [
 
     /* ④ 看板数据引擎可用：probe 跑一次出 10 行，跨页 Store 生效 */
     await goto(fileUrl('hf/probe.html'));
-    await evalx('sessionStorage.clear()');
+    await evalx('sessionStorage.removeItem("hf.eval")');
     await goto(fileUrl('hf/probe.html'));
     await evalx('document.querySelector("#hfRun").click()');
     await sleep(600);

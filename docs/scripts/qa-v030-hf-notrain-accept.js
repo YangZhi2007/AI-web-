@@ -44,6 +44,17 @@ const check = (name, ok, detail) => {
     await send('Page.enable'); await send('Runtime.enable');
     await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
 
+    /* ⓿ 管理员登录：看板页面均受访问守卫保护，先真实走一遍登录流程 */
+    async function hfLogin(nav, run) {
+      await nav(fileUrl('hf/login.html'));
+      await run("(function(){document.getElementById('lgUser').value='admin';"
+        + "document.getElementById('lgPass').value='HfLab@2026';"
+        + "document.getElementById('lgForm').dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));})()");
+      await sleep(1500);
+    }
+    await hfLogin(go, ev);
+
+
     /* ① 引擎自检（在 probe 页加载 HF） */
     await go(fileUrl('hf/probe.html'));
     const ck = await ev('window.HF ? HF.checkPools() : null');
@@ -79,7 +90,7 @@ const check = (name, ok, detail) => {
     check('mock 模式标注零外部请求', res && /零外部请求/.test(res.note));
 
     /* ⑤ 探测面板真实点击 -> 结果渲染 + 跨页 Store */
-    await ev('sessionStorage.clear()');
+    await ev('sessionStorage.removeItem("hf.eval")');
     await go(fileUrl('hf/probe.html'));
     const hasRun = await ev('!!document.querySelector("#hfRun") && !!document.querySelector(".hf-mode")');
     check('探测面板控件齐全', hasRun);
