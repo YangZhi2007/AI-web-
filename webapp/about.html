@@ -56,8 +56,8 @@
       <p>「自主攻击」模式下，智能体依据每轮 WAF 拦截特征自选算子并持续迭代；只有标注点位被独立确认才算攻破并立即停机。未攻破则在 <span class="mono">8</span> 轮预算内如实终止，不无限重试；越界目标仅作纯模拟。真实靶场与真实判定路径均未接入。</p>
     </div>
     <div class="about-sec">
-      <h3>两个大功能区</h3>
-      <p>顶栏可在<b>自适应绕过</b>与<b>幻觉修复</b>两个功能区之间切换，两者并列、互不干扰。幻觉修复区当前为<strong>导航壳</strong>：规划了探测面板、样本溯源、真值库、训练集、训练监控、模型版本、评测对比、报告导出共 8 个页面入口，均未实现、不可点击；其目标形态为 FastAPI + Ollama + SQLite + LoRA 微调的双机 C/S 系统，本演示环境不接入任何模型、数据库或外部请求。切换控件只做页面导航。</p>
+      <h3>与本控制台分离的后端看板</h3>
+      <p>幻觉溯源与自愈是一套<b>独立的后端看板</b>（入口 <span class="mono">hf/index.html</span>），不并入本控制台的功能页导航。它以无训练 RAG 路线运行：判定由独立真值库确定性完成，修复用真值证据注入替代 LoRA 微调，评测在隔离验证集上进行，全程不改模型权重。看板默认 mock 模式零外部请求；本控制台与看板互不引用，各自独立可达。</p>
     </div>
   </section>
 
@@ -79,7 +79,7 @@
       <a href="console.html" data-page="console">任务台</a><a href="monitor.html" data-page="monitor">运行监控</a>
       <a href="evidence.html" data-page="evidence">证据链</a><a href="report.html" data-page="report">报告</a>
       <a href="settings.html" data-page="settings">配置</a><a href="history.html" data-page="history">历史</a>
-      <a href="about.html" data-page="about">说明</a><a href="hf.html">幻觉修复</a>
+      <a href="about.html" data-page="about">说明</a>
     </div>
     <p class="boundary">授权自测工具，仅用于本地隔离靶场，不用于未授权目标，不涉及未知漏洞挖掘；演示数据 · MockEngine 契约桩 · 非实时推理 · 零外部请求。</p>
   </div>

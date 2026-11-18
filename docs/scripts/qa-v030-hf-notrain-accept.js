@@ -45,7 +45,7 @@ const check = (name, ok, detail) => {
     await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
 
     /* ① 引擎自检（在 probe 页加载 HF） */
-    await go(fileUrl('hf_probe.html'));
+    await go(fileUrl('hf/probe.html'));
     const ck = await ev('window.HF ? HF.checkPools() : null');
     check('HF 引擎已加载', !!ck);
     check('双池物理隔离', ck && ck.ok && ck.train === 12 && ck.valid === 10 && ck.overlap.length === 0, JSON.stringify(ck));
@@ -80,7 +80,7 @@ const check = (name, ok, detail) => {
 
     /* ⑤ 探测面板真实点击 -> 结果渲染 + 跨页 Store */
     await ev('sessionStorage.clear()');
-    await go(fileUrl('hf_probe.html'));
+    await go(fileUrl('hf/probe.html'));
     const hasRun = await ev('!!document.querySelector("#hfRun") && !!document.querySelector(".hf-mode")');
     check('探测面板控件齐全', hasRun);
     await ev('document.querySelector("#hfRun").click()');
@@ -91,34 +91,33 @@ const check = (name, ok, detail) => {
     check('评测结果写入 Store', stored);
 
     /* ⑥ 跨页恢复：样本 / 评测 / 真值库 */
-    await go(fileUrl('hf_sample.html'));
+    await go(fileUrl('hf/sample.html'));
     const sampleN = await ev(`document.querySelectorAll('#hfSampleHost .hf-diff').length`);
     check('样本溯源渲染幻觉样本', sampleN === 10, 'samples=' + sampleN);
     await shot('v0.30-hf-样本溯源.png');
 
-    await go(fileUrl('hf_eval.html'));
+    await go(fileUrl('hf/eval.html'));
     const statsN = await ev(`document.querySelectorAll('#hfEvalHost .hf-stats>div').length`);
     const barN = await ev(`document.querySelectorAll('#hfEvalHost .hf-bar').length`);
     check('评测读数 4 格', statsN === 4, 'stats=' + statsN);
     check('四类分组柱状图', barN === 4, 'bars=' + barN);
     await shot('v0.30-hf-评测对比.png');
 
-    await go(fileUrl('hf_truth.html'));
+    await go(fileUrl('hf/truth.html'));
     const truthN = await ev(`document.querySelectorAll('#hfTruthTrain tbody tr').length + '/' + document.querySelectorAll('#hfTruthValid tbody tr').length`);
     check('双池表 12/10 行', truthN === '12/10', truthN);
 
     /* ⑦ 零外联：四个页面无 http(s) 资源引用 */
-    await go(fileUrl('hf_probe.html'));
+    await go(fileUrl('hf/probe.html'));
     const ext = await ev(`(()=>{const t=[...document.querySelectorAll('script[src],link[href],img[src]')];
       return t.filter(x=>/^https?:/i.test(x.src||x.href||'')).length;})()`);
     check('幻觉页零外部资源引用', ext === 0, 'ext=' + ext);
 
-    /* ⑧ 不影响绕过系统：切换控件仍注入、主导航仍在 */
-    const sw = await ev(`(()=>{var n=document.querySelector('.sys-switch');
-      return n?n.querySelectorAll('a').length:0;})()`);
-    check('系统切换控件仍在幻觉页', sw === 2, 'switch=' + sw);
+    /* ⑧ v0.33：看板已独立，不再有系统切换控件（与功能页解耦） */
+    const sw = await ev(`document.querySelectorAll('.sys-switch').length`);
+    check('看板已无系统切换控件（解耦）', sw === 0, 'switch=' + sw);
 
-    await go(fileUrl('hf.html')); await sleep(300);
+    await go(fileUrl('hf/index.html')); await sleep(300);
     await shot('v0.30-hf-总览.png');
 
     const failed = R.filter((r) => !r.ok);

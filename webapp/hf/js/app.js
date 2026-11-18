@@ -1,6 +1,6 @@
 /* =============================================================================
- * hf-app.js · 幻觉修复功能区编排层（无训练 RAG 版）
- * 依赖 window.HF（hf.js）。职责：
+ * hf/js/app.js · 幻觉看板编排层（无训练 RAG 版）
+ * 依赖 window.HF（js/engine.js）。职责：
  *   ① 二级导航高亮（按 body[data-hf-page]）；
  *   ② 探测面板：选择池/模式、运行评测（mock 零外联 / ollama 本地推理）、写 Store 跨页；
  *   ③ 样本溯源：从 Store 恢复，展示 base 幻觉样本 + 成因标签 + 理由；
@@ -22,7 +22,7 @@
     return n;
   }
   function markNav() {
-    $$('.hfnav a').forEach(function (a) {
+    $$('.hf-nav a').forEach(function (a) {
       if (a.getAttribute('data-hf-page') === page) {
         a.classList.add('is-current');
         a.setAttribute('aria-current', 'page');
@@ -39,7 +39,7 @@
     box.appendChild(el('b', null, '尚无评测结果'));
     box.appendChild(el('span', null, '先在探测面板运行一次（默认 mock 模式，零外部请求）。'));
     var a = el('a', null, '前往探测面板 →');
-    a.href = goto || 'hf-probe.html';
+    a.href = goto || 'probe.html';
     a.setAttribute('data-nav', '');
     box.appendChild(a);
     host.appendChild(box);
@@ -158,7 +158,7 @@
   /* ---------- 样本溯源 ---------- */
   function bootSample() {
     var res = H.Store.get();
-    if (!res) { emptyResult('#hfSampleHost', 'hf-probe.html'); return; }
+    if (!res) { emptyResult('#hfSampleHost', 'probe.html'); return; }
     var host = $('#hfSampleHost');
     if (!host) return;
     host.innerHTML = '';
@@ -219,7 +219,7 @@
   /* ---------- 评测对比 ---------- */
   function bootEval() {
     var res = H.Store.get();
-    if (!res) { emptyResult('#hfEvalHost', 'hf-probe.html'); return; }
+    if (!res) { emptyResult('#hfEvalHost', 'probe.html'); return; }
     var host = $('#hfEvalHost');
     if (!host) return;
     host.innerHTML = '';
@@ -412,7 +412,7 @@
   /* ---------- 05 修复记录：逐题判定轨迹 + 证据命中（不虚构耗时） ---------- */
   function bootRepair() {
     var res = H.Store.get();
-    if (!res) { emptyResult('#hfRepairHost', 'hf-probe.html'); return; }
+    if (!res) { emptyResult('#hfRepairHost', 'probe.html'); return; }
     var host = $('#hfRepairHost');
     if (!host) return;
     host.innerHTML = '';
@@ -606,7 +606,7 @@
     var host = $('#hfReportHost');
     var bar = $('#hfReportBar');
     if (bar) bar.classList.toggle('hidden', !res);
-    if (!res) { emptyResult('#hfReportHost', 'hf-probe.html'); return; }
+    if (!res) { emptyResult('#hfReportHost', 'probe.html'); return; }
     if (!host) return;
     var md = buildReportMd(res);
     host.innerHTML = '';

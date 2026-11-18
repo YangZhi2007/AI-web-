@@ -1,7 +1,9 @@
-/* v0.27 验收：系统切换壳
- * 目标：在不动现有绕过系统各页 HTML 的前提下，core.js 注入双功能区切换控件，
- *       hf.html 作为幻觉系统占位首页，双向可达、入口禁用、零外联、现有页无回归。
- * 依赖：本机 Chrome headless + CDP（沿用 shot-pages.js 方案）。 */
+/* v0.33 验收（原 v0.27 切换壳改造）：双系统解耦
+ * 背景：幻觉模块已从功能页拆出为独立后端看板 webapp/hf/。
+ * 目标：验证 ①绕过系统页不再有系统切换控件、无幻觉互链；
+ *       ②看板自成体系（侧栏 9 项、独立壳、无绕过系统互链）；
+ *       ③看板 9 页均可打开、零外部资源、数据引擎可用。
+ * 依赖：本机 Chrome headless + CDP。 */
 const { spawn } = require('child_process');
 const http = require('http');
 const fs = require('fs');
@@ -14,15 +16,11 @@ const fileUrl = (p) => 'file:///' + path.join(WEB, p).replace(/\\/g, '/');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const getJSON = (url) =>
   new Promise((res, rej) =>
-    http
-      .get(url, (r) => {
-        let d = '';
-        r.on('data', (c) => (d += c));
-        r.on('end', () => {
-          try { res(JSON.parse(d)); } catch (e) { rej(e); }
-        });
-      })
-      .on('error', rej)
+    http.get(url, (r) => {
+      let d = '';
+      r.on('data', (c) => (d += c));
+      r.on('end', () => { try { res(JSON.parse(d)); } catch (e) { rej(e); } });
+    }).on('error', rej)
   );
 
 const results = [];
@@ -31,18 +29,20 @@ const check = (name, ok, detail) => {
   console.log((ok ? 'PASS ' : 'FAIL ') + name + (detail ? ' — ' + detail : ''));
 };
 
+const WAF_PAGES = ['index.html', 'console.html', 'monitor.html', 'evidence.html',
+  'report.html', 'settings.html', 'history.html', 'about.html', 'replay.html'];
+const HF_PAGES = [
+  { f: 'index', pg: 'overview' }, { f: 'probe', pg: 'probe' }, { f: 'sample', pg: 'sample' },
+  { f: 'truth', pg: 'truth' }, { f: 'evidence', pg: 'evidence' }, { f: 'repair', pg: 'repair' },
+  { f: 'version', pg: 'version' }, { f: 'eval', pg: 'eval' }, { f: 'report', pg: 'report' },
+];
+
 (async () => {
   let tg;
-  const chrome = spawn(
-    CHROME,
-    [
-      '--headless=new', '--disable-gpu', '--no-first-run',
-      '--remote-debugging-port=' + PORT,
-      '--user-data-dir=' + path.join(require('os').tmpdir(), 'qa-v027-' + Date.now()),
-      '--allow-file-access-from-files', 'about:blank',
-    ],
-    { stdio: 'ignore' }
-  );
+  const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run',
+    '--remote-debugging-port=' + PORT,
+    '--user-data-dir=' + path.join(require('os').tmpdir(), 'qa-v027-' + Date.now()),
+    '--allow-file-access-from-files', 'about:blank'], { stdio: 'ignore' });
   try {
     for (let i = 0; i < 40; i++) {
       try { tg = await getJSON('http://127.0.0.1:' + PORT + '/json/list'); break; }
@@ -53,16 +53,9 @@ const check = (name, ok, detail) => {
     await new Promise((res, rej) => { c.onopen = res; c.onerror = rej; });
     let id = 0;
     const pend = new Map();
-    c.onmessage = (m) => {
-      const o = JSON.parse(m.data);
-      if (o.id && pend.has(o.id)) { pend.get(o.id)(o); pend.delete(o.id); }
-    };
-    const send = (method, params = {}) =>
-      new Promise((res) => { const i = ++id; pend.set(i, res); c.send(JSON.stringify({ id: i, method, params })); });
-    const evalx = async (e) => {
-      const r = await send('Runtime.evaluate', { expression: e, returnByValue: true, awaitPromise: true });
-      return r.result && r.result.result ? r.result.result.value : undefined;
-    };
+    c.onmessage = (m) => { const o = JSON.parse(m.data); if (o.id && pend.has(o.id)) { pend.get(o.id)(o); pend.delete(o.id); } };
+    const send = (method, params = {}) => new Promise((res) => { const i = ++id; pend.set(i, res); c.send(JSON.stringify({ id: i, method, params })); });
+    const evalx = async (e) => { const r = await send('Runtime.evaluate', { expression: e, returnByValue: true, awaitPromise: true }); return r.result && r.result.result ? r.result.result.value : undefined; };
     const goto = async (u) => { await send('Page.navigate', { url: u }); await sleep(450); };
     const shot = async (name) => {
       const r = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
@@ -72,70 +65,83 @@ const check = (name, ok, detail) => {
     await send('Runtime.enable');
     await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
 
-    // ① 现有绕过页：切换控件被注入，当前项指向绕过
-    await goto(fileUrl('console.html'));
+    /* ① 绕过系统全部页面：无系统切换控件、无幻觉互链 */
+    let swCount = 0, hfLinkCount = 0, navBroken = [];
+    for (const p of WAF_PAGES) {
+      await goto(fileUrl(p));
+      swCount += await evalx(`document.querySelectorAll('.sys-switch').length`) || 0;
+      hfLinkCount += await evalx(`[...document.querySelectorAll('a[href]')]
+        .filter(a=>/(^|\/)hf(\/|_|\.html)/.test(a.getAttribute('href'))).length`) || 0;
+      if (p === 'console.html') {
+        const nc = await evalx(`document.querySelectorAll('.mainnav a').length + '|' + document.querySelectorAll('.tools .tool').length`);
+        if (nc !== '4|3') navBroken.push(nc);
+      }
+    }
+    check('绕过系统 9 页已无系统切换控件', swCount === 0, 'sys-switch=' + swCount);
+    check('绕过系统 9 页无幻觉互链', hfLinkCount === 0, 'hf-links=' + hfLinkCount);
+    check('绕过系统导航未破坏', navBroken.length === 0, 'console mainnav|tools=' + (navBroken[0] || '4|3'));
+
+    /* ② 看板壳：侧栏 248 宽、9 项导航、当前项高亮、无绕过系统互链 */
+    await goto(fileUrl('hf/index.html'));
+    /* 避免在模板字符串里写含 "/" 的正则字面量（会提前终止正则）；改用字符串判断 */
+    const shell = await evalx(`(()=>{
+      const s=document.querySelector('.hf-side');
+      const nav=[...document.querySelectorAll('.hf-nav a')];
+      const WAF=['index','console','monitor','evidence','report','settings','history','about','replay'];
+      const back=[...document.querySelectorAll('a[href]')].filter(a=>{
+        const h=(a.getAttribute('href')||'').trim();
+        if(h.indexOf('../')!==0) return false;      /* 看板内部短名链接不算跨系统 */
+        const name=h.slice(3);
+        return WAF.some(w=>name===w+'.html');
+      }).length;
+      return {sideW:s?Math.round(s.getBoundingClientRect().width):0,
+        nav:nav.length,
+        cur:nav.filter(a=>a.getAttribute('aria-current')==='page').map(a=>a.getAttribute('data-hf-page')),
+        back:back,brand:!!document.querySelector('.hf-brand')};
+    })()`);
+    check('看板独立侧栏存在', shell && shell.sideW === 248 && shell.brand, JSON.stringify(shell && { sideW: shell.sideW, brand: shell.brand }));
+    check('侧栏导航 9 项', shell && shell.nav === 9, 'nav=' + (shell && shell.nav));
+    check('概览当前项高亮', shell && shell.cur.length === 1 && shell.cur[0] === 'overview', JSON.stringify(shell && shell.cur));
+    check('看板无绕过系统互链', shell && shell.back === 0, 'back=' + (shell && shell.back));
+
+    /* ③ 看板 9 页均可打开、各自高亮正确、零外部资源 */
+    let missing = [], badCur = [], ext = 0;
+    for (const it of HF_PAGES) {
+      await goto(fileUrl('hf/' + it.f + '.html'));
+      const info = await evalx(`(()=>{const side=document.querySelector('.hf-side');
+        const cur=document.querySelector('.hf-nav a[aria-current="page"]');
+        const ext=[...document.querySelectorAll('script[src],link[href],img[src]')]
+          .filter(t=>/^https?:/i.test(t.src||t.href||'')).length;
+        return {side:!!side,cur:cur?cur.getAttribute('data-hf-page'):null,ext:ext};})()`);
+      if (!info || !info.side) missing.push(it.f);
+      if (!info || info.cur !== it.pg) badCur.push(it.f + ':' + (info && info.cur));
+      ext += (info && info.ext) || 0;
+    }
+    check('看板 9 页均有侧栏壳', missing.length === 0, 'missing=' + missing.join(','));
+    check('9 页当前项高亮正确', badCur.length === 0, badCur.join(','));
+    check('看板 9 页零外部资源', ext === 0, 'ext=' + ext);
+
+    /* ④ 看板数据引擎可用：probe 跑一次出 10 行，跨页 Store 生效 */
+    await goto(fileUrl('hf/probe.html'));
     await evalx('sessionStorage.clear()');
-    await goto(fileUrl('console.html'));
-    const swOnConsole = await evalx(`(()=>{const n=document.querySelector('.sys-switch');if(!n)return null;
-      const a=[...n.querySelectorAll('a')].map(x=>({sys:x.dataset.sys,href:x.getAttribute('href'),cur:x.getAttribute('aria-current')==='page'}));
-      return {count:a.length,a};})()`);
-    check('绕过页注入切换控件', swOnConsole && swOnConsole.count === 2, JSON.stringify(swOnConsole));
-    check('绕过页当前项=绕过', swOnConsole && swOnConsole.a.some((x) => x.cur && x.sys === 'waf'));
-    check('切换含幻觉入口', swOnConsole && swOnConsole.a.some((x) => x.sys === 'hf' && x.href === 'hf.html'));
+    await goto(fileUrl('hf/probe.html'));
+    await evalx('document.querySelector("#hfRun").click()');
+    await sleep(600);
+    const rows = await evalx(`document.querySelectorAll('#hfProbeResult tbody tr').length`);
+    check('看板探测引擎可用（10 行）', rows === 10, 'rows=' + rows);
+    await goto(fileUrl('hf/report.html'));
+    const rpt = await evalx(`(()=>{const p=document.querySelector('#hfReportHost .hf-report-md');return p?p.textContent.length:0;})()`);
+    check('跨页 Store 报告可生成', rpt > 400, 'len=' + rpt);
 
-    // ② 现有页无回归：主导航 4 项 + 工具 3 项仍在
-    const navCount = await evalx(`document.querySelectorAll('.mainnav a').length + '|' + document.querySelectorAll('.tools .tool').length`);
-    check('现有页导航未破坏', navCount === '4|3', 'mainnav|tools=' + navCount);
+    /* ⑤ 看板无横向溢出 */
+    const of = await evalx(`document.documentElement.scrollWidth + '/' + window.innerWidth`);
+    check('看板无横向溢出', (() => { const [a, b] = of.split('/').map(Number); return a <= b + 1; })(), of);
 
-    // ③ 幻觉页：当前项指向幻觉，8 入口全禁用，切回入口存在
-    await goto(fileUrl('hf.html'));
-    await evalx('sessionStorage.clear()');
-    await goto(fileUrl('hf.html'));
-    const swOnHf = await evalx(`(()=>{const n=document.querySelector('.sys-switch');if(!n)return null;
-      return {count:n.querySelectorAll('a').length,
-        cur:[...n.querySelectorAll('a')].filter(x=>x.getAttribute('aria-current')==='page').map(x=>x.dataset.sys),
-        back:[...n.querySelectorAll('a')].some(x=>x.dataset.sys==='waf'&&x.getAttribute('href')==='index.html')};})()`);
-    check('幻觉页当前项=幻觉', swOnHf && swOnHf.cur.length === 1 && swOnHf.cur[0] === 'hf', JSON.stringify(swOnHf));
-    check('幻觉页可切回绕过', swOnHf && swOnHf.back);
-    /* v0.32 结构升级：8 入口卡片全部上线为链接（04/05/06/08 由规划转真实页）。
-       二级导航也用 data-hf-page，故选择器限定到 #hfGrid .hf-page。 */
-    const pages = await evalx(`(()=>{const b=[...document.querySelectorAll('#hfGrid .hf-page')];
-      const links=b.filter(x=>x.tagName==='A'&&x.getAttribute('href'));
-      const disabled=b.filter(x=>x.tagName==='BUTTON'&&x.disabled);
-      return {n:b.length,links:links.length,disabled:disabled.length,
-        titles:b.map(x=>x.querySelector('.hf-page__title').textContent),
-        linkHrefs:links.map(x=>x.getAttribute('href'))};})()`);
-    check('幻觉页 8 入口', pages && pages.n === 8, 'n=' + (pages && pages.n));
-    check('8 入口全部上线为链接', pages && pages.links === 8, 'links=' + (pages && pages.links));
-    check('无禁用占位', pages && pages.disabled === 0, 'disabled=' + (pages && pages.disabled));
-    check('8 链接指向真实页', pages && ['hf_probe.html','hf_sample.html','hf_truth.html',
-      'hf_evidence.html','hf_repair.html','hf_version.html','hf_eval.html','hf_report.html']
-      .every(h => pages.linkHrefs.includes(h)), JSON.stringify(pages && pages.linkHrefs));
-    check('入口标题齐全', pages && ['探测面板','样本溯源','真值库','证据库管理','修复记录',
-      '版本对比','评测对比','报告导出'].every((t) => pages.titles.includes(t)), JSON.stringify(pages && pages.titles));
-
-    // ④ 零外联：页面无 http(s) 资源引用（仅文本里的示意 URL 不算）
-    const ext = await evalx(`(()=>{const tags=[...document.querySelectorAll('script[src],link[href],img[src]')];
-      return tags.filter(t=>/^https?:/i.test(t.src||t.href||'')).length;})()`);
-    check('幻觉页零外部资源', ext === 0, 'external=' + ext);
-
-    // ⑤ 落地页也注入切换控件（site-head），当前项=绕过
-    await goto(fileUrl('index.html'));
-    const swOnIndex = await evalx(`(()=>{const n=document.querySelector('.site-head .sys-switch');if(!n)return null;
-      return [...n.querySelectorAll('a')].map(x=>({sys:x.dataset.sys,cur:x.getAttribute('aria-current')==='page'}));})()`);
-    check('落地页注入切换', swOnIndex && swOnIndex.length === 2, JSON.stringify(swOnIndex));
-    check('落地页当前项=绕过', swOnIndex && swOnIndex.some((x) => x.cur && x.sys === 'waf'));
-
-    // 截图存档
-    await goto(fileUrl('hf.html'));
-    await sleep(300);
-    await shot('功能页-1440-v0.27-幻觉系统切换壳.png');
-    await evalx('window.scrollTo(0,460)');
-    await sleep(200);
-    await shot('功能页-1440-v0.27-幻觉系统切换壳-页面规划.png');
-    await goto(fileUrl('console.html'));
-    await sleep(300);
-    await shot('功能页-1440-v0.27-绕过页切换控件.png');
+    /* ⑥ 截图存档 */
+    await goto(fileUrl('hf/index.html')); await sleep(250);
+    await shot('v0.33-hf-看板概览.png');
+    await goto(fileUrl('console.html')); await sleep(250);
+    await shot('v0.33-绕过页无切换控件.png');
 
     const failed = results.filter((r) => !r.ok);
     console.log('\n==== ' + (results.length - failed.length) + '/' + results.length + ' PASS ====');

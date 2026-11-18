@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>报告导出 · 幻觉溯源看板</title>
+<script>try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classList.add('pt-cover'); }catch(e){}</script>
+<link rel="stylesheet" href="../css/core.css" />
+<link rel="stylesheet" href="css/hf.css" />
+</head>
+<body data-page="hfdash" data-hf-page="report">
+<div class="hf-shell">
+  <aside class="hf-side">
+    <a class="hf-brand" href="index.html" data-nav>
+      <span class="hf-brand__mark" aria-hidden="true"></span>
+      <span class="hf-brand__txt"><b>HF / LAB</b><span>幻觉溯源自愈 · 后端看板</span></span>
+    </a>
+    <nav class="hf-nav" aria-label="幻觉看板导航">
+      <a href="index.html" data-hf-page="overview"><span class="no">00</span>概览</a>
+      <p class="hf-nav__grp">监测与评测</p>
+      <a href="probe.html" data-hf-page="probe"><span class="no">01</span>探测面板</a>
+      <a href="sample.html" data-hf-page="sample"><span class="no">02</span>样本溯源</a>
+      <a href="eval.html" data-hf-page="eval"><span class="no">07</span>评测对比</a>
+      <p class="hf-nav__grp">数据资产</p>
+      <a href="truth.html" data-hf-page="truth"><span class="no">03</span>真值库</a>
+      <a href="evidence.html" data-hf-page="evidence"><span class="no">04</span>证据库</a>
+      <p class="hf-nav__grp">记录与输出</p>
+      <a href="repair.html" data-hf-page="repair"><span class="no">05</span>修复记录</a>
+      <a href="version.html" data-hf-page="version"><span class="no">06</span>版本对比</a>
+      <a href="report.html" data-hf-page="report"><span class="no">08</span>报告导出</a>
+    </nav>
+    <div class="hf-side__foot">
+      <span>标注集 <b>HF-LAB-02</b></span>
+      <span>引擎 <b>V1.1</b> · 零训练</span>
+      <span>外联 <b>0</b> · mock 模式</span>
+    </div>
+  </aside>
+
+  <main class="hf-main">
+    <header class="hf-top">
+      <div>
+        <p class="hf-top__crumb">后端看板 / <b>报告导出</b></p>
+        <h1 class="hf-title">报告导出</h1>
+        <p class="hf-top__sub">基于当前评测结果生成可复核的分析报告，支持复制与下载为 Markdown。判定口径与诚实边界随报告一并导出。</p>
+      </div>
+      <dl class="hf-top__meta">
+        <div><dt>标注集</dt><dd>HF-LAB-02</dd></div>
+        <div><dt>引擎</dt><dd>V1.1</dd></div>
+        <div><dt>外联</dt><dd>0</dd></div>
+      </dl>
+    </header>
+    <div class="hf-body">
+<section class="card hf-rcbar" id="hfReportBar">
+        <button class="btn-solid" type="button" id="hfRepCopy" data-ripple>复制报告</button>
+        <button class="btn-ghost" type="button" id="hfRepDl">下载 Markdown</button>
+        <span class="hf-rcbar__msg" id="hfRepMsg" role="status"></span>
+      </section>
+      <section id="hfReportHost" aria-label="报告预览"></section>
+    </div>
+  </main>
+</div>
+<div class="pt" id="pt" aria-hidden="true"><div class="pt__mark"><span class="pt__dot"></span>HF / LAB</div></div>
+<script src="js/engine.js" defer></script>
+<script src="js/app.js" defer></script>
+<script src="../js/core.js" defer></script>
+</body>
+</html>

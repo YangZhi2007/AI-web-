@@ -45,16 +45,16 @@ const check = (name, ok, detail) => {
     await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
 
     /* ① 先跑一次评测写入 Store（所有新页的数据源） */
-    await go(fileUrl('hf_probe.html'));
+    await go(fileUrl('hf/probe.html'));
     await ev('sessionStorage.clear()');
-    await go(fileUrl('hf_probe.html'));
+    await go(fileUrl('hf/probe.html'));
     await ev('document.querySelector("#hfRun").click()');
     await sleep(550);
     const stored = await ev(`!!sessionStorage.getItem('hf.eval')`);
     check('评测结果写入 Store（前置）', stored);
 
     /* ② 04 证据库管理 */
-    await go(fileUrl('hf_evidence.html'));
+    await go(fileUrl('hf/evidence.html'));
     const evStat = await ev(`document.querySelectorAll('#hfEvStats>div').length`);
     const evItems = await ev(`document.querySelectorAll('#hfEvList .hf-ev-item').length`);
     const evPrev = await ev(`(()=>{var p=document.querySelector('#hfEvPreview');return p&&p.querySelectorAll('pre').length;})()`);
@@ -68,7 +68,7 @@ const check = (name, ok, detail) => {
     await shot('v0.32-hf-证据库.png');
 
     /* ③ 05 修复记录 */
-    await go(fileUrl('hf_repair.html'));
+    await go(fileUrl('hf/repair.html'));
     const rpStat = await ev(`document.querySelectorAll('#hfRepairHost .hf-stats>div').length`);
     const rpRows = await ev(`document.querySelectorAll('#hfRepairHost .hf-repair tbody tr').length`);
     const rpFixed = await ev(`document.querySelectorAll('#hfRepairHost .hf-repair__result[data-r="fixed"]').length`);
@@ -80,7 +80,7 @@ const check = (name, ok, detail) => {
     await shot('v0.32-hf-修复记录.png');
 
     /* ④ 06 版本对比：真实提示词 diff */
-    await go(fileUrl('hf_version.html'));
+    await go(fileUrl('hf/version.html'));
     const vOpts = await ev(`document.querySelectorAll('#hfVQ option').length`);
     const vCards = await ev(`document.querySelectorAll('#hfVersionHost .hf-ver-card').length`);
     const vDiff = await ev(`(()=>{var ps=document.querySelectorAll('#hfVersionHost .hf-ver-prompt');
@@ -97,7 +97,7 @@ const check = (name, ok, detail) => {
     await shot('v0.32-hf-版本对比.png');
 
     /* ⑤ 08 报告导出 */
-    await go(fileUrl('hf_report.html'));
+    await go(fileUrl('hf/report.html'));
     const rpt = await ev(`(()=>{var p=document.querySelector('#hfReportHost .hf-report-md');
       if(!p)return null;var t=p.textContent;return {len:t.length,hasTitle:/分析报告/.test(t),
       hasDrop:/40 pp/.test(t),hasBoundary:/诚实边界/.test(t),hasTable:/逐题判定/.test(t)};})()`);
@@ -108,18 +108,17 @@ const check = (name, ok, detail) => {
     check('复制/下载控件存在', rptBtns);
     await shot('v0.32-hf-报告导出.png');
 
-    /* ⑥ 首页 8 入口全部上线 */
-    await go(fileUrl('hf.html'));
-    const home = await ev(`(()=>{var b=[...document.querySelectorAll('#hfGrid .hf-page')];
-      return {n:b.length,links:b.filter(x=>x.tagName==='A'&&x.getAttribute('href')).length,
-      disabled:b.filter(x=>x.tagName==='BUTTON'&&x.disabled).length};})()`);
-    check('首页 8 入口', home && home.n === 8, 'n=' + (home && home.n));
-    check('8 入口全部为链接', home && home.links === 8, 'links=' + (home && home.links));
-    check('无禁用占位', home && home.disabled === 0, 'disabled=' + (home && home.disabled));
+    /* ⑥ 看板概览（v0.33 起为独立侧栏看板）：侧栏 9 项 + 模块状态 8 行 */
+    await go(fileUrl('hf/index.html'));
+    const home = await ev(`(()=>{var nav=[...document.querySelectorAll('.hf-nav a')];
+      var rows=document.querySelectorAll('.hf-body .hf-pool tbody tr').length;
+      return {nav:nav.length,rows:rows};})()`);
+    check('看板侧栏导航 9 项', home && home.nav === 9, 'nav=' + (home && home.nav));
+    check('概览模块状态 8 行', home && home.rows === 8, 'rows=' + (home && home.rows));
 
     /* ⑦ 零外联：9 个 hf 页无 http(s) 资源引用 */
-    const pages = ['hf.html','hf_probe.html','hf_sample.html','hf_truth.html','hf_evidence.html',
-      'hf_repair.html','hf_version.html','hf_eval.html','hf_report.html'];
+    const pages = ['hf/index.html','hf/probe.html','hf/sample.html','hf/truth.html','hf/evidence.html',
+      'hf/repair.html','hf/version.html','hf/eval.html','hf/report.html'];
     let extTotal = 0;
     for (const p of pages) {
       await go(fileUrl(p));
