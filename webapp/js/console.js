@@ -585,28 +585,39 @@ function applyTerminalState(report){
   setRunState(label,'DONE');
   return state;
 }
-function buildRail(n){
+/* 轮次流水：不预置上限格位，投递到第几轮就只显示第几轮。
+   刻度数量随实际轮次增长，这与「攻破即停、无攻击次数预算」是同一套语义。 */
+function buildRail(){
   const rail=$('#rail');if(!rail)return;
-  rail.innerHTML=Array.from({length:n},(_,i)=>
-    `<i data-r="${i+1}">${String(i+1).padStart(2,'0')}</i>`).join('');
+  rail.innerHTML='';
+  $$('.sit__node').forEach(n=>{n.classList.remove('is-lit','is-degraded');});
 }
 function paintRail(done,degraded=[]){
-  const max=CONFIG.MAX_ROUNDS;
-  $$('#rail i').forEach(el=>{
-    const r=Number(el.dataset.r);
-    const lit=r<=done, deg=lit&&degraded.indexOf(r)>-1;
-    el.classList.toggle('on',lit);
-    el.classList.toggle('deg',deg);
-    el.classList.toggle('cur',r===done+1&&done<max);
-    /* 态势 SVG 与刻度轨同源同步：同一 round_no 双写点亮/降级刻痕（不触碰引擎数据） */
-    const node=$('.sit__node[data-r="'+r+'"]');
-    if(node){
-      node.classList.toggle('is-lit',lit);
-      node.classList.toggle('is-degraded',deg);
+  const rail=$('#rail');
+  if(rail){
+    /* 只补到实际已投递轮次；不生成 done+1 的"下一格"占位 */
+    const have=rail.querySelectorAll('i').length;
+    for(let r=have+1;r<=done;r++){
+      const el=document.createElement('i');
+      el.dataset.r=String(r);
+      el.textContent=pad(r);
+      rail.appendChild(el);
     }
+    $$('#rail i').forEach(el=>{
+      const r=Number(el.dataset.r);
+      el.classList.toggle('on',r<=done);
+      el.classList.toggle('deg',r<=done&&degraded.indexOf(r)>-1);
+      el.classList.remove('cur');   // 无预置"当前/下一轮"空槽
+    });
+  }
+  /* 态势 SVG 的攻击链节点仍按 8 个拓扑位渲染，只点亮已投递轮次 */
+  $$('.sit__node').forEach(node=>{
+    const r=Number(node.dataset.r);
+    node.classList.toggle('is-lit',r<=done);
+    node.classList.toggle('is-degraded',r<=done&&degraded.indexOf(r)>-1);
   });
   const txt=$('#railText');
-  if(txt)txt.textContent=`轮次进度 ${Math.round(done/max*100)}%`;
+  if(txt)txt.textContent=done?`已投递 ${done} 轮 · 攻破即停`:'等待首轮投递';
 }
 function setMeter(sel,pct){
   const el=$(sel);if(el)el.style.width=Math.min(100,Math.max(0,pct))+'%';
@@ -794,7 +805,7 @@ function renderResult(r){
 /* renderReport：结构化报告 v0.21「卷宗 / 刻度」
    5 个 .report-sec 的编号与顺序、字段来源、esc 防注入、mock_flag 诚信标注、exportBtn 动态注入、
    details.raw 结构、打印前展开全部保持；只重排版面层级：
-   卷首签发带把结论 / 终态形状 / 3 个读数提到第一屏，02 用与配置页同源的 8 格刻度
+   卷首签发带把结论 / 终态形状 / 3 个读数提到第一屏，02 用实际投递轮次流水
    回答「攻破花了多少轮」，附录 A 用形状标签与命中行标记让逐轮记录可读。 */
 const VERDICT_CN={hit:'已攻破',nofind:'未攻破',degraded:'降级攻破',oos:'模拟命中',
   cancel:'已取消',error:'异常',idle:'待机',run:'执行中'};
@@ -804,7 +815,6 @@ function renderReport(r){
   const card=$('#reportCard');if(!card||!r||!r.task)return;
   const oos=r.task.out_of_scope, degN=r.degraded_rounds.length;
   const st=resolveTerminalState(r);
-  const cap=Number(r.task.max_rounds)||CONFIG.MAX_ROUNDS||8;
   const termText=r.agent
     ? (r.agent.breached?`第 ${r.agent.breachRound} 轮攻破（标注点位被独立确认），攻破即停`
        :oos?'目标越界 · 纯模拟演示，不构成对任何真实目标的结论'
@@ -828,10 +838,9 @@ function renderReport(r){
       <td>${esc(x.verdict)}</td><td>${x.cost_ms} ms</td>
       <td>${x.degraded_flag?'<span class="tag deg">DEGRADED</span>':'—'}</td></tr>`;
   }).join('');
-  /* 8 格刻度：已跑轮按响应分类上刻度，降级轮虚线框，攻破后未投递的格位留空（非"预算"） */
-  const rail=r.rounds.slice(0,cap).map(x=>
-    `<i data-cls="${esc(x.response_class)}"${x.degraded_flag?' class="is-deg"':''}>${x.round_no}</i>`).join('')
-    +Array.from({length:Math.max(0,cap-r.rounds.length)},()=>'<i class="is-empty"></i>').join('');
+  /* 轮次流水：只列实际投递的轮次，不预置空槽——报告与监控页同一套语义 */
+  const rail=r.rounds.map(x=>
+    `<i data-cls="${esc(x.response_class)}"${x.degraded_flag?' class="is-deg"':''}>${x.round_no}</i>`).join('');
   const raw=r.rounds.map(x=>`<b class="mono" style="font-size:11px">第 ${x.round_no} 轮 · ${esc(x.round_id)}</b>
     <pre>${esc(x.model_decision_raw)}</pre>`).join('');
   const termLine=r.terminate_reason===st.label
@@ -878,8 +887,8 @@ function renderReport(r){
         </div>
       </div>
       <div class="rpt-stats">
-        <div><span class="lbl">执行轮次 / ROUNDS</span><b>${r.rounds.length}<i>/ ${cap}</i></b>
-          <small>${r.agent&&r.agent.breached?'攻破即停 · 未继续投递':(r.agent?'看门狗终止 · 未攻破':'未使用 '+Math.max(0,cap-r.rounds.length)+' 轮（契约桩）')}</small></div>
+        <div><span class="lbl">执行轮次 / ROUNDS</span><b>${r.rounds.length}<i>轮</i></b>
+          <small>${r.agent&&r.agent.breached?'攻破即停 · 未继续投递':(r.agent?'看门狗终止 · 未攻破':'契约桩实际投递轮次')}</small></div>
         <div><span class="lbl">累计耗时 / ELAPSED</span><b>${r.elapsed_ms}<i>ms</i></b>
           <small>逐轮 cost_ms 之和</small></div>
         <div><span class="lbl">降级轮次 / DEGRADED</span><b>${degN}<i>轮</i></b>
@@ -902,9 +911,9 @@ function renderReport(r){
     <div class="report-sec rpt-sec" data-sec="02"><h3><span class="rpt-sec__no">02</span>执行摘要<em>Summary</em></h3>
       <p class="rpt-lede">共执行 <b>${r.rounds.length}</b> 轮，累计耗时 <b class="mono">${r.elapsed_ms} ms</b>；终止原因：<b>${termText}</b>。</p>
       <div class="rpt-rail-wrap">
-        <div class="rpt-rail-head"><span class="lbl">攻击轮次 / ROUNDS</span><b class="mono">${r.rounds.length} / ${cap}</b></div>
+        <div class="rpt-rail-head"><span class="lbl">攻击轮次 / ROUNDS</span><b class="mono">${r.rounds.length} 轮 · 攻破即停</b></div>
         <div class="rpt-rail" aria-hidden="true">${rail}</div>
-        <p class="rpt-note">横杠=拦截　实心=异常命中　虚线框=降级轮　空槽=攻破后未投递；8 格是仪表容量，不是攻击预算。攻破轮由网址与任务种子派生，写进报告可复现。</p>
+        <p class="rpt-note">横杠=拦截　实心=异常命中　虚线框=降级轮；只列实际投递的轮次，攻破后不再追加。攻破轮由网址与任务种子派生，写进报告可复现。</p>
       </div>
       ${r.agent?`<div class="rpt-agent">
         <div class="rpt-agent__head"><span class="lbl">自主攻击闭环 / AUTONOMOUS LOOP</span>
@@ -912,7 +921,7 @@ function renderReport(r){
         <div class="rpt-agent__cells">
           <div><span>终止条件</span><b>${esc({BREACH:'攻破即停',BUDGET_EXHAUSTED:'旧契约桩预算耗尽',OUT_OF_SCOPE:'越界纯模拟',SAFETY_GUARD:'异常看门狗'}[r.agent.stopReason]||r.agent.stopReason)}</b></div>
           <div><span>攻破轮</span><b>${r.agent.breached?'R'+String(r.agent.breachRound).padStart(2,'0'):'无'}</b></div>
-          <div><span>迭代轮次</span><b>${r.agent.used} / ${r.agent.guard||r.agent.budget}</b></div>
+          <div><span>投递轮次</span><b>${r.agent.used} 轮 · 攻破即停</b></div>
           <div><span>算子白名单</span><b>${r.agent.operatorCount} 个编号</b></div>
         </div>
         <div class="rpt-chain">
@@ -958,7 +967,7 @@ function renderReport(r){
       <div class="rpt-facts rpt-facts--compact">
         ${fact('实验分组 / GROUP',esc(r.task.group_tag))}
         ${fact('适配器 / ADAPTER',esc(r.task.adapter_name))}
-        ${fact('轮次上限 / MAX',esc(r.task.max_rounds))}
+        ${fact('停机规则 / STOP',r.agent?'攻破即停 · 异常看门狗仅防无界循环':'达到剧本终点')}
         ${fact('规则集 / RULESET',esc(r.task.ruleset_version))}
         ${fact('运行模式 / MODE',esc(r.task.ai_mode))}
         ${fact('契约版本 / CONTRACT',esc(r.contract_version))}
@@ -1091,9 +1100,9 @@ on('#soundOffBtn','click',()=>{
   const b=$('#soundOffBtn');const now=b.getAttribute('aria-checked')!=='true';
   b.setAttribute('aria-checked',String(now));b.textContent=now?'SOUND ON':'SOUND OFF';
 });
-['#dMax','#dMaxNum','#cfgMax'].forEach(s=>{const e=$(s);if(e)e.textContent=String(CONFIG.MAX_ROUNDS);});
-/* 仪表台初始化：刻度轨按配置常量生成，初始为空态 */
-buildRail(CONFIG.MAX_ROUNDS);
+/* 监控页不再展示轮次分母：上限只是异常护栏，不是攻击次数预算 */
+/* 仪表台初始化：轮次流水从空态开始，随实际投递增长 */
+buildRail();
 paintRail(0);paintBars({});
 setDashState('idle','IDLE');
 /* 关键数字 ScrambleText 入场 */

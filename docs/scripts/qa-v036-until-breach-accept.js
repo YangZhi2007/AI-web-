@@ -136,6 +136,25 @@ const CASES = [
     check('按钮入口走自主攻击并攻破即停', clicked && /^AGENT_/.test(clicked.script) && clicked.stop === 'BREACH' && clicked.breached === true,
       JSON.stringify(clicked));
 
+    /* ④b 监控页不得再显示"固定 8 次"的预算语言 */
+    const gauge = await ev(`(function(){
+      var num=document.querySelector('.gauge__num'), foot=document.querySelector('.gauge__foot');
+      var r=JSON.parse(sessionStorage.getItem('probe.report'));
+      return {label:document.querySelector('.gauge .lbl').textContent,
+        num:num.textContent.replace(/\\s+/g,' ').trim(),
+        foot:foot.textContent.replace(/\\s+/g,' ').trim(),
+        cells:document.querySelectorAll('#rail i').length,
+        rounds:r.rounds.length,
+        cur:document.querySelectorAll('#rail i.cur').length,
+        empty:document.querySelectorAll('#rail i.is-empty').length};})()`);
+    check('主读数无 "/8" 分母，标注攻破即停', gauge && gauge.num.indexOf('/ 8') < 0 && /攻破即停/.test(gauge.num),
+      gauge && gauge.num);
+    check('脚注无护栏数字与轮次进度百分比', gauge && gauge.foot.indexOf('8') < 0 && gauge.foot.indexOf('进度') < 0 && /无攻击次数上限/.test(gauge.foot) && gauge.foot.split('攻破即停').length === 2,
+      gauge && gauge.foot);
+    check('刻度格数=实际投递轮次，无预置空槽', gauge && gauge.cells === gauge.rounds && gauge.cur === 0 && gauge.empty === 0,
+      JSON.stringify({cells:gauge && gauge.cells, rounds:gauge && gauge.rounds}));
+    await shot('v0.36-监控页-轮次流水无分母.png');
+
     await go(fileUrl('console.html'));
     await ev(`sessionStorage.clear();document.querySelector('#authChk').checked=true;
       document.querySelector('#authChk').dispatchEvent(new Event('change'));

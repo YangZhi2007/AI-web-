@@ -226,10 +226,10 @@ const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run
     ok('报告 5 附录 / 导出按钮契约保持', rp.secs === 5 && rp.export);
     ok('卷首结论改用「已攻破」叙事', rp.seal === '已攻破' && /攻破即停/.test(rp.lede), rp.seal);
     const pad2 = n => String(n).padStart(2, '0');
-    ok('02 闭环摘要 4 读数取自 agent 真值',
+    ok('02 闭环摘要 4 读数取自 agent 真值（无轮次分母）',
       JSON.stringify(rp.figures) === JSON.stringify([
         '攻破即停', 'R' + pad2(easy.agent.breachRound),
-        easy.agent.used + ' / 8', '8 个编号']), JSON.stringify(rp.figures));
+        easy.agent.used + ' 轮 · 攻破即停', '8 个编号']), JSON.stringify(rp.figures));
     ok('逐轮决策链行数 = 实际迭代轮次，攻破行标记唯一',
       rp.chain === easy.rounds.length && rp.breachRow === 1 && rp.audit === 1);
     /* v0.23.1：纯浏览监控页只读回填决策流，不产生执行意图 */

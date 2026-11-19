@@ -140,19 +140,17 @@ ok('markHot blocked/hit/deg>0 → is-hot',
   docMock.querySelector('#dHit').classList.contains('is-hot') &&
   docMock.querySelector('#dDeg').classList.contains('is-hot'));
 
-/* ---------- 7. paintRail：进度计算 + 刻度状态（含边界） ---------- */
+/* ---------- 7. paintRail：轮次流水（无分母、无预置空槽） ---------- */
 railEls = docMock.querySelectorAll('#rail i');
 T.paintRail(3, [3]);
-eq('railText 进度 3/8=38%', docMock.querySelector('#railText').textContent, '轮次进度 38%');
+eq('railText 改为流水文案（无百分比）', docMock.querySelector('#railText').textContent, '已投递 3 轮 · 攻破即停');
 ok('rail r1-3 on', railEls[0].classList.contains('on') && railEls[1].classList.contains('on') && railEls[2].classList.contains('on'));
-ok('rail r4 为当前(cur) 且非 on', railEls[3].classList.contains('cur') && !railEls[3].classList.contains('on'));
+ok('rail 无 cur 预置空槽', railEls.every(function(e){ return !e.classList.contains('cur'); }));
 ok('rail r3 标记降级(deg)', railEls[2].classList.contains('deg'));
-ok('rail r5-8 未点亮', !railEls[4].classList.contains('on') && !railEls[7].classList.contains('on'));
 T.paintRail(8, []);
-eq('railText 满轮 100%', docMock.querySelector('#railText').textContent, '轮次进度 100%');
-ok('rail 满轮无 cur', !railEls[7].classList.contains('cur'));
+eq('railText 随实际轮次增长', docMock.querySelector('#railText').textContent, '已投递 8 轮 · 攻破即停');
 T.paintRail(0, []);
-eq('railText 0轮 0%', docMock.querySelector('#railText').textContent, '轮次进度 0%');
+eq('railText 空态等待首轮', docMock.querySelector('#railText').textContent, '等待首轮投递');
 
 /* ---------- 8. MockEngine.analyze：端到端（三剧本 + 越界 + 取消） ---------- */
 const mkOpts = (cancel) => ({ vulnType:'sqli', authorizationId:'AUTH-LAB-DEMO-001', isCancelled: cancel || (()=>false) });

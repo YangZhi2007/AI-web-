@@ -399,7 +399,7 @@
   function bootSettings(){
     var c=P.CONFIG||{};
     var put=function(sel,v){var e=$(sel);if(e)e.textContent=String(v);};
-    put('#cfgMode',c.ENGINE_MODE); put('#cfgMax',c.MAX_ROUNDS); put('#cfgTick',c.TICK_SPEED);
+    put('#cfgMode',c.ENGINE_MODE); put('#cfgMax','攻破即停'); put('#cfgTick',c.TICK_SPEED);
     put('#cfgAdapter','MOCK'); put('#cfgRuleset','LAB-RULESET-01'); put('#cfgContract','1.0');
     put('#cfgApi',c.API_BASE_URL||'—');
     put('#cfgScnCount',Object.keys(P.AGENT_PROFILES||{}).length);
@@ -436,7 +436,7 @@
         top.appendChild(mk('span','cfg-scn__en',key));
         card.appendChild(top);
         card.appendChild(mk('p','cfg-scn__meta',
-          '示例 '+steps.length+' 轮攻破 / 护栏 '+cap+' · 终态 '+STATE_NAME[termState]+' · 降级轮 '+degN));
+          '示例 '+steps.length+' 轮攻破即停 · 终态 '+STATE_NAME[termState]+' · 降级轮 '+degN));
         card.appendChild(mk('p','cfg-scn__rule','派生条件：'+PROFILE_RULE[key]+' · 实际攻破轮由网址与任务种子派生'));
         var rail=mk('div','cfg-rail'); rail.setAttribute('aria-hidden','true');
         steps.forEach(function(s){
@@ -445,7 +445,7 @@
           if(s.degraded)cell.classList.add('is-deg');
           rail.appendChild(cell);
         });
-        for(var e=steps.length;e<cap;e++)rail.appendChild(mk('i','is-empty',''));
+        /* 只列示例实际投递轮次，不补齐到护栏容量 */
         card.appendChild(rail);
         scnWrap.appendChild(card);
       });

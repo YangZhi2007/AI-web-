@@ -375,8 +375,9 @@ input[type=text]::placeholder{color:var(--t-3)}
 .gauge__num{display:flex;align-items:baseline;gap:8px;margin:6px 0 14px}
 .gauge__num b{font:500 40px/1 var(--mono);color:var(--ink);font-variant-numeric:tabular-nums}
 .gauge__num .cap{font:500 13px/1 var(--mono);color:var(--sit-txt-dim)}
-.rail{display:flex;gap:4px;margin-bottom:10px}
-.rail i{flex:1;min-width:0;height:26px;display:flex;align-items:center;justify-content:center;
+/* 轮次流水：只列已投递轮次，不预置空槽；每格定宽，数量随实际轮次增长 */
+.rail{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;min-height:26px}
+.rail i{flex:0 0 30px;width:30px;height:26px;display:flex;align-items:center;justify-content:center;
   font:500 11px/1 var(--mono);color:var(--sit-txt-dim);background:transparent;
   border:1px solid var(--sit-line-2);border-radius:0;
   transition:background var(--d-step),border-color var(--d-step),color var(--d-step)}
@@ -526,7 +527,7 @@ input[type=text]::placeholder{color:var(--t-3)}
 
 /* ---------- 12. 报告 v0.21「卷宗 / 刻度」：5 附录 + 打印 ----------
    卷首签发带 = 结论形状章 + 3 个读数；附录左侧编号刻度尺贯穿全页；
-   02 用与配置页同源的 8 格刻度回答「攻破花了多少轮」。
+   02 用实际投递轮次流水回答「攻破花了多少轮」，不预置空槽。
    亮四色只作填充，文字/描边一律深语义色；打印段统一转黑白。 */
 
 /* 屏幕工具条：打印时整条隐藏，导出按钮仍由 renderReport 动态注入 */
@@ -604,7 +605,7 @@ body[data-page="report"] .tbl tbody tr.is-key td:first-child{box-shadow:inset 2p
   letter-spacing:.08em;text-transform:uppercase;color:var(--t-3)}
 .rpt-facts>div b{display:block;font:500 13px/1.6 var(--mono);color:var(--t-1);overflow-wrap:anywhere}
 
-/* 攻击轮次刻度：与 13b 配置页 .cfg-rail 同值，跨页对照 */
+/* 攻击轮次流水：只列实际投递轮次；与 13b 配置页 .cfg-rail 同形状，跨页对照 */
 .rpt-rail-wrap{padding:16px;border:1px solid var(--n-line);border-radius:var(--r-in);background:var(--n-raised)}
 .rpt-rail-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}
 .rpt-rail-head b{font:500 14px/1 var(--mono);color:var(--t-1)}
@@ -749,8 +750,8 @@ details.raw pre{white-space:pre-wrap;word-break:break-word;background:var(--surf
 .cfg-scn__meta{margin:0;font:500 11px/1.6 var(--mono);color:var(--t-3)}
 .cfg-scn__audit{margin:0;font:500 11px/1.6 var(--mono);color:var(--t-2)}
 .cfg-scn__audit.is-warn{color:var(--sig-alert)}
-.cfg-rail{display:flex;gap:3px}
-.cfg-rail i{position:relative;flex:1 1 0;min-width:0;height:30px;display:flex;align-items:center;justify-content:center;
+.cfg-rail{display:flex;flex-wrap:wrap;gap:3px}
+.cfg-rail i{position:relative;flex:0 0 34px;width:34px;height:30px;display:flex;align-items:center;justify-content:center;
   font:500 11px/1 var(--mono);font-style:normal;color:var(--t-2);background:var(--n-raised);
   border:1px solid var(--n-line-2);transition:background var(--d-step),border-color var(--d-step)}
 .cfg-rail i::after{content:"";position:absolute;left:5px;right:5px;bottom:5px;height:2px;background:var(--sit-def)}

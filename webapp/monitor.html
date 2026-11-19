@@ -88,7 +88,7 @@
           <rect class="sit__zone sit__zone--def" x="686" y="24" width="380" height="152"/>
           <rect class="sit__zone" x="1076" y="24" width="108" height="152"/>
         </g>
-        <!-- 攻击链：有向主线 + 箭头；8 个方形轮次节点按轮点亮 -->
+        <!-- 攻击链：有向主线 + 箭头；方形节点按已投递轮次逐轮点亮，不表示次数预算 -->
         <path class="sit__axis sit__axis--atk" d="M32 100 H340"/>
         <path class="sit__arrow" d="M330 92 L340 100 L330 108"/>
         <g class="sit__nodes">
@@ -139,10 +139,10 @@
     </div>
     <div class="dash__body">
       <div class="gauge">
-        <span class="lbl">当前轮次 / ROUND</span>
-        <div class="gauge__num"><b id="dRound">0</b><span class="cap">/ <span id="dMax">8</span></span></div>
+        <span class="lbl">已投递轮次 / ROUNDS</span>
+        <div class="gauge__num"><b id="dRound">0</b><span class="cap">轮 · 攻破即停</span></div>
         <div class="rail" id="rail" aria-hidden="true"></div>
-        <div class="gauge__foot"><span id="railText">轮次进度 0%</span><span>护栏 <b id="dMaxNum">8</b> · 异常保护，非攻击预算</span></div>
+        <div class="gauge__foot"><span id="railText">等待首轮投递</span><span>无攻击次数上限</span></div>
       </div>
       <div class="matrix" role="group" aria-label="运行指标">
         <div class="cell" data-tone="sent"><span class="lbl">已投递 / SENT</span><div class="cell__val"><b id="dSent">0</b></div><span class="meter" aria-hidden="true"><i id="barSent"></i></span><span class="cell__note">本地靶场模拟</span></div>
