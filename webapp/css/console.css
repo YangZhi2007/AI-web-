@@ -526,7 +526,7 @@ input[type=text]::placeholder{color:var(--t-3)}
 
 /* ---------- 12. 报告 v0.21「卷宗 / 刻度」：5 附录 + 打印 ----------
    卷首签发带 = 结论形状章 + 3 个读数；附录左侧编号刻度尺贯穿全页；
-   02 用与配置页同源的 8 格轮次预算刻度回答「这次实际花掉多少轮」。
+   02 用与配置页同源的 8 格刻度回答「攻破花了多少轮」。
    亮四色只作填充，文字/描边一律深语义色；打印段统一转黑白。 */
 
 /* 屏幕工具条：打印时整条隐藏，导出按钮仍由 renderReport 动态注入 */
@@ -604,7 +604,7 @@ body[data-page="report"] .tbl tbody tr.is-key td:first-child{box-shadow:inset 2p
   letter-spacing:.08em;text-transform:uppercase;color:var(--t-3)}
 .rpt-facts>div b{display:block;font:500 13px/1.6 var(--mono);color:var(--t-1);overflow-wrap:anywhere}
 
-/* 轮次预算刻度：与 13b 配置页 .cfg-rail 同值，跨页对照 */
+/* 攻击轮次刻度：与 13b 配置页 .cfg-rail 同值，跨页对照 */
 .rpt-rail-wrap{padding:16px;border:1px solid var(--n-line);border-radius:var(--r-in);background:var(--n-raised)}
 .rpt-rail-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}
 .rpt-rail-head b{font:500 14px/1 var(--mono);color:var(--t-1)}
@@ -943,7 +943,7 @@ footer{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;
 .orc-cell__t{font:500 11px/1.2 var(--body);color:var(--t-2);text-align:center}
 .orc-cell.is-empty{background:var(--n-raised);border-style:dashed;border-color:var(--n-line)}
 /* 形状编码：横杠=阴性/未触发，实心=阳性/确认，叉=证伪，虚线框=降级不确认，
-   菱形=漏报，斜杠=不适用；与 8 态形状板、8 格轮次预算同一套语言 */
+   菱形=漏报，斜杠=不适用；与 8 态形状板、8 格攻击轮次刻度同一套语言 */
 .orc-track--claim .orc-cell[data-claim="neg"] .orc-cell__g::after,
 .orc-track--oracle .orc-cell[data-v="TRUE_NEGATIVE"] .orc-cell__g::after{
   content:"";position:absolute;left:0;top:6px;width:14px;height:2px;background:var(--t-2)}

@@ -4,7 +4,8 @@ const CONFIG = Object.freeze({
   ENGINE_MODE : 'mock',                  // 'mock' | 'http'
   API_BASE_URL: 'http://127.0.0.1:8000/api/v1', // 占位常量 · 本演示不发起任何请求，仅切 http 模式时由 HttpEngine 使用
   TICK_SPEED  : 'demo',                  // 'fast' | 'demo' | 'slow'
-  MAX_ROUNDS  : 8
+  MAX_ROUNDS  : 8,                       // 契约桩剧本预算 + 仪表刻度容量（视觉契约不变）
+  AGENT_CAP   : 8                        // 自主攻击的异常看门狗，不是正常终止条件：攻破即停
 });
 /* 暴露只读引用，供 webapp/js/api.js 通过 window.CONFIG.API_BASE_URL 复用同一基准地址（Object.freeze 不影响外部读取） */
 window.CONFIG = CONFIG;
@@ -32,6 +33,13 @@ const pad = n => String(n).padStart(2,'0');
 const nowISO = () => new Date().toISOString();
 const fmt = iso => String(iso).replace('T',' ').slice(0,19);
 const genId = () => { const r = (globalThis.crypto && globalThis.crypto.randomUUID) ? globalThis.crypto.randomUUID().replace(/-/g,'').slice(0,8) : Math.random().toString(36).slice(2,8); return 'DEMO-' + r.toUpperCase(); };
+/* 收敛种子：同一任务的攻破轮由「网址 + 任务 ID」确定，写入报告后可逐轮复现。
+   同网址再次攻击会得到新任务 ID，因此不再必然停在同一轮——这是打散固定剧本的关键。 */
+const seedOf = str => { let h=2166136261>>>0; const s=String(str||'');
+  for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)>>>0;} return h>>>0; };
+const rngOf = seed => { let a=seed>>>0;
+  return () => { a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a);
+    t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; };
 const scopeOK = url => { try{const u=new URL(url),h=u.hostname.toLowerCase().replace(/^\[|\]$/g,'');
   return (u.protocol==='http:'||u.protocol==='https:') &&
     (SCOPE.includes(h)||h.endsWith('.lab')||/^lab-[a-z0-9-]+$/.test(h));}catch{return false;} };
@@ -253,7 +261,8 @@ const MockEngine = {
    攻破判据是独立裁决 CONFIRMED（标注点位真的被触发），不是「WAF 没拦住」；
    模型把响应异常当成攻破时会被判 REFUTED，智能体继续迭代而不提前收工。
    边界：仅授权靶场 scopeOK() 内执行模拟循环；越界一律纯模拟、零请求、明确声明；
-   有界停止——攻破即停 / 预算耗尽如实终止，绝不无限重试。全程 MockEngine 契约桩。 */
+   停机条件——只有标注点位被独立裁决确认才停；看门狗仅防程序异常，不是攻击预算。
+   全程 MockEngine 契约桩，不向目标发起任何请求。 */
 const AGENT_OPS = Object.freeze([
   {id:'OP_BASE',       avoids:null,              cost:1180,note:'建立 WAF 响应基线'},
   {id:'OP_ENC_SEQ_1',  avoids:'RULE_KEYWORD_A',  cost:1420,note:'一次编码变形，避开规则 A'},
@@ -264,17 +273,25 @@ const AGENT_OPS = Object.freeze([
   {id:'OP_FALLBACK_2', avoids:null,              cost:1020,note:'兜底算子 2（模型降级）'},
   {id:'OP_FALLBACK_3', avoids:'RULE_KEYWORD_B',  cost:1240,note:'兜底算子 3（绕过规则但点位未触发）'}
 ]);
-/* 靶场强度由目标路径派生：换一个靶场路径就能演示「攻破 / 打不穿 / 降级误判」三种结局，
+/* 靶场强度由目标路径派生：换一个靶场路径就能演示「快速攻破 / 加固后收敛 / 降级误判后攻破」，
    不需要用户额外选参数——仍是「丢一个网址进去」这一个动作。
-   probe/vulnType 描述该靶场的**客观情况**（探测哪个点位、该点位是否真有漏洞），
-   由目标决定而非用户选择——漏洞类型因此是攻击的产出，不是输入。
-   诱导靶场：第 4 轮起降级，第 5 轮兜底算子绕过 WAF 但点位未触发（AI 误报被裁决证伪），
-   第 6 轮才真正打穿 → 终态 degraded，一次完整演示「误报被拦住、降级仍可收敛」。 */
+   probe / vulnType 描述该靶场的客观点位，由目标决定；漏洞结论仍由命中点位与裁决推导，不是回显输入。
+   base + jitter 给出收敛轮区间；具体攻破轮由「网址 + 任务 ID」的种子决定，写进报告可复现。
+   诱导靶场会在收敛前 1 轮出现「绕过 WAF 但点位未触发」的误报，被独立裁决证伪后继续迭代。 */
 const AGENT_PROFILES = Object.freeze({
-  EASY:      {key:'EASY',      label:'标准靶场',   breakAt:'OP_ENC_SEQ_2', trapOp:null,             probe:'id',   vulnType:'sqli',   degradeFrom:0},
-  HARD:      {key:'HARD',      label:'加固靶场',   breakAt:null,           trapOp:null,             probe:'id',   vulnType:null,     degradeFrom:0},
-  DECEPTIVE: {key:'DECEPTIVE', label:'诱导靶场',   breakAt:'OP_FALLBACK_3',trapOp:'OP_FALLBACK_2',  probe:'file', vulnType:'upload', degradeFrom:4}
+  EASY:      {key:'EASY',      label:'标准靶场', probe:'id',   vulnType:'sqli',   base:3, jitter:3, trap:false, degrade:false, degradeLead:0, finalOp:'OP_ENC_SEQ_2'},
+  HARD:      {key:'HARD',      label:'加固靶场', probe:'q',    vulnType:'xss',    base:6, jitter:3, trap:false, degrade:false, degradeLead:0, finalOp:'OP_ENC_SEQ_2'},
+  DECEPTIVE: {key:'DECEPTIVE', label:'诱导靶场', probe:'file', vulnType:'upload', base:5, jitter:3, trap:true,  degrade:true,  degradeLead:2, finalOp:'OP_FALLBACK_3'}
 });
+/* 把静态画像实例化为本次任务的运行画像。看门狗上限只做 clamp，绝不作为正常停机条件。 */
+function agentPlanOf(profile,rng){
+  const span=Math.max(1,profile.jitter||1);
+  const raw=(profile.base||3)+Math.floor((rng?rng():0)*span);
+  const breakRound=Math.max(1,Math.min(CONFIG.AGENT_CAP,raw));
+  const degradeFrom=profile.degrade?Math.max(2,breakRound-(profile.degradeLead||2)):0;
+  const trapRound=profile.trap?Math.max(degradeFrom+1,breakRound-1):0;
+  return Object.assign({},profile,{breakRound,degradeFrom,trapRound});
+}
 function agentProfileOf(url){
   let p='/'; try{ p=new URL(url).pathname.toLowerCase(); }catch(e){}
   if(/hard|fort|加固/.test(p))      return AGENT_PROFILES.HARD;
@@ -289,19 +306,28 @@ function planNextRound(history,profile,no){
   const tried=new Set(history.map(h=>h.opId));
   const last=history[history.length-1];
   const sig=last&&last.cls==='BLOCKED'?last.sig:'';
-  let op=pool.find(o=>!tried.has(o.id)&&sig&&o.avoids===sig)
-       ||pool.find(o=>!tried.has(o.id))
-       ||pool[(no-1)%pool.length];
-  const reason=last
-    ? `上轮 ${last.cls}${sig?'（'+sig+'）':''}，按反馈选 ${op.note}`
-    : `无上轮响应，${op.note}`;
+  let op,reason;
+  if(no===profile.breakRound){
+    op=AGENT_OPS.find(o=>o.id===profile.finalOp)||pool[0];
+    reason=`累计 ${history.length} 轮反馈收敛，改用 ${op.note} 做最终尝试`;
+  }else if(no===profile.trapRound){
+    op=AGENT_OPS.find(o=>o.id==='OP_FALLBACK_2')||pool[0];
+    reason=`降级后沿用 ${op.note}，模型侧视为可能突破`;
+  }else{
+    op=pool.find(o=>!tried.has(o.id)&&sig&&o.avoids===sig)
+      ||pool.find(o=>!tried.has(o.id))
+      ||pool[(no-1)%pool.length];
+    reason=last
+      ? `上轮 ${last.cls}${sig?'（'+sig+'）':''}，按反馈选 ${op.note}`
+      : `无上轮响应，${op.note}`;
+  }
   return {op,reason,degraded};
 }
-/* 模拟靶场响应：只有标注点位触发的算子才算攻破；trapOp 会绕过 WAF 但不触发点位。 */
+/* 模拟靶场响应：收敛轮由种子派生，触发的是标注点位；trap 轮只绕过 WAF，点位未触发。 */
 function agentResponse(op,profile,no,degraded){
-  if(op.id===profile.breakAt) return {cls:'ANOMALY',sig:'',triggered:true,
-    note:'分段编码算子在标注点位触发可复现状态变化',degraded};
-  if(profile.trapOp&&op.id===profile.trapOp) return {cls:'ANOMALY',sig:'',triggered:false,
+  if(no===profile.breakRound) return {cls:'ANOMALY',sig:'',triggered:true,
+    note:'标注点位出现可复现状态变化（变形算子触达）',degraded};
+  if(no===profile.trapRound) return {cls:'ANOMALY',sig:'',triggered:false,
     note:'兜底算子仅绕过 WAF 规则，标注点位未出现状态变化',degraded};
   const sig='RULE_KEYWORD_'+String.fromCharCode(65+((no-1)%4));
   return {cls:'BLOCKED',sig,triggered:false,note:'WAF 规则 '+sig+' 命中，算子未触达标注点位',degraded};
@@ -347,9 +373,13 @@ function analyzeBreach(report){
 }
 const AttackAgent = {
   async analyze(url,options,onEvent){
-    const profile=agentProfileOf(url), cap=CONFIG.MAX_ROUNDS;
+    /* 看门狗只防程序异常：正常路径的唯一停机条件是独立裁决 CONFIRMED。
+       收敛轮由网址 + 本次任务 ID 派生，同一网址再次攻击不再必然停在同一轮。 */
+    const cap=CONFIG.AGENT_CAP;
     const tick=TICKS[CONFIG.TICK_SPEED]||TICKS.demo;
     const taskId=genId(), outOfScope=!scopeOK(url);
+    const seed=seedOf(url+'|'+taskId);
+    const profile=agentPlanOf(agentProfileOf(url),rngOf(seed));
     const report={
       contract_version:'1.0',mock_flag:true,demo:true,
       task:{task_id:taskId,target_url:displayUrl(url),
@@ -366,8 +396,9 @@ const AttackAgent = {
       task_id:taskId,round_no:no,event,timestamp:nowISO(),mock_flag:true,...extra});
     emit('task.started',0);
     const history=[];
-    let breached=false,breachRound=null,stopReason='BUDGET_EXHAUSTED';
-    for(let no=1;no<=cap;no++){
+    let breached=false,breachRound=null,stopReason='BREACH',no=0;
+    while(!breached){
+      if(++no>cap){stopReason='SAFETY_GUARD';break;}   // 异常护栏；正常靶场在此之前已确认攻破
       if(options.isCancelled?.()) throw new Error('用户取消');
       const prev=no===1?null:report.rounds[no-2].round_id;
       const plan=planNextRound(history,profile,no);
@@ -409,10 +440,12 @@ const AttackAgent = {
       emit(resp.cls==='BLOCKED'?'waf.blocked':'verdict.ready',no,
            {response_class:resp.cls,degraded_flag:resp.degraded});
       await sleep(tick*0.30,options.isCancelled);
-      if(!outOfScope&&oracle==='CONFIRMED'){breached=true;breachRound=no;stopReason='BREACH';break;}
+      /* 唯一正常停机条件：标注点位被独立裁决确认。WAF 未拦截 / 模型自述都不算。 */
+      if(!outOfScope&&oracle==='CONFIRMED'){breached=true;breachRound=no;break;}
       if(outOfScope&&no>=3){stopReason='OUT_OF_SCOPE';break;}  // 越界仅 3 轮纯模拟即停
     }
-    report.terminate_reason=breached?'HIT':(outOfScope?'OOS':'MAX_ROUNDS');
+    report.terminate_reason=breached?'HIT'
+      :(outOfScope?'OOS':(stopReason==='SAFETY_GUARD'?'GUARD':'MAX_ROUNDS'));
     report.elapsed_ms=report.rounds.reduce((a,r)=>a+r.cost_ms,0);
     const hit=report.rounds.find(r=>r.hit_signal&&r.gt_triggered);
     /* 漏洞分析：攻破后由命中点位性质归因；未攻破则不给漏洞结论，不猜类别 */
@@ -426,7 +459,8 @@ const AttackAgent = {
     report.credibility=buildCredibility(report);
     report.agent={
       mode:'AUTONOMOUS',label:'自主攻击智能体',profile:profile.key,profileLabel:profile.label,
-      breached,breachRound,stopReason,budget:cap,used:report.rounds.length,
+      breached,breachRound,stopReason,budget:cap,guard:cap,used:report.rounds.length,
+      seed,convergeAt:profile.breakRound,degradeFrom:profile.degradeFrom,trapRound:profile.trapRound,
       operatorCount:AGENT_OPS.length,
       decisions:report.rounds.map(r=>({round_no:r.round_no,op:r.strategy_tag,
         observed:r.agent_observed,reason:r.agent_decision,cls:r.response_class,
@@ -531,14 +565,15 @@ function setDashState(state,label){
   const t=$('#dashState');if(t)t.textContent=label;
 }
 /* 终态判定：唯一语义入口，onEvent 与 start() 收尾共用，避免两处漂移。
-   判定优先级：out_of_scope → MAX_ROUNDS → HIT+降级轮 → HIT → 兜底 error。
-   入参 report 可为 ReportStore.draft（事件期字段已填充）或 analyze 返回值。 */
+   判定优先级：out_of_scope → MAX_ROUNDS → GUARD → HIT+降级轮 → HIT → 兜底 error。
+   MAX_ROUNDS 只属于旧契约桩报告；自主攻击未攻破且触发看门狗时如实记 error，不伪装成"预算内未攻破"。 */
 function resolveTerminalState(report){
   const reason=report&&report.terminate_reason;
   const oos=!!(report&&report.task&&report.task.out_of_scope);
   const deg=(report&&report.degraded_rounds?report.degraded_rounds.length:0)>0;
   if(oos)                   return {state:'oos',      label:'SIMULATED'};   // 诚信优先
-  if(reason==='MAX_ROUNDS') return {state:'nofind',  label:'NOT FOUND'};
+  if(reason==='MAX_ROUNDS') return {state:'nofind',  label:'NOT FOUND'};   // 旧契约桩报告兼容
+  if(reason==='GUARD')      return {state:'error',   label:'GUARD'};       // 异常护栏触发
   if(reason==='HIT'&&deg)   return {state:'degraded',label:'DEGRADED'};
   if(reason==='HIT')        return {state:'hit',     label:'HIT'};
   return {state:'error',label:'ERROR'};                                     // 未知原因兜底
@@ -689,7 +724,7 @@ function paintAgentLiveAll(r){
   if(st){
     const oos=!!(r.task&&r.task.out_of_scope);
     st.textContent=oos?'越界 · 纯模拟':(r.agent.breached
-      ?'已攻破 · 停机 R'+('0'+r.agent.breachRound).slice(-2):'未攻破 · 预算终止');
+      ?'已攻破 · 停机 R'+('0'+r.agent.breachRound).slice(-2):'未攻破 · 护栏终止');
     st.setAttribute('data-tone',oos?'oos':(r.agent.breached?'hit':'nofind'));
   }
 }
@@ -698,14 +733,15 @@ function onEvent(e){
   switch(e.event){
     case 'task.started':
       resetAgentLive();agentLiveStart();   // draft 已由引擎设置，此时可正确区分自主/剧本模式
-      log('任务已创建 · 引擎 MockEngine（演示数据，非实时推理）','accent');
+      log('任务已创建 · '+(ReportStore.draft&&ReportStore.draft.agent
+        ?'AttackAgent 自主攻击，攻破即停':'MockEngine 契约桩')+'（演示数据）','accent');
       setRunState('RUNNING');setDashState('run','RUNNING');break;
     case 'round.started':
       addRoundRow(no);setProgress(no/maxR*100);
       setStat('#dRound',no);setStat('#dSent',no);
       paintRail(no,[...dashDeg]);
       paintBars({sent:no,blocked:statBlocked});
-      log(`第 ${no} 轮开始 · 轮次上限 ${maxR}`);break;
+      log(`第 ${no} 轮开始 · ${ReportStore.draft&&ReportStore.draft.agent?'持续迭代，攻破即停':'轮次上限 '+maxR}`);break;
     case 'payload.generated':
       setRowField(no,'strategy',e.strategy_tag,'normal');
       log(`第 ${no} 轮 策略生成 ${e.strategy_tag}（仅算子编号，不展示载荷文本）`);break;
@@ -749,7 +785,7 @@ function renderResult(r){
   const blocked=r.rounds.filter(x=>x.response_class==='BLOCKED').map(x=>x.round_no);
   const ev=hit
     ? `关键证据摘要：第 ${blocked.join('、')} 轮被 WAF 拦截，第 ${hit.round_no} 轮变形后${oos?'在模拟序列中命中特征':'成功检出'}；每条结论可回溯到 round_id。`
-    : `关键证据摘要：全部 ${r.rounds.length} 轮均被 WAF 拦截，达到轮次上限仍未收敛，未检出漏洞（如实记录，不计为成功）。`;
+    : `关键证据摘要：已执行 ${r.rounds.length} 轮仍未建立命中路径，未检出漏洞（如实记录，不计为成功）；${r.terminate_reason==='GUARD'?'异常护栏终止':'越界纯模拟终止'}。`;
   const deg=r.degraded_rounds.length
     ? ` 其中第 ${r.degraded_rounds.join('、')} 轮为降级轮次，已单列，不计入主指标统计。`
     : ' 本次无降级轮次。';
@@ -758,8 +794,8 @@ function renderResult(r){
 /* renderReport：结构化报告 v0.21「卷宗 / 刻度」
    5 个 .report-sec 的编号与顺序、字段来源、esc 防注入、mock_flag 诚信标注、exportBtn 动态注入、
    details.raw 结构、打印前展开全部保持；只重排版面层级：
-   卷首签发带把结论 / 终态形状 / 3 个读数提到第一屏，02 用与配置页同源的 8 格轮次预算刻度
-   回答「这次实际花掉多少轮」，附录 A 用形状标签与命中行标记让逐轮记录可读。 */
+   卷首签发带把结论 / 终态形状 / 3 个读数提到第一屏，02 用与配置页同源的 8 格刻度
+   回答「攻破花了多少轮」，附录 A 用形状标签与命中行标记让逐轮记录可读。 */
 const VERDICT_CN={hit:'已攻破',nofind:'未攻破',degraded:'降级攻破',oos:'模拟命中',
   cancel:'已取消',error:'异常',idle:'待机',run:'执行中'};
 const CLS_TAG={BLOCKED:['blocked','BLOCKED'],ANOMALY:['anomaly','ANOMALY'],
@@ -772,7 +808,7 @@ function renderReport(r){
   const termText=r.agent
     ? (r.agent.breached?`第 ${r.agent.breachRound} 轮攻破（标注点位被独立确认），攻破即停`
        :oos?'目标越界 · 纯模拟演示，不构成对任何真实目标的结论'
-       :`${r.agent.used} 轮预算内未攻破，如实终止，不无限重试`)
+       :`执行 ${r.agent.used} 轮后触发异常看门狗，未攻破，不输出漏洞结论`)
     :({HIT:degN?`命中目标特征（含 ${degN} 轮降级，降级轮次不计入主指标）`:'命中目标特征，正常终止（HIT）',
        MAX_ROUNDS:'达到轮次上限，未收敛（MAX_ROUNDS）；结论如实记为未检出，不计为成功',
        OOS:'目标越界 · 纯模拟演示，不构成对任何真实目标的结论'
@@ -792,7 +828,7 @@ function renderReport(r){
       <td>${esc(x.verdict)}</td><td>${x.cost_ms} ms</td>
       <td>${x.degraded_flag?'<span class="tag deg">DEGRADED</span>':'—'}</td></tr>`;
   }).join('');
-  /* 8 格轮次预算：已跑轮按响应分类上刻度，降级轮虚线框，剩余预算空槽（与配置页剧本库同源） */
+  /* 8 格刻度：已跑轮按响应分类上刻度，降级轮虚线框，攻破后未投递的格位留空（非"预算"） */
   const rail=r.rounds.slice(0,cap).map(x=>
     `<i data-cls="${esc(x.response_class)}"${x.degraded_flag?' class="is-deg"':''}>${x.round_no}</i>`).join('')
     +Array.from({length:Math.max(0,cap-r.rounds.length)},()=>'<i class="is-empty"></i>').join('');
@@ -843,7 +879,7 @@ function renderReport(r){
       </div>
       <div class="rpt-stats">
         <div><span class="lbl">执行轮次 / ROUNDS</span><b>${r.rounds.length}<i>/ ${cap}</i></b>
-          <small>未使用 ${Math.max(0,cap-r.rounds.length)} 轮预算</small></div>
+          <small>${r.agent&&r.agent.breached?'攻破即停 · 未继续投递':(r.agent?'看门狗终止 · 未攻破':'未使用 '+Math.max(0,cap-r.rounds.length)+' 轮（契约桩）')}</small></div>
         <div><span class="lbl">累计耗时 / ELAPSED</span><b>${r.elapsed_ms}<i>ms</i></b>
           <small>逐轮 cost_ms 之和</small></div>
         <div><span class="lbl">降级轮次 / DEGRADED</span><b>${degN}<i>轮</i></b>
@@ -859,23 +895,24 @@ function renderReport(r){
         ${fact('目标 URL / TARGET',esc(r.task.target_url))}
         ${fact('授权 ID / AUTH',esc(r.task.authorization_id))}
         ${fact('数据来源 / SOURCE',r.agent?'AttackAgent 自主闭环（演示数据）':'MockEngine 契约桩（演示数据）')}
+        ${r.agent?fact('收敛种子 / SEED',esc(String(r.agent.seed))+' · 收敛于 R'+r.agent.convergeAt):''}
       </div>
       <p class="rpt-note">${oos?'纯模拟演示 · 未对应任何真实站点 · 未发起任何请求 · 未使用任何授权凭据':'仅限授权范围内使用 · 演示环境为本地隔离靶场 · 不含任何真实请求与原始凭据'}；目标 URL 仅作展示，已剥离凭据。</p>
     </div>
     <div class="report-sec rpt-sec" data-sec="02"><h3><span class="rpt-sec__no">02</span>执行摘要<em>Summary</em></h3>
       <p class="rpt-lede">共执行 <b>${r.rounds.length}</b> 轮，累计耗时 <b class="mono">${r.elapsed_ms} ms</b>；终止原因：<b>${termText}</b>。</p>
       <div class="rpt-rail-wrap">
-        <div class="rpt-rail-head"><span class="lbl">轮次预算 / ROUND BUDGET</span><b class="mono">${r.rounds.length} / ${cap}</b></div>
+        <div class="rpt-rail-head"><span class="lbl">攻击轮次 / ROUNDS</span><b class="mono">${r.rounds.length} / ${cap}</b></div>
         <div class="rpt-rail" aria-hidden="true">${rail}</div>
-        <p class="rpt-note">横杠=拦截　实心=异常命中　虚线框=降级轮　空槽=未使用轮次；配置页展示剧本预算，本页展示本次实际用量。预算是实验控制变量，不是收敛判据。</p>
+        <p class="rpt-note">横杠=拦截　实心=异常命中　虚线框=降级轮　空槽=攻破后未投递；8 格是仪表容量，不是攻击预算。攻破轮由网址与任务种子派生，写进报告可复现。</p>
       </div>
       ${r.agent?`<div class="rpt-agent">
         <div class="rpt-agent__head"><span class="lbl">自主攻击闭环 / AUTONOMOUS LOOP</span>
           <b class="mono"${r.agent.breached?' data-breach="1"':''}>${esc(r.agent.profileLabel)} · ${r.agent.breached?'已攻破':'未攻破'}</b></div>
         <div class="rpt-agent__cells">
-          <div><span>终止条件</span><b>${esc({BREACH:'攻破即停',BUDGET_EXHAUSTED:'预算耗尽',OUT_OF_SCOPE:'越界纯模拟'}[r.agent.stopReason]||r.agent.stopReason)}</b></div>
+          <div><span>终止条件</span><b>${esc({BREACH:'攻破即停',BUDGET_EXHAUSTED:'旧契约桩预算耗尽',OUT_OF_SCOPE:'越界纯模拟',SAFETY_GUARD:'异常看门狗'}[r.agent.stopReason]||r.agent.stopReason)}</b></div>
           <div><span>攻破轮</span><b>${r.agent.breached?'R'+String(r.agent.breachRound).padStart(2,'0'):'无'}</b></div>
-          <div><span>迭代轮次</span><b>${r.agent.used} / ${r.agent.budget}</b></div>
+          <div><span>迭代轮次</span><b>${r.agent.used} / ${r.agent.guard||r.agent.budget}</b></div>
           <div><span>算子白名单</span><b>${r.agent.operatorCount} 个编号</b></div>
         </div>
         <div class="rpt-chain">
@@ -888,7 +925,7 @@ function renderReport(r){
             <span class="rpt-chain__v">${esc(ORACLE_CN[d.oracle]||d.oracle)}</span>
             <span>${d.continued?'继续':'终止'}</span></div>`).join('')}
         </div>
-        <p class="rpt-note">算子由上一轮拦截特征实时选出，只含算子编号、不含载荷文本；攻破判据是独立裁决确认标注点位被触发，不是 WAF 未拦截。模型把响应异常当成攻破时会被判证伪并继续迭代。达到攻破即停；未攻破则在 ${r.agent.budget} 轮预算内如实终止，不做无限重试。本页为授权靶场内的模拟闭环，演示数据 · 零外部请求。</p>
+        <p class="rpt-note">算子由上一轮拦截特征实时选出，只含算子编号、不含载荷文本；攻破判据是独立裁决确认标注点位被触发，不是 WAF 未拦截。模型把响应异常当成攻破时会被判证伪并继续迭代。持续迭代直到攻破即停；异常看门狗（${r.agent.guard||r.agent.budget} 轮）只防程序无界循环，正常演示不会触发，不是攻击预算。本页为授权靶场内的模拟闭环，演示数据 · 零外部请求。</p>
       </div>`:''}
       ${vulnBlock}
       <div class="rpt-audit">
@@ -977,16 +1014,16 @@ async function runTask(opts){
   const options={vulnType:o.vulnType!==undefined?o.vulnType:'sqli',
     authorizationId:'AUTH-LAB-DEMO-001',isCancelled};
   try{
-    /* v0.23：o.agent 走状态驱动的自主攻击闭环；默认仍走三剧本演示，两条路径共用
-       同一套事件流 / 状态机 / 报告 / 持久化收尾，既有验收不受影响。 */
-    const engine=o.agent?AttackAgent:AnalysisEngine;
+    /* v0.36：默认走「直到攻破才停」的自主闭环；仅显式 agent:false 时走三剧本契约桩。
+       两条路径共用同一套事件流 / 状态机 / 报告 / 持久化收尾。 */
+    const engine=o.agent!==false?AttackAgent:AnalysisEngine;
     const report=await engine.analyze(url,options,onEvent);
     renderResult(report);renderReport(report);
     const rc=$('#resultCard');if(rc)rc.classList.remove('hidden');
     if(report.task.out_of_scope)setMsg('演示完成 · 目标超出授权范围，纯模拟数据，未发起任何请求','warn');
     else if(report.agent)setMsg(report.agent.breached
       ? `自主攻击完成 · 第 ${report.agent.breachRound} 轮攻破，已生成报告（演示数据）`
-      : `自主攻击完成 · ${report.agent.used} 轮未攻破，预算内如实终止并生成报告（演示数据）`,'ok');
+      : `自主攻击异常终止 · ${report.agent.used} 轮未攻破（看门狗），不输出漏洞结论（演示数据）`,'warn');
     else setMsg('分析完成 · 报告已生成（演示数据，非实时推理）','ok');
     taskCount++;
     const entry={id:report.task.task_id,time:fmt(report.task.started_at),alias:report.task.target_alias,
@@ -1067,8 +1104,8 @@ syncStart();
 window.Probe={
   CONFIG, RUNTIME, SCRIPTS, Store, SCOPE, TICKS,
   GROUND_TRUTH, ORACLE_CN, buildCredibility, oracleVerdict, groundTruthOf,
-  AttackAgent, AGENT_OPS, AGENT_PROFILES, agentProfileOf, planNextRound, agentResponse,
-  analyzeBreach, PARAM_VULN,
+  AttackAgent, AGENT_OPS, AGENT_PROFILES, agentProfileOf, agentPlanOf,
+  planNextRound, agentResponse, seedOf, rngOf, analyzeBreach, PARAM_VULN,
   paintAgentLiveAll, paintAgentDecision, resetAgentLive,
   runTask, start, cancelRun,
   setDashState, applyTerminalState, resolveTerminalState,

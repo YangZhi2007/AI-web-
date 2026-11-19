@@ -14,7 +14,8 @@ const code = HTML;
    实现后为标准引用——以此证明断言确实捕获了"尚未实现"的能力（测试先行）。 */
 const exported = code + `
 ;globalThis.__T={
-  esc,displayUrl,scopeOK,SCRIPTS,CONFIG,RUNTIME,paintBars,paintRail,setMeter,markHot,MockEngine,AnalysisEngine,
+  esc,displayUrl,scopeOK,SCRIPTS,CONFIG,RUNTIME,paintBars,paintRail,setMeter,markHot,
+  MockEngine,AnalysisEngine,AttackAgent,
   resolveTerminalState:(typeof resolveTerminalState!=='undefined'?resolveTerminalState:null),
   applyTerminalState:(typeof applyTerminalState!=='undefined'?applyTerminalState:null),
   setDashState:(typeof setDashState!=='undefined'?setDashState:null),
@@ -264,10 +265,11 @@ const OUT_SCOPE = 'https://example.com';
   if (typeof T.start === 'function' && typeof T.cancelRun === 'function') {
     docMock.querySelector('#urlInput').value='http://127.0.0.1/lab/x';
     docMock.querySelector('#authChk').checked=true;
-    T.AnalysisEngine.analyze=()=>{ T.cancelRun(); return Promise.reject(new Error('桩异常-取消')); };
+    /* v0.36：任务入口默认走 AttackAgent，桩必须替换真实入口引擎 */
+    T.AttackAgent.analyze=()=>{ T.cancelRun(); return Promise.reject(new Error('桩异常-取消')); };
     await T.start();
     eq('状态机 取消路径 catch 不写 error（保持 cancel）', dash().dataset.state, 'cancel');
-    T.AnalysisEngine.analyze=()=>Promise.reject(new Error('引擎异常'));
+    T.AttackAgent.analyze=()=>Promise.reject(new Error('引擎异常'));
     await T.start();
     eq('状态机 引擎异常 → error', dash().dataset.state, 'error');
     ok('状态机 引擎异常 runState 切 RUN COMPLETE · ERROR',

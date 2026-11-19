@@ -1,11 +1,13 @@
-/* v0.35 验收：单入口攻击 + 靶场画像 + 漏洞分析
+/* v0.35 验收（v0.36 契约同步）：单入口攻击 + 靶场画像 + 漏洞分析
  * 需求：删掉「演示剧本」下拉，改为「输入靶址 → 点击攻击 → 打到攻破 → 分析漏洞 → 产出报告」。
+ * v0.36 同步：攻击不再固定轮数，三种画像都打到攻破；「未攻破」仅由异常看门狗产生，
+ *   不再把 HARD 当作固定 8 轮不攻破的演示。具体轮数断言见 qa-v036。
  * 验证点：
  *   ① 剧本/漏洞类型下拉已移除，双按钮合并为单一「开始攻击」；
- *   ② 靶场画像由 URL 派生，三种终态（攻破 / 未攻破 / 降级攻破）可由路径演示；
+ *   ② 靶场画像由 URL 派生，攻破 / 降级攻破由路径演示；
  *   ③ 漏洞类型由命中点位与裁决确认推导，不再回显用户输入；
- *   ④ 未攻破时不给漏洞结论；被证伪轮次作为反证列出；
- *   ⑤ 结论词与终态判定同源（回归 v0.35 修复的自相矛盾）；
+ *   ④ 看门狗未攻破时不给漏洞结论；被证伪轮次作为反证列出；
+ *   ⑤ 结论词与终态判定同源；
  *   ⑥ 配置页画像库不可选；零外联。
  * 依赖：本机 Chrome headless + CDP。 */
 const { spawn } = require('child_process');
@@ -27,9 +29,9 @@ const check = (name, ok, detail) => {
   console.log((ok ? 'PASS ' : 'FAIL ') + name + (detail ? ' — ' + detail : ''));
 };
 const CASES = [
-  { key: '标准靶场', url: 'http://127.0.0.1/lab/sqli_01.php', state: 'hit', rounds: 3, vuln: 'sqli', breached: true },
-  { key: '加固靶场', url: 'http://127.0.0.1/lab/hard/x', state: 'nofind', rounds: 8, vuln: null, breached: false },
-  { key: '诱导靶场', url: 'http://127.0.0.1/lab/trap/x', state: 'degraded', rounds: 6, vuln: 'upload', breached: true }
+  { key: '标准靶场', url: 'http://127.0.0.1/lab/sqli_01.php', state: 'hit', vuln: 'sqli', breached: true },
+  { key: '加固靶场', url: 'http://127.0.0.1/lab/hard/x', state: 'hit', vuln: 'xss', breached: true },
+  { key: '诱导靶场', url: 'http://127.0.0.1/lab/trap/x', state: 'degraded', vuln: 'upload', breached: true }
 ];
 
 (async () => {
@@ -99,7 +101,7 @@ const CASES = [
       var r=JSON.parse(s);return {state:r.terminate_reason,breached:r.agent&&r.agent.breached,
         script:r.task.script_tag,vuln:r.analysis&&r.analysis.type,word:(document.querySelector('#verdictWord')||{}).textContent};})()`);
     check('单入口走自主攻击（非剧本）', first && /^AGENT_/.test(first.script), first && first.script);
-    check('标准靶场 3 轮攻破', first && first.breached === true && st === 'hit', 'state=' + st);
+    check('标准靶场攻破即停', first && first.breached === true && st === 'hit', 'state=' + st);
 
     /* ③ 三画像终态 + 漏洞分析 */
     for (const cs of CASES) {
@@ -113,16 +115,12 @@ const CASES = [
           excl:x.analysis?x.analysis.excluded.length:0,
           findingVuln:x.findings[0]?x.findings[0].vuln_type:null,
           refuted:x.rounds.filter(function(q){return q.oracle_verdict==='REFUTED';}).length};})()`);
-      check(cs.key + ' 轮数与终态正确',
-        r && r.rounds === cs.rounds && r.state === cs.state && r.breached === cs.breached,
+      check(cs.key + ' 轮数有界且终态正确',
+        r && r.rounds >= 1 && r.rounds <= 8 && r.state === cs.state && r.breached === cs.breached,
         JSON.stringify({ rounds: r && r.rounds, state: r && r.state }));
-      if (cs.vuln) {
-        check(cs.key + ' 分析出 ' + cs.vuln, r && r.vuln === cs.vuln, r && r.label);
-        check(cs.key + ' finding 类型取自分析', r && r.findingVuln === cs.vuln, r && r.findingVuln);
-        check(cs.key + ' 分析含依据链', r && r.evid >= 4, 'evid=' + (r && r.evid));
-      } else {
-        check(cs.key + ' 未攻破不给漏洞结论', r && r.vuln === null, 'vuln=' + (r && r.vuln));
-      }
+      check(cs.key + ' 分析出 ' + cs.vuln, r && r.vuln === cs.vuln, r && r.label);
+      check(cs.key + ' finding 类型取自分析', r && r.findingVuln === cs.vuln, r && r.findingVuln);
+      check(cs.key + ' 分析含依据链', r && r.evid >= 4, 'evid=' + (r && r.evid));
       if (cs.key === '诱导靶场') {
         check('诱导靶场有被证伪的误报', r && r.refuted >= 1, 'refuted=' + (r && r.refuted));
         check('分析把误报列为反证', r && r.excl >= 1, 'excl=' + (r && r.excl));
@@ -151,17 +149,23 @@ const CASES = [
     check('签发章结论与终态一致（degraded → 降级攻破）', rp && rp.seal === '降级攻破', rp && rp.seal);
     await shot('v0.35-报告-漏洞分析.png');
 
-    /* ⑤ 未攻破报告：明确不给结论 */
+    /* ⑤ 异常看门狗报告：未攻破不给结论，签发章如实记异常 */
     await go(fileUrl('monitor.html'));
-    await ev(`window.Probe.runTask({url:'http://127.0.0.1/lab/hard/x',authed:true,agent:true})`);
+    await ev(`window.Probe.runTask({url:'http://127.0.0.1/lab/sqli_01.php',authed:true,agent:true})`);
     await sleep(800);
+    await ev(`(function(){var s=sessionStorage.getItem('probe.report');var r=JSON.parse(s);
+      r.terminate_reason='GUARD';r.agent.breached=false;r.agent.breachRound=null;
+      r.agent.stopReason='SAFETY_GUARD';r.analysis=null;r.findings=[];
+      r.rounds.forEach(function(q){q.hit_signal=false;q.gt_triggered=false;
+        q.oracle_verdict='TRUE_NEGATIVE';q.oracle_cn='拦截未触发';});
+      sessionStorage.setItem('probe.report',JSON.stringify(r));return 1;})()`);
     await go(fileUrl('report.html'));
     const rp2 = await ev(`(function(){var v=document.querySelector('.rpt-vuln');
       return {none:v?v.classList.contains('rpt-vuln--none'):null,
         text:v?v.textContent:'',seal:(document.querySelector('.rpt-seal__txt b')||{}).textContent};})()`);
-    check('未攻破报告显示无结论态', rp2 && rp2.none === true && rp2.text.indexOf('不输出漏洞类型') >= 0);
-    check('未攻破签发章为「未攻破」', rp2 && rp2.seal === '未攻破', rp2 && rp2.seal);
-    await shot('v0.35-报告-未攻破无结论.png');
+    check('看门狗未攻破报告显示无结论态', rp2 && rp2.none === true && rp2.text.indexOf('不输出漏洞类型') >= 0);
+    check('看门狗签发章为「异常」', rp2 && rp2.seal === '异常', rp2 && rp2.seal);
+    await shot('v0.35-报告-看门狗无结论.png');
 
     /* ⑥ 结论词与终态同源（变异报告回归：状态 nofind 不得出现「已攻破」） */
     const mut = await ev(`(function(){

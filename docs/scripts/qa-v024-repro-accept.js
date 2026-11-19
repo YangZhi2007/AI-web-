@@ -131,8 +131,18 @@ const chrome=spawn(CHROME,['--headless=new','--disable-gpu','--no-first-run','--
   await c.goto(url('monitor.html'));
   st='idle';t=0;while(t++<160){st=await c.eval(`document.querySelector('#dash')?document.querySelector('#dash').dataset.state:'?'`);if(['hit','nofind','degraded','oos'].includes(st))break;await sleep(220)}
   const hard=JSON.parse(await c.eval(`sessionStorage.getItem('probe.report')`));
-  ok('加固靶场未攻破',hard.agent.breached===false&&hard.rounds.length===8);
-  await putReport(c,hard);
+  ok('加固靶场在看门狗内攻破（v0.36 不再有固定未攻破结局）',
+    hard.agent.breached===true&&hard.rounds.length<=8);
+  /* 未攻破门禁仍须验证：由已攻破报告构造「裁决全部否定」的异常护栏报告 */
+  const hardNoHit=JSON.parse(JSON.stringify(hard));
+  hardNoHit.agent.breached=false;hardNoHit.agent.breachRound=null;
+  hardNoHit.agent.stopReason='SAFETY_GUARD';hardNoHit.terminate_reason='GUARD';
+  hardNoHit.analysis=null;hardNoHit.findings=[];
+  hardNoHit.rounds.forEach(function(q){q.hit_signal=false;q.gt_triggered=false;
+    q.oracle_verdict='TRUE_NEGATIVE';q.oracle_cn='拦截未触发';});
+  /* putReport 不 reload：按钮在页面初始化时定型，故须在导航前先写入未攻破报告 */
+  await c.eval(`sessionStorage.setItem('probe.report',${JSON.stringify(JSON.stringify(hardNoHit))})`);
+  await putReport(c,hardNoHit);
   const hardGate=await c.eval(`(()=>{const p=window.Repro.buildPackage(window.Probe.Store.getReport());const b=document.querySelector('#reproBtn');
     return{ok:p.ok,reason:p.reason,disabled:b?b.disabled:null,text:b?b.textContent:null};})()`);
   ok('未攻破不可导出且按钮禁用',hardGate.ok===false&&hardGate.disabled===true&&hardGate.reason.indexOf('无独立裁决确认')>-1,JSON.stringify(hardGate));

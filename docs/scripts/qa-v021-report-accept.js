@@ -141,9 +141,10 @@ const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run
     ok('3 读数取自 report 真值', s.stats[0].indexOf(String(r.rounds.length)) === 0 &&
       s.stats[1].indexOf(String(r.elapsed_ms)) === 0 && s.stats[2].indexOf(String(r.degraded_rounds.length)) === 0,
       JSON.stringify(s.stats));
-    ok('封面 6 项 / 附录 C 8 项事实格', s.facts[0] === 6 && s.facts[1] === 8, JSON.stringify(s.facts));
+    /* v0.36：封面新增「收敛种子」用于复现本次攻破轮，故 7 项 */
+    ok('封面 7 项（含收敛种子）/ 附录 C 8 项事实格', s.facts[0] === 7 && s.facts[1] === 8, JSON.stringify(s.facts));
     const cap = r.task.max_rounds;
-    ok('8 格轮次预算 = 上限；已跑 / 空槽 / 命中 / 降级与 report 一致',
+    ok('8 格刻度 = 护栏容量；已跑 / 空槽 / 命中 / 降级与 report 一致',
       s.rail.all === cap && s.rail.used === r.rounds.length && s.rail.empty === cap - r.rounds.length &&
       s.rail.anomaly === r.rounds.filter(x => x.response_class === 'ANOMALY').length &&
       s.rail.deg === r.degraded_rounds.length, JSON.stringify(s.rail));

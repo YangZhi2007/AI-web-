@@ -180,9 +180,11 @@ class CDP {
       const bgDark=getComputedStyle(document.querySelector('#dash')).backgroundColor;
       const hasReport=!!sessionStorage.getItem('probe.report');
       const hasHistory=JSON.parse(sessionStorage.getItem('probe.history')||'[]').length;
-      return {nodes,keyPath,stateTxt,runTxt,sent,bgDark,hasReport,hasHistory};
+      var rp=JSON.parse(sessionStorage.getItem('probe.report')||'{}');
+      return {nodes,keyPath,stateTxt,runTxt,sent,bgDark,hasReport,hasHistory,
+        rounds:((rp.rounds)||[]).length};
     })()`);
-    ok('态势节点按轮点亮(3)', mon.nodes === 3, 'lit=' + mon.nodes);
+    ok('态势节点按实际轮数点亮', mon.nodes === mon.rounds, 'lit=' + mon.nodes + ' rounds=' + mon.rounds);
     ok('命中关键路径高亮', parseFloat(mon.keyPath) >= 0.9, 'opacity=' + mon.keyPath);
     ok('状态灯文案 HIT', mon.stateTxt === 'HIT', mon.stateTxt);
     ok('运行面板 RUN COMPLETE', /RUN COMPLETE/.test(mon.runTxt), mon.runTxt.trim());
@@ -257,9 +259,10 @@ class CDP {
       keyRows:document.querySelectorAll('#roundBody tr.is-key').length,
       verdict:document.querySelector('#verdictWord').textContent,
       state:document.querySelector('#evidenceState').textContent,
-      wrapHidden:document.querySelector('#evidenceWrap').classList.contains('hidden')
+      wrapHidden:document.querySelector('#evidenceWrap').classList.contains('hidden'),
+      rounds:((JSON.parse(sessionStorage.getItem('probe.report')||'{}').rounds)||[]).length
     }))()`);
-    ok('证据页恢复逐轮表(3 行)', ev.rows === 3, 'rows=' + ev.rows);
+    ok('证据页按实际轮数恢复逐轮表', ev.rows === ev.rounds, 'rows=' + ev.rows + ' rounds=' + ev.rounds);
     ok('关键路径高亮命中轮', ev.keyRows === 1, 'key=' + ev.keyRows);
     ok('结论已检出 · 已攻破', ev.verdict === '已攻破', ev.verdict);
     ok('证据页状态 HIT', ev.state === 'HIT', ev.state);
@@ -304,12 +307,12 @@ class CDP {
     ok('pendingRun 不被子页面误消费（仅监控页消费）', navResult.pending === '1');
     await c.eval(`sessionStorage.removeItem('probe.pendingRun');`);  // 清掉模拟意图，避免污染后续用例
 
-    // ---- 7. 加固靶场 → nofind（剧本已移除，由 URL 派生靶场画像）----
+    // ---- 7. 加固靶场 → 攻破即停（v0.36：不再有固定轮数不攻破的结局）----
     await c.eval(`sessionStorage.setItem('probe.pendingRun','1');sessionStorage.setItem('probe.cfg', JSON.stringify({url:'http://127.0.0.1/lab/hard/x',agent:true,script:'AGENT_LOOP'}));`);
     await c.goto(fileUrl('monitor.html'));
     let st2 = 'idle', t2 = 0;
     while (t2++ < 100) { st2 = await c.eval(`document.querySelector('#dash').dataset.state`); if (['hit','nofind','degraded','oos','cancel','error'].includes(st2)) break; await sleep(250); }
-    ok('加固靶场 → nofind（关键回归不被覆盖）', st2 === 'nofind', 'state=' + st2);
+    ok('加固靶场 → 攻破即停（关键回归不被覆盖）', st2 === 'hit', 'state=' + st2);
 
     // ---- 8. 越界 → oos ----
     await c.eval(`sessionStorage.setItem('probe.pendingRun','1');sessionStorage.setItem('probe.cfg', JSON.stringify({url:'https://example.com/x',vulnType:'sqli',script:'CONVERGE_3'}));`);
@@ -385,10 +388,12 @@ class CDP {
     const rm = await c.eval(`(()=>({
       spin:getComputedStyle(document.querySelector('.spin')).animationName,
       nodeLit:[...document.querySelectorAll('.sit__node.is-lit')].length,
-      state:document.querySelector('#dash').dataset.state
+      state:document.querySelector('#dash').dataset.state,
+      rounds:((JSON.parse(sessionStorage.getItem('probe.report')||'{}').rounds)||[]).length
     }))()`);
     ok('RM 动画关闭', rm.spin === 'none', 'animation=' + rm.spin);
-    ok('RM 语义静态保留（节点点亮）', rm.nodeLit === 3 && rm.state === 'hit', 'lit=' + rm.nodeLit);
+    ok('RM 语义静态保留（节点点亮）', rm.nodeLit === rm.rounds && rm.state === 'hit',
+      'lit=' + rm.nodeLit + ' rounds=' + rm.rounds);
 
   } catch (e) {
     fail++; console.log('[ERROR] ' + (e && e.stack || e));

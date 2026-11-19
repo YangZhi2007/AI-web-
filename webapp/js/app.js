@@ -66,7 +66,7 @@
       if(hint) hint.classList.add('hidden');
       if(goBtn) goBtn.classList.add('hidden');
       /* 授权视为已在任务台勾选确认；仅此处、仅此刻执行一次 */
-      /* v0.23：cfg.agent 决定走状态驱动的自主攻击闭环，默认仍是三剧本演示；
+      /* v0.36：默认走状态驱动、攻破即停的自主闭环；三剧本仅作为显式 agent:false 的契约桩。
          执行开关始终是这一次性 pendingRun，cfg 残留不会触发任何任务。 */
       P.runTask({url:cfg.url, script:'AGENT_LOOP', authed:true, agent:true});
       return;
@@ -217,7 +217,7 @@
         '，独立裁决'+(P.ORACLE_CN[v]||v));
       el.setAttribute('title','第 '+row.round_no+' 轮 · '+row.gt_note);
     }else{
-      el.setAttribute('aria-label','未使用的轮次预算');
+      el.setAttribute('aria-label','攻破后未投递的轮次');
     }
     var no=document.createElement('span'); no.className='orc-cell__no mono';
     no.textContent=row?('0'+row.round_no).slice(-2):'—'; el.appendChild(no);
@@ -381,15 +381,17 @@
     return n;
   }
 
-  /* 画像逐轮预览：完全复用运行时的决策与响应模拟，避免配置页另写一套判断导致漂移 */
+  /* 画像逐轮预览：复用运行时决策与响应模拟。画像键作固定示例种子，
+     使配置页展示一个可核对的样例；实际任务的攻破轮由网址 + 任务 ID 派生，不固定。 */
   function previewProfile(prof,cap){
     var hist=[], out=[];
+    var live=P.agentPlanOf(prof,P.rngOf(P.seedOf(prof.key)));
     for(var no=1;no<=cap;no++){
-      var plan=P.planNextRound(hist,prof,no);
-      var resp=P.agentResponse(plan.op,prof,no,plan.degraded);
+      var plan=P.planNextRound(hist,live,no);
+      var resp=P.agentResponse(plan.op,live,no,plan.degraded);
       out.push({no:no,cls:resp.cls,degraded:!!resp.degraded,triggered:!!resp.triggered,op:plan.op.id});
       hist.push({opId:plan.op.id,cls:resp.cls,sig:resp.sig});
-      if(resp.triggered)break;
+      if(resp.triggered)break;   // 与运行时同源：确认攻破即停，不跑满格
     }
     return out;
   }
@@ -419,7 +421,7 @@
         HARD:'路径含 hard / fort / 加固',
         DECEPTIVE:'路径含 trap / deceptive / 诱导'
       };
-      var STATE_NAME={hit:'HIT · 攻破',nofind:'NOT FOUND · 未攻破',degraded:'DEGRADED · 降级后攻破'};
+      var STATE_NAME={hit:'HIT · 攻破即停',nofind:'GUARD · 异常护栏',degraded:'DEGRADED · 降级后攻破'};
       PROFILE_ORDER.forEach(function(key){
         var prof=P.AGENT_PROFILES[key]; if(!prof)return;
         var cap=c.MAX_ROUNDS||8;
@@ -434,8 +436,8 @@
         top.appendChild(mk('span','cfg-scn__en',key));
         card.appendChild(top);
         card.appendChild(mk('p','cfg-scn__meta',
-          '轮数 '+steps.length+' / 上限 '+cap+' · 预期终态 '+STATE_NAME[termState]+' · 降级轮 '+degN));
-        card.appendChild(mk('p','cfg-scn__rule','派生条件：'+PROFILE_RULE[key]));
+          '示例 '+steps.length+' 轮攻破 / 护栏 '+cap+' · 终态 '+STATE_NAME[termState]+' · 降级轮 '+degN));
+        card.appendChild(mk('p','cfg-scn__rule','派生条件：'+PROFILE_RULE[key]+' · 实际攻破轮由网址与任务种子派生'));
         var rail=mk('div','cfg-rail'); rail.setAttribute('aria-hidden','true');
         steps.forEach(function(s){
           var cell=mk('i',null,s.no);
@@ -546,28 +548,35 @@
     }
     /* 唯一入口：填网址 → 开始攻击。靶场强度与漏洞类型均由目标自身决定，
        用户不再选择剧本或漏洞类型（那是攻击的产出，不是输入）。 */
-    var btn=$('#startBtn');
-    if(btn){
-      btn.addEventListener('click',function(e){
-        var urlEl=$('#urlInput'); if(!urlEl)return;
-        var url=urlEl.value.trim();
-        var chk=$('#authChk');
-        var msg=$('#msg');
-        if(chk&&!chk.checked){ P.syncStart(); return; } // 授权闸门：未勾选则不翻页，引擎提示
-        if(!/^https?:\/\/[^\s]+$/i.test(url)){
-          if(msg){msg.textContent='请输入以 http:// 或 https:// 开头的合法地址';msg.className='err';}
-          return;
-        }
-        e.stopImmediatePropagation();
-        P.Store.setCfg({url:url, script:'AGENT_LOOP', agent:true});
-        /* 一次性执行意图：只有真实点击才置位；监控页读后立即清除并消费。
-           cfg 仅回填只读快照条，不再作为执行开关，故浏览/导航/刷新都不会触发任务。 */
-        if(P.Store.setPendingRun) P.Store.setPendingRun();
-        var link=$('#runLink');
-        if(link) link.click();            // 触发 core.js 的圆形揭幕跨页过渡
-        else location.href='monitor.html';
-      },true);
+    /* 按钮点击与输入框回车共用同一提交路径，不允许回车在本地偷偷跑一份任务 */
+    function submit(){
+      var urlEl=$('#urlInput'); if(!urlEl)return false;
+      var url=urlEl.value.trim();
+      var chk=$('#authChk');
+      var msg=$('#msg');
+      if(chk&&!chk.checked){ P.syncStart(); return false; } // 授权闸门：未勾选则不翻页，引擎提示
+      if(!/^https?:\/\/[^\s]+$/i.test(url)){
+        if(msg){msg.textContent='请输入以 http:// 或 https:// 开头的合法地址';msg.className='err';}
+        return false;
+      }
+      P.Store.setCfg({url:url, script:'AGENT_LOOP', agent:true});
+      /* 一次性执行意图：只有真实提交才置位；监控页读后立即清除并消费。
+         cfg 仅回填只读快照条，不再作为执行开关，故浏览/导航/刷新都不会触发任务。 */
+      if(P.Store.setPendingRun) P.Store.setPendingRun();
+      var link=$('#runLink');
+      if(link) link.click();              // 触发 core.js 的圆形揭幕跨页过渡
+      else location.href='monitor.html';
+      return true;
     }
+    var btn=$('#startBtn');
+    if(btn) btn.addEventListener('click',function(e){
+      if(submit()) e.stopImmediatePropagation();
+    },true);
+    var urlEl=$('#urlInput');
+    if(urlEl) urlEl.addEventListener('keydown',function(e){
+      if(e.key!=='Enter')return;
+      if(submit()) e.stopImmediatePropagation();
+    },true);
     /* 授权勾选变化时同步入口可用态（引擎已绑 change，这里仅兜底可见性） */
     var chk=$('#authChk');
     if(chk) chk.addEventListener('change',function(){ P.syncStart(); });

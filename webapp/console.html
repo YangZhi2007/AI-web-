@@ -1,7 +1,7 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-<!--
+  <head>
+    <!--
   PROBE / LAB · 功能页 v0.18「SOC 攻防仪表 · 克制冷静 · 高对比」
   7 个独立页面靠顶栏真翻页（data-nav + core.js 跨页过渡），小功能为子页面：
   console 任务台 / monitor 运行监控 / evidence 证据链 / report 报告（主流程）
@@ -13,104 +13,225 @@
   零改动；全部静态 DOM id、data-* / aria-* / role / tabindex、#pt、打印与 44×44 契约保留。
   零外部请求，file:// 可运行；prefers-reduced-motion 全降级。
 -->
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>探测任务台 · SmartWAF-Breaker</title>
-<script>try{ if(sessionStorage.getItem('pt-nav')==='1') document.documentElement.classList.add('pt-cover'); }catch(e){}</script>
-<link rel="stylesheet" href="css/core.css" />
-<link rel="stylesheet" href="css/console.css" />
-<link rel="stylesheet" href="css/refine.css" />
-</head>
-<body data-page="console">
-<div class="wrap">
-<header class="topbar">
-  <a class="brand" href="index.html" data-nav data-ripple><i></i>PROBE / LAB</a>
-  <nav class="mainnav" aria-label="主导航">
-    <a class="is-current" href="console.html" data-page="console"><span class="nav-no">01</span>任务台</a>
-    <a href="monitor.html" data-page="monitor"><span class="nav-no">02</span>运行监控</a>
-    <a href="evidence.html" data-page="evidence"><span class="nav-no">03</span>证据链</a>
-    <a href="report.html" data-page="report"><span class="nav-no">04</span>报告</a>
-  </nav>
-  <div class="tools">
-    <a class="tool" href="settings.html" data-page="settings" aria-label="配置中心" title="配置中心">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M4.9 4.9l2.1 2.1m10 10 2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg><span>配置</span></a>
-    <a class="tool" href="history.html" data-page="history" aria-label="历史任务" title="历史任务">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/><path d="M12 7v5l3 2"/></svg><span>历史</span></a>
-    <a class="tool" href="about.html" data-page="about" aria-label="合规说明" title="合规说明">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg><span>说明</span></a>
-  </div>
-</header>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>探测任务台 · SmartWAF-Breaker</title>
+    <script>
+      try {
+        if (sessionStorage.getItem("pt-nav") === "1")
+          document.documentElement.classList.add("pt-cover");
+      } catch (e) {}
+    </script>
+    <link rel="stylesheet" href="css/core.css" />
+    <link rel="stylesheet" href="css/console.css" />
+    <link rel="stylesheet" href="css/refine.css" />
+  </head>
+  <body data-page="console">
+    <div class="wrap">
+      <header class="topbar">
+        <a class="brand" href="index.html" data-nav data-ripple
+          ><i></i>PROBE / LAB</a
+        >
+        <nav class="mainnav" aria-label="主导航">
+          <a class="is-current" href="console.html" data-page="console"
+            ><span class="nav-no">01</span>任务台</a
+          >
+          <a href="monitor.html" data-page="monitor"
+            ><span class="nav-no">02</span>运行监控</a
+          >
+          <a href="evidence.html" data-page="evidence"
+            ><span class="nav-no">03</span>证据链</a
+          >
+          <a href="report.html" data-page="report"
+            ><span class="nav-no">04</span>报告</a
+          >
+        </nav>
+        <div class="tools">
+          <a
+            class="tool"
+            href="settings.html"
+            data-page="settings"
+            aria-label="配置中心"
+            title="配置中心"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path
+                d="M12 2v3m0 14v3M2 12h3m14 0h3M4.9 4.9l2.1 2.1m10 10 2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"
+              /></svg
+            ><span>配置</span></a
+          >
+          <a
+            class="tool"
+            href="history.html"
+            data-page="history"
+            aria-label="历史任务"
+            title="历史任务"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5" />
+              <path d="M12 7v5l3 2" /></svg
+            ><span>历史</span></a
+          >
+          <a
+            class="tool"
+            href="about.html"
+            data-page="about"
+            aria-label="合规说明"
+            title="合规说明"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 11v5m0-8h.01" /></svg
+            ><span>说明</span></a
+          >
+        </div>
+      </header>
 
-<p class="crumb">控制台 <span></span> <b>任务台</b></p>
-<div class="page-head">
-  <div class="page-head__main">
-    <p class="eyebrow">Step 01 / Task console</p>
-    <h1 class="page-title">探测任务台<span class="dash" aria-hidden="true"></span></h1>
-    <p class="page-sub">把目标地址交给智能体，在授权靶场内逐轮自适应探测、攻破即停，并自动生成报告。全过程为演示数据，不向目标地址发起任何真实请求。</p>
-  </div>
-  <span class="page-no" aria-hidden="true">01</span>
-</div>
+      <p class="crumb">控制台 <span></span> <b>任务台</b></p>
+      <div class="page-head">
+        <div class="page-head__main">
+          <p class="eyebrow">Step 01 / Task console</p>
+          <h1 class="page-title">
+            探测任务台<span class="dash" aria-hidden="true"></span>
+          </h1>
+          <p class="page-sub">
+            把目标地址交给智能体，在授权靶场内逐轮自适应探测、攻破即停，并自动生成报告。全过程为演示数据，不向目标地址发起任何真实请求。
+          </p>
+        </div>
+        <span class="page-no" aria-hidden="true">01</span>
+      </div>
 
-<div class="grid-2">
-  <section class="card card--key card--shadow" aria-label="任务配置">
-    <h2 class="card-title">任务配置 / Task configuration</h2>
-    <div class="form-grid">
-      <div class="f-url field">
-        <label class="lbl" for="urlInput">目标地址 / Target URL（仅作展示字符串）</label>
-        <input id="urlInput" type="text" placeholder="http://127.0.0.1/lab/sqli_01.php" value="http://127.0.0.1/lab/sqli_01.php">
+      <div class="grid-2">
+        <section class="card card--key card--shadow" aria-label="任务配置">
+          <h2 class="card-title">任务配置 / Task configuration</h2>
+          <div class="form-grid">
+            <div class="f-url field">
+              <label class="lbl" for="urlInput"
+                >目标地址 / Target URL（仅作展示字符串）</label
+              >
+              <input
+                id="urlInput"
+                type="text"
+                placeholder="http://127.0.0.1/lab/sqli_01.php"
+                value="http://127.0.0.1/lab/sqli_01.php"
+              />
+            </div>
+          </div>
+          <div class="checks">
+            <label for="authChk"
+              ><input
+                id="authChk"
+                type="checkbox"
+              />我已获得该目标的书面授权</label
+            >
+            <span class="lbl"
+              >授权范围仅限 localhost / 127.0.0.1 / lab
+              靶场别名；越界仅作纯模拟演示</span
+            >
+          </div>
+          <div class="actions">
+            <button
+              id="startBtn"
+              class="btn-solid"
+              type="button"
+              disabled
+              data-ripple
+            >
+              开始攻击 · 打到攻破 →
+            </button>
+            <a
+              id="runLink"
+              class="nav-trigger"
+              href="monitor.html"
+              data-nav
+              aria-hidden="true"
+              tabindex="-1"
+              >进入监控</a
+            >
+            <button
+              id="cancelBtn"
+              class="btn-ghost hidden"
+              type="button"
+              data-ripple
+            >
+              取消
+            </button>
+            <span class="msg-box"><span id="msg" role="status"></span></span>
+          </div>
+          <p class="hint auth-hint" id="authHint">
+            请先勾选授权确认，否则无法开始攻击。
+          </p>
+          <p class="hint agent-hint" id="agentHint">
+            只填网址即可：智能体依据每轮 WAF 拦截特征自选算子，<b>攻破（标注点位被独立确认）即停</b>，不设固定攻击次数。换靶场路径可演示不同过程：<span class="mono">/lab/hard.php</span> 多轮加固后收敛，<span class="mono">/lab/trap.php</span> 出现一次被独立裁决证伪的误报后继续攻破。
+          </p>
+        </section>
+
+        <aside class="boundary-card" aria-label="合规与边界声明">
+          <div class="boundary-card__title">
+            <i aria-hidden="true"></i>合规与边界 / Boundary
+          </div>
+          <ul>
+            <li>
+              仅限
+              <span class="mono">localhost / 127.0.0.1 / lab</span> 靶场别名
+            </li>
+            <li>提交前须勾选书面授权确认</li>
+            <li>演示数据 · 非实时推理 · <b>零外部请求</b></li>
+          </ul>
+          <p class="boundary-card__foot">
+            不涉及未知漏洞挖掘，不用于未授权目标
+          </p>
+        </aside>
+      </div>
+
+      <div class="metrics" aria-label="运行指标">
+        <div><span class="lbl">累计任务 / TASKS</span><b id="mTasks">0</b></div>
+        <div>
+          <span class="lbl">检出漏洞 / FINDINGS</span><b id="mFindings">0</b>
+        </div>
+        <div>
+          <span class="lbl">平均轮次 / AVG ROUNDS</span><b id="mRounds">0</b>
+        </div>
+      </div>
+
+      <footer>
+        <!-- <div>
+          <div class="foot-links">
+            <a href="console.html" data-page="console">任务台</a
+            ><a href="monitor.html" data-page="monitor">运行监控</a>
+            <a href="evidence.html" data-page="evidence">证据链</a
+            ><a href="report.html" data-page="report">报告</a>
+            <a href="settings.html" data-page="settings">配置</a
+            ><a href="history.html" data-page="history">历史</a>
+            <a href="about.html" data-page="about">说明</a>
+          </div>
+          <p class="boundary">
+            授权自测工具，仅用于本地隔离靶场，不用于未授权目标，不涉及未知漏洞挖掘；演示数据
+            · MockEngine 契约桩 · 非实时推理 · 零外部请求。
+          </p>
+        </div> -->
+        <div class="foot-end">
+          <button
+            id="soundOffBtn"
+            class="sound-off"
+            type="button"
+            role="switch"
+            aria-checked="false"
+            title="仅视觉状态，无音频输出"
+          >
+            SOUND OFF
+          </button>
+          <span class="lbl">演示数据 · 非实时推理 · 零外部请求</span>
+        </div>
+      </footer>
+      <div class="pt" id="pt" aria-hidden="true">
+        <div class="pt__mark"><span class="pt__dot"></span>PROBE / LAB</div>
       </div>
     </div>
-    <div class="checks">
-      <label for="authChk"><input id="authChk" type="checkbox">我已获得该目标的书面授权</label>
-      <span class="lbl">授权范围仅限 localhost / 127.0.0.1 / lab 靶场别名；越界仅作纯模拟演示</span>
-    </div>
-    <div class="actions">
-      <button id="startBtn" class="btn-solid" type="button" disabled data-ripple>开始攻击 · 打到攻破 →</button>
-      <a id="runLink" class="nav-trigger" href="monitor.html" data-nav aria-hidden="true" tabindex="-1">进入监控</a>
-      <button id="cancelBtn" class="btn-ghost hidden" type="button" data-ripple>取消</button>
-      <span class="msg-box"><span id="msg" role="status"></span></span>
-    </div>
-    <p class="hint auth-hint" id="authHint">请先勾选授权确认，否则无法开始攻击。</p>
-    <p class="hint agent-hint" id="agentHint">只填网址即可：智能体依据每轮 WAF 拦截特征自选算子，<b>攻破（标注点位被独立确认）即停</b>，随后按命中点位与裁决确认给出漏洞分析与报告；未攻破在 8 轮预算内如实终止，不无限重试。换靶场路径可演示不同结局：<span class="mono">/lab/hard.php</span> 打不穿、<span class="mono">/lab/trap.php</span> 降级并出现一次被裁决否决的误报。</p>
-  </section>
-
-  <aside class="boundary-card" aria-label="合规与边界声明">
-    <div class="boundary-card__title"><i aria-hidden="true"></i>合规与边界 / Boundary</div>
-    <ul>
-      <li>仅限 <span class="mono">localhost / 127.0.0.1 / lab</span> 靶场别名</li>
-      <li>提交前须勾选书面授权确认</li>
-      <li>演示数据 · 非实时推理 · <b>零外部请求</b></li>
-    </ul>
-    <p class="boundary-card__foot">不涉及未知漏洞挖掘，不用于未授权目标</p>
-  </aside>
-</div>
-
-<div class="metrics" aria-label="运行指标">
-  <div><span class="lbl">累计任务 / TASKS</span><b id="mTasks">0</b></div>
-  <div><span class="lbl">检出漏洞 / FINDINGS</span><b id="mFindings">0</b></div>
-  <div><span class="lbl">平均轮次 / AVG ROUNDS</span><b id="mRounds">0</b></div>
-</div>
-
-<footer>
-  <div>
-    <div class="foot-links">
-      <a href="console.html" data-page="console">任务台</a><a href="monitor.html" data-page="monitor">运行监控</a>
-      <a href="evidence.html" data-page="evidence">证据链</a><a href="report.html" data-page="report">报告</a>
-      <a href="settings.html" data-page="settings">配置</a><a href="history.html" data-page="history">历史</a>
-      <a href="about.html" data-page="about">说明</a>
-    </div>
-    <p class="boundary">授权自测工具，仅用于本地隔离靶场，不用于未授权目标，不涉及未知漏洞挖掘；演示数据 · MockEngine 契约桩 · 非实时推理 · 零外部请求。</p>
-  </div>
-  <div class="foot-end">
-    <button id="soundOffBtn" class="sound-off" type="button" role="switch" aria-checked="false" title="仅视觉状态，无音频输出">SOUND OFF</button>
-    <span class="lbl">演示数据 · 非实时推理 · 零外部请求</span>
-  </div>
-</footer>
-<div class="pt" id="pt" aria-hidden="true"><div class="pt__mark"><span class="pt__dot"></span>PROBE / LAB</div></div>
-</div>
-<script src="js/api.js" defer></script>
-<script src="js/console.js" defer></script>
-<script src="js/app.js" defer></script>
-<script src="js/core.js" defer></script>
-</body>
+    <script src="js/api.js" defer></script>
+    <script src="js/console.js" defer></script>
+    <script src="js/app.js" defer></script>
+    <script src="js/core.js" defer></script>
+  </body>
 </html>

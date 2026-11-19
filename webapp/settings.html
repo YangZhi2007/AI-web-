@@ -54,9 +54,9 @@
     <small>契约桩 · 零外部请求</small>
   </div>
   <div class="cfg-read__cell">
-    <span class="lbl">Max rounds / 轮次上限</span>
+    <span class="lbl">Max rounds / 异常护栏</span>
     <b id="cfgMax">8</b>
-    <small>达到即终止 · 如实记未检出</small>
+    <small>仅防无界循环 · 攻破即停不受此限</small>
   </div>
   <div class="cfg-read__cell">
     <span class="lbl">Tick speed / 节奏</span>
@@ -126,7 +126,7 @@
   <div class="cfg-head">
     <span class="cfg-no">03</span>
     <h2 class="cfg-title">靶场画像<em>Profiles</em></h2>
-    <span class="cfg-head__note">由目标路径派生，不需要用户选择 · 横杠=拦截　实心=攻破　虚线框=降级轮　空槽=未使用轮次</span>
+    <span class="cfg-head__note">由目标路径派生，不需要用户选择 · 横杠=拦截　实心=攻破　虚线框=降级轮　空槽=攻破后未投递</span>
   </div>
   <div class="cfg-scn" id="cfgScn"></div>
 </section>
@@ -137,7 +137,7 @@
       <span class="cfg-no">04</span>
       <h2 class="cfg-title">终态判定<em>Terminal states</em></h2>
     </div>
-    <p class="cfg-prio"><b>判定优先级</b> 越界 OOS <i>›</i> 轮次耗尽 MAX_ROUNDS <i>›</i> 命中含降级 <i>›</i> 命中 HIT <i>›</i> 异常兜底</p>
+    <p class="cfg-prio"><b>判定优先级</b> 越界 OOS <i>›</i> 轮次耗尽 MAX_ROUNDS（旧契约桩） <i>›</i> 异常护栏 GUARD <i>›</i> 命中含降级 <i>›</i> 命中 HIT <i>›</i> 异常兜底</p>
     <div class="cfg-states">
       <div class="cfg-state">
         <span class="cfg-state__g" data-g="idle" aria-hidden="true"></span>
@@ -152,12 +152,12 @@
       <div class="cfg-state">
         <span class="cfg-state__g" data-g="hit" aria-hidden="true"></span>
         <span class="cfg-state__body"><span class="cfg-state__code">HIT</span><span class="cfg-state__zh">命中</span>
-          <span class="cfg-state__cond">检出目标特征且无降级轮，正常终止</span></span>
+          <span class="cfg-state__cond">标注点位被独立确认，无降级轮，攻破即停</span></span>
       </div>
       <div class="cfg-state">
         <span class="cfg-state__g" data-g="nofind" aria-hidden="true"></span>
         <span class="cfg-state__body"><span class="cfg-state__code">NOT FOUND</span><span class="cfg-state__zh">未检出</span>
-          <span class="cfg-state__cond">达到轮次上限未收敛，如实记录不计为成功</span></span>
+          <span class="cfg-state__cond">旧契约桩预算耗尽；自主攻击未攻破走 GUARD 护栏</span></span>
       </div>
       <div class="cfg-state">
         <span class="cfg-state__g" data-g="degraded" aria-hidden="true"></span>
