@@ -38,12 +38,14 @@ dongjian/
 
 约定 Python 包位于仓库根的 `ai_pentest/`，含：
 
-- `recon.py` → 情报包 `recon.json`
-- `head.py` → 假设清单 `hypotheses.json`（两遍深挖在内部完成）
-- `verify.py` → 验证证据落 `evidence` 表
-- `report.py` → 报告 `report.json`
+- `recon.py`（1 号）→ 情报包 `recon.json`
+- `head.py`（1 号）→ 假设清单 `hypotheses.json`（两遍深挖在内部完成）
+- `verify.py`（**3 号，已实现**）→ 验证证据 `evidence.json`，契约见 `ai_pentest/README.md`
+- `report.py`（组长）→ 报告 `report.json`
 
 脚本缺失时对应阶段跳过、不报错，便于分阶段开发时也能跑通。
+`verify.py` 已到位，因此流水线会真实执行 verify 阶段（无靶场或设 `DJ_MOCK=1` 时
+走 DEMO 假靶机、产物标注 `demo:true`）；其余三脚本未到位时仍按跳过处理。
 
 ## 部署（在你负责的机器上）
 
@@ -108,15 +110,19 @@ node docs/scripts/qa-v038-php-backend.js   # PHP 后端真实 HTTP 联调：10/1
 - `qa-v037`：六阶段渲染、mock 推进、报告双轨、演示标注、CSS 无 slop、零外联、零运行时异常，
   并产出三张真实渲染截图于 `docs/screenshots/v0.37-洞鉴-*.png`。
 - `qa-v038`：自动起 PHP 内置服务器，验证 7 个文件真实语法、API 路径后缀、非法 ID 容错、
-  合规拒绝（公网/缺授权）、建任务、SSE 首帧与懒驱动到 done、缺脚本降级不崩。
+  合规拒绝（公网/缺授权）、建任务、SSE 首帧与懒驱动到 done、阶段调度正确且无崩溃。
+- `qa-v039`（仓库根执行）：验证 `verify.py` 四类分发、统一结构、`#` 绕过、
+  裁决独立性、异常边界、CLI 与零外联，20/20。
 
 ## 已验证范围与剩余缺口
 
-**已验证**：PHP 8.3.37 真实 HTTP 联调全链路跑通（端到端 10/10），端到端从建任务到 SSE 推流到终态 done。
+**已验证**：PHP 8.3.37 真实 HTTP 联调全链路跑通（端到端 10/10）；`verify.py` 客观验证层
+20/20，且已接入流水线真实执行（DEMO 模式）。端到端从建任务到 SSE 推流到终态 done 全通。
 
-**剩余缺口**：仓库内无 `ai_pentest/`（Python 头身六文件），需从 1 号机拿到包放进仓库根，
-再 `pip install requests`。未拿到时各阶段按设计跳过、任务仍能走到 done，但拿不到真实漏洞结论。
-拿到后改本页第 1 步的 `AI_PY_DIR` 即可。
+**剩余缺口**：`ai_pentest/verify.py`（3 号，本轮已交付）已到位；仍缺
+`recon.py` / `head.py` / `report.py`（1 号与组长负责）及 1 号出的测试用例。
+拿到放进仓库根即可，无需 `requests`（验证器纯标准库）。未拿到时对应阶段按设计跳过、
+任务仍能走到 done，但拿不到真实漏洞结论。拿到后改本页第 1 步的 `AI_PY_DIR` 即可。
 
 curl 冒烟（手动）：
 

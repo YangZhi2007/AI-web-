@@ -47,7 +47,19 @@ function req(method, urlPath, body) {
     return;
   }
 
-  const srv = spawn(PHP, ['-S', '127.0.0.1:' + PORT, '-t', SERVER], { stdio: 'ignore' });
+  // 注入可用的 Python 绝对路径：verify.py 已开发，StageRunner 会真实执行它，
+  // 而 PHP 子进程环境里裸 'python' 可能不在 PATH（Windows winget 版 PHP 常见）。
+  let pythonForWorker = process.env.DJ_PYTHON || '';
+  try {
+    const { execFileSync } = require('child_process');
+    const probe = process.platform === 'win32' ? 'python3' : 'python3';
+    pythonForWorker = execFileSync(probe, ['-c', 'import sys;print(sys.executable)'],
+      { encoding: 'utf-8' }).trim();
+  } catch (_) { /* 探测失败则沿用默认值 */ }
+  const childEnv = Object.assign({}, process.env);
+  if (pythonForWorker) childEnv.DJ_PYTHON = pythonForWorker;
+  const srv = spawn(PHP, ['-S', '127.0.0.1:' + PORT, '-t', SERVER],
+    { stdio: 'ignore', env: childEnv });
   try {
     for (let i = 0; i < 40; i++) {
       try { await req('GET', '/api/report.php?id=NOPE'); break; }
@@ -104,12 +116,13 @@ function req(method, urlPath, body) {
         });
       });
       r.on('error', rej);
-      setTimeout(() => { r.destroy(); res(d); }, 8000);
+      setTimeout(() => { r.destroy(); res(d); }, 20000);
     });
     check('SSE 首帧推送 queued', /"state":"queued"/.test(sse), sse.slice(0, 100));
     check('SSE 懒驱动到 done（无需后台进程）', /"state":"done"/.test(sse), 'done 事件出现');
 
-    // ⑥ 终态与日志：缺 ai_pentest 时逐阶段跳过但不崩
+    // ⑥ 终态与日志：verify.py 已开发 → recon/head/report 跳过、verify 真实执行，
+    //    流水线仍须走到 done 且无崩溃（分阶段开发时"缺阶段不算失败"的设计）。
     const final = await req('GET', '/api/report.php?id=' + encodeURIComponent(tid));
     let fj = null;
     try { fj = JSON.parse(final.body); } catch (e) {}
@@ -118,9 +131,11 @@ function req(method, urlPath, body) {
       t && (t.state + ' ' + t.progress));
     // 只检查日志内容无 Fatal / 函数未定义；不用 error 关键字扫整段 JSON，
     // 因为任务对象本身含合法的 "error":null 字段，会造成假阳性。
-    check('缺脚本时逐阶段跳过不崩',
-      t && t.logs.some((l) => /跳过/.test(l)) && t.logs.every((l) => !/Fatal|undefined function|Uncaught/.test(l)),
-      t && t.logs.length + ' logs');
+    check('阶段调度正确：跳过未开发阶段 + verify 真实执行 + 无崩溃',
+      t && t.logs.some((l) => /跳过/.test(l)) &&
+      t.logs.some((l) => /完成第 \d+\/\d+ 条/.test(l)) &&
+      t.logs.every((l) => !/Fatal|undefined function|Uncaught|not recognized/.test(l)),
+      t && t.logs.join(' | ').slice(0, 300));
 
     // ⑦ 清理测试任务文件
     const taskFile = path.join(SERVER, 'tasks', tid + '.json');

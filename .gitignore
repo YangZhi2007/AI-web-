@@ -11,3 +11,8 @@ desktop.ini
 # 洞鉴 PHP 编排层运行时产物（任务状态与队列锁，不提交）
 dongjian/server/tasks/*.json
 dongjian/server/tasks/.queue.lock
+
+# Python 头身运行时产物（验证证据由脚本生成、字节码缓存，不提交）
+ai_pentest/evidence.json
+ai_pentest/__pycache__/
+*.pyc
