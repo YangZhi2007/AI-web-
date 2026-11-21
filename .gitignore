@@ -7,3 +7,7 @@ Thumbs.db
 desktop.ini
 *.swp
 *~
+
+# 洞鉴 PHP 编排层运行时产物（任务状态与队列锁，不提交）
+dongjian/server/tasks/*.json
+dongjian/server/tasks/.queue.lock

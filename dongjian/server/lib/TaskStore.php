@@ -64,9 +64,16 @@ final class TaskStore
         return $task;
     }
 
-    /** 读取任务；不存在返回 null */
+    /**
+     * 读取任务；不存在或 ID 非法都返回 null。
+     * ID 来自 HTTP 查询参数（不可信），非法时抛异常会吐出 fatal error HTML，
+     * 破坏前端 JSON/SSE 解析，故此处静默返回 null 由端点转 404。
+     */
     public static function get(string $id): ?array
     {
+        if (!preg_match('/^DJ-[A-Za-z0-9-]+$/', $id)) {
+            return null;
+        }
         $p = self::path($id);
         if (!is_file($p)) {
             return null;

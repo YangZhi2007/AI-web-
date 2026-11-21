@@ -166,8 +166,22 @@ final class StageRunner
     {
         $patch = ['logs' => [$line]];
         if (str_contains($line, '条假设') || str_contains($line, 'AI提出') || str_contains($line, '完成')) {
-            $patch['stage_label'] = mb_substr($line, 0, 60);
+            $patch['stage_label'] = self::clip($line, 60);
         }
         TaskStore::update($taskId, $patch);
+    }
+
+    /**
+     * UTF-8 安全截断，不依赖 mbstring 扩展。
+     * winget/官方 PHP 默认未加载 mbstring，用 preg_split 按字符切分，
+     * 避免 mb_substr 未定义导致整条流水线在写日志时崩溃。
+     */
+    private static function clip(string $s, int $max): string
+    {
+        $chars = preg_split('//u', $s, -1, PREG_SPLIT_NO_EMPTY);
+        if ($chars === false) {
+            return substr($s, 0, $max); // 非法 UTF-8 时退化为字节截断
+        }
+        return implode('', array_slice($chars, 0, $max));
     }
 }

@@ -14,8 +14,9 @@
 (function (global) {
   'use strict';
 
-  // API 基准地址：同源部署时为 /api；如需跨机指向后端，改这里即可。
-  // 留空字符串表示同源。示例：'http://192.168.109.130:8000/api'
+  // API 基准地址：同源部署时留空；跨机指向后端时填 'http://<后端IP>:8000'。
+  // 路径带 .php 后缀——PHP 内置服务器与默认 nginx 不做 pathinfo 重写，
+  // 省略后缀会得到 404（已在本机 PHP 8.3 实测确认）。
   var API_BASE = '';
 
   function url(path) {
@@ -24,7 +25,7 @@
 
   /** 建任务。返回 Promise<{task_id, state}> */
   function submitScan(target, authorizationId) {
-    return fetch(url('/api/scan'), {
+    return fetch(url('/api/scan.php'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ target: target, authorization_id: authorizationId })
@@ -45,7 +46,7 @@
    * @returns {{ close: Function }} 可取消的订阅句柄
    */
   function subscribe(taskId, handlers) {
-    var es = new EventSource(url('/api/progress') + '?id=' + encodeURIComponent(taskId));
+    var es = new EventSource(url('/api/progress.php') + '?id=' + encodeURIComponent(taskId));
 
     es.onmessage = function (ev) {
       try {
@@ -78,7 +79,7 @@
 
   /** 读报告。返回 Promise<{task, report}> */
   function getReport(taskId) {
-    return fetch(url('/api/report') + '?id=' + encodeURIComponent(taskId))
+    return fetch(url('/api/report.php') + '?id=' + encodeURIComponent(taskId))
       .then(function (res) {
         if (!res.ok) throw new Error('报告读取失败 HTTP ' + res.status);
         return res.json();
